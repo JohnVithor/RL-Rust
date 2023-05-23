@@ -5,7 +5,7 @@ use plotters::prelude::{BitMapBackend, ChartBuilder, IntoDrawingArea, LabelAreaP
 use plotters::series::LineSeries;
 use plotters::style::{BLUE, WHITE};
 
-use reinforcement_learning::algorithms::{action_selection::EpsilonGreed, policy_update::QStep};
+use reinforcement_learning::algorithms::{action_selection::EpsilonGreed, policy_update::ExpectedSarsaStep};
 use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, Observation};
 use reinforcement_learning::utils::moving_average;
 use reinforcement_learning::{Agent, Policy};
@@ -19,7 +19,7 @@ fn main() {
     let discount_factor: f64 = 0.95;
     let mut env: BlackJackEnv = BlackJackEnv::new();
 
-    let policy_update_strategy = QStep::new(learning_rate, discount_factor);
+    let policy_update_strategy = ExpectedSarsaStep::new(learning_rate, discount_factor);
     let action_selection_strategy = EpsilonGreed::new(start_epsilon, epsilon_decay, final_epsilon);
     let policy: Policy = Policy::new(0.0, env.action_space());
 

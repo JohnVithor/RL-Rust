@@ -8,7 +8,7 @@ use super::ActionSelection;
 #[derive(Debug, Clone)]
 pub struct EpsilonSampler {
     dist: Uniform<f64>,
-    epsilon: f64,
+    pub epsilon: f64,
     epsilon_decay: f64,
     final_epsilon: f64
 }
@@ -66,5 +66,13 @@ impl ActionSelection for EpsilonGreed {
 
     fn update(&mut self) {
         self.epsilon_sampler.decay_epsilon();
+    }
+
+    fn get_exploration_probs(&self, action_space: &ActionSpace) -> Vec<f64> {
+        return vec![self.epsilon_sampler.epsilon/action_space.size as f64; action_space.size];
+    }
+
+    fn get_exploration_rate(&self) -> f64 {
+        return self.epsilon_sampler.epsilon;
     }
 }

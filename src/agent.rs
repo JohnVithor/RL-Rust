@@ -60,7 +60,16 @@ impl Agent {
         if terminated {
             self.action_selection_strategy.borrow_mut().update();
         }
-        self.policy_update_strategy.borrow_mut().update(curr_obs.clone(), curr_action, next_obs.clone(), next_action, reward, terminated, &mut self.policy);
+        self.policy_update_strategy.borrow_mut().update(
+            curr_obs.clone(),
+            curr_action,
+            next_obs.clone(),
+            next_action,
+            reward,
+            terminated,
+            &mut self.policy,
+            &self.action_selection_strategy
+        );
 
         // self.training_error.push(temporal_difference);
     }

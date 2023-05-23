@@ -2,7 +2,7 @@ use std::cell::{RefCell, RefMut};
 
 use super::PolicyUpdate;
 
-use crate::{env::{Observation, ActionSpace}, Policy};
+use crate::{env::{Observation, ActionSpace}, Policy, algorithms::action_selection::ActionSelection};
 
 pub struct SarsaLambda {
     learning_rate: f64,
@@ -36,19 +36,15 @@ impl PolicyUpdate for SarsaLambda {
         next_obs: Observation,
         next_action: usize,
         reward: f64,
-        terminated: bool,
-        policy: &mut Policy
+        _terminated: bool,
+        policy: &mut Policy,
+        _action_selection: &Box<RefCell<dyn ActionSelection>>
     ) {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
-        // O valor dentro do else é a diferença entre o SARSA e o QLearning
-        // Aqui o valor da próxima ação é utilizado
-        let future_q_value = if !terminated {
-            next_q_values[next_action]
-        } else {
-            0.0
-        };
+        let future_q_value = next_q_values[next_action];
         let values: &mut Vec<f64> = policy.get_mut(curr_obs.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
+        
         let mut trace: RefMut<Policy> = self.trace.borrow_mut();
         trace.get_mut(curr_obs)[curr_action] += 1.0;
 
