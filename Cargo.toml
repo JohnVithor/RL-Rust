@@ -1,0 +1,13 @@
+[package]
+name = "reinforcement_learning"
+description = "Reinforcement Learning in Rust"
+authors = ["JohnVithor <thejohnvithor@gmail.com>"]
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+include = ["src/**/*"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
+plotters = "0.3"
