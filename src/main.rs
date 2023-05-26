@@ -5,22 +5,23 @@ use plotters::prelude::{BitMapBackend, ChartBuilder, IntoDrawingArea, LabelAreaP
 use plotters::series::LineSeries;
 use plotters::style::{BLUE, WHITE};
 
-use reinforcement_learning::algorithms::{action_selection::EpsilonGreed, policy_update::ExpectedSarsaStep};
+use reinforcement_learning::algorithms::{action_selection::UpperConfidenceBound, policy_update::QStep};
 use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, Observation};
 use reinforcement_learning::utils::moving_average;
 use reinforcement_learning::{Agent, Policy};
 
 fn main() {
     let learning_rate: f64 = 0.05;
-    let n_episodes: i32 = 100_000;
+    let n_episodes: i32 = 1_000_000;
     let start_epsilon: f64 = 1.0;
     let epsilon_decay: f64 = start_epsilon / (n_episodes as f64 / 2.0);
     let final_epsilon: f64 = 0.0;
+    let confidence_level: f64 = 0.1;
     let discount_factor: f64 = 0.95;
     let mut env: BlackJackEnv = BlackJackEnv::new();
 
-    let policy_update_strategy = ExpectedSarsaStep::new(learning_rate, discount_factor);
-    let action_selection_strategy = EpsilonGreed::new(start_epsilon, epsilon_decay, final_epsilon);
+    let policy_update_strategy = QStep::new(learning_rate, discount_factor);
+    let action_selection_strategy = UpperConfidenceBound::new(confidence_level);
     let policy: Policy = Policy::new(0.0, env.action_space());
 
     let agent: &mut Agent = &mut Agent::new(

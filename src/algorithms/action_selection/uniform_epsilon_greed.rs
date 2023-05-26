@@ -4,17 +4,15 @@ use crate::{env::{Observation, ActionSpace}, utils::argmax, Policy};
 
 use super::ActionSelection;
 
-
 #[derive(Debug, Clone)]
-pub struct EpsilonSampler {
+pub struct UniformEpsilonGreed {
     dist: Uniform<f64>,
     pub epsilon: f64,
     epsilon_decay: f64,
     final_epsilon: f64
 }
 
-impl EpsilonSampler {
-
+impl UniformEpsilonGreed {
     pub fn new(epsilon: f64, epsilon_decay: f64, final_epsilon: f64) -> Self {
         return Self {
             dist: Uniform::from(0.0..1.0),
@@ -34,27 +32,9 @@ impl EpsilonSampler {
     }
 }
 
-
-#[derive(Debug, Clone)]
-pub struct EpsilonGreed {
-    epsilon_sampler: EpsilonSampler
-}
-
-impl EpsilonGreed {
-    pub fn new(epsilon: f64, epsilon_decay: f64, final_epsilon: f64) -> Self{
-        return Self {
-            epsilon_sampler: EpsilonSampler::new(epsilon, epsilon_decay, final_epsilon),
-        }
-    }
-}
-
-impl ActionSelection for EpsilonGreed {
-    fn prepare_agent(&mut self) {
-        return ;
-    }
-
+impl ActionSelection for UniformEpsilonGreed {
     fn get_action(&self, obs: &Observation, action_space: &ActionSpace, policy: &Policy) -> usize {
-        if self.epsilon_sampler.sample() {
+        if self.sample() {
             return action_space.sample();
         } else {
             match policy.get_ref_if_has(obs) {
@@ -65,14 +45,14 @@ impl ActionSelection for EpsilonGreed {
     }
 
     fn update(&mut self) {
-        self.epsilon_sampler.decay_epsilon();
+        self.decay_epsilon();
     }
 
     fn get_exploration_probs(&self, action_space: &ActionSpace) -> Vec<f64> {
-        return vec![self.epsilon_sampler.epsilon/action_space.size as f64; action_space.size];
+        return vec![self.epsilon/action_space.size as f64; action_space.size];
     }
 
     fn get_exploration_rate(&self) -> f64 {
-        return self.epsilon_sampler.epsilon;
+        return self.epsilon;
     }
 }
