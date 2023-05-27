@@ -5,8 +5,9 @@ use plotters::prelude::{BitMapBackend, ChartBuilder, IntoDrawingArea, LabelAreaP
 use plotters::series::LineSeries;
 use plotters::style::{BLUE, WHITE};
 
-use reinforcement_learning::algorithms::{action_selection::UpperConfidenceBound, policy_update::QStep};
-use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, Observation};
+use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
+use reinforcement_learning::algorithms::policy_update::QStep;
+use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, FrozenLakeEnv};
 use reinforcement_learning::utils::moving_average;
 use reinforcement_learning::{Agent, Policy};
 
@@ -16,15 +17,16 @@ fn main() {
     let start_epsilon: f64 = 1.0;
     let epsilon_decay: f64 = start_epsilon / (n_episodes as f64 / 2.0);
     let final_epsilon: f64 = 0.0;
-    let confidence_level: f64 = 0.1;
+    let confidence_level: f64 = 0.8;
     let discount_factor: f64 = 0.95;
-    let mut env: BlackJackEnv = BlackJackEnv::new();
+    let mut env: FrozenLakeEnv = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, true);
 
     let policy_update_strategy = QStep::new(learning_rate, discount_factor);
+    // let action_selection_strategy = UniformEpsilonGreed::new(start_epsilon, epsilon_decay, final_epsilon);
     let action_selection_strategy = UpperConfidenceBound::new(confidence_level);
-    let policy: Policy = Policy::new(0.0, env.action_space());
+    let policy = Policy::new(0.0, env.action_space());
 
-    let agent: &mut Agent = &mut Agent::new(
+    let agent = &mut Agent::new(
         Box::new(RefCell::new(action_selection_strategy)),
         Box::new(RefCell::new(policy_update_strategy)),
         policy,
@@ -35,8 +37,10 @@ fn main() {
 
     let now: Instant = Instant::now();
     for _episode in 0..n_episodes {
-        let mut curr_obs: Observation = env.reset();
+        let mut curr_obs = env.reset();
         let mut curr_action: usize = agent.get_action(&curr_obs);
+        // println!("curr_obs {:?}", curr_obs);
+        // println!("curr_action {:?}", curr_action);
         loop {
             match env.step(curr_action) {
                 Ok((next_obs, reward, terminated)) => {
@@ -49,6 +53,8 @@ fn main() {
                         &next_obs,
                         next_action,
                     );
+                    // println!("curr_obs {:?}", next_obs);
+                    // println!("curr_action {:?}", next_action);
                     curr_obs = next_obs;
                     curr_action = next_action;
                     if terminated {
@@ -57,7 +63,7 @@ fn main() {
                     }
                 }
                 Err(EnvNotReady) => {
-                    println!("Ambiente não está pronto para receber ações!");
+                    println!("Environment is not ready to receive actions!");
                     break;
                 }
             }

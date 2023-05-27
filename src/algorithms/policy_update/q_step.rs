@@ -1,8 +1,9 @@
 use std::cell::RefCell;
+use std::hash::Hash;
 
 use super::PolicyUpdate;
 
-use crate::{env::Observation, Policy, utils::argmax, algorithms::action_selection::ActionSelection};
+use crate::{Policy, utils::argmax, algorithms::action_selection::ActionSelection};
 
 pub struct QStep {
     learning_rate: f64,
@@ -15,17 +16,17 @@ impl QStep {
     }
 }
 
-impl PolicyUpdate for QStep {
+impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for QStep {
     fn update(
         &mut self,
-        curr_obs:Observation,
+        curr_obs: T,
         curr_action: usize,
-        next_obs: Observation,
+        next_obs: T,
         _next_action: usize,
         reward: f64,
         _terminated: bool,
-        policy: &mut Policy,
-        _action_selection: &Box<RefCell<dyn ActionSelection>>
+        policy: &mut Policy<T>,
+        _action_selection: &Box<RefCell<dyn ActionSelection<T>>>
     ) {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
         let future_q_value: f64 = next_q_values[argmax(&next_q_values)];

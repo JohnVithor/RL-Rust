@@ -1,23 +1,23 @@
 use std::cell::RefCell;
-
-use crate::env::{Observation, ActionSpace};
+use std::hash::Hash;
+use crate::env::ActionSpace;
 use crate::algorithms::action_selection::ActionSelection;
 use crate::algorithms::policy_update::PolicyUpdate;
 use crate::policy::Policy;
 
-pub struct Agent {
-    action_selection_strategy: Box<RefCell<dyn ActionSelection>>,
-    policy_update_strategy: Box<RefCell<dyn PolicyUpdate>>,
-    pub policy: Policy,
+pub struct Agent<T> {
+    action_selection_strategy: Box<RefCell<dyn ActionSelection<T>>>,
+    policy_update_strategy: Box<RefCell<dyn PolicyUpdate<T>>>,
+    pub policy: Policy<T>,
     training_error: Vec<f64>,
     action_space: ActionSpace
 }
 
-impl Agent {
+impl<T: Hash+PartialEq+Eq+Clone> Agent<T> {
     pub fn new(
-        action_selection_strategy: Box<RefCell<dyn ActionSelection>>,
-        policy_update_strategy: Box<RefCell<dyn PolicyUpdate>>,
-        policy: Policy,
+        action_selection_strategy: Box<RefCell<dyn ActionSelection<T>>>,
+        policy_update_strategy: Box<RefCell<dyn PolicyUpdate<T>>>,
+        policy: Policy<T>,
         action_space: ActionSpace
     ) -> Self {
         return Self {
@@ -28,7 +28,7 @@ impl Agent {
             action_space
         };
     }
-    pub fn get_action(&mut self, obs:&Observation) -> usize {
+    pub fn get_action(&mut self, obs:&T) -> usize {
         return self.action_selection_strategy.borrow_mut().get_action(obs, &self.action_space, &self.policy); 
     }
 
@@ -36,11 +36,11 @@ impl Agent {
         return &self.training_error;
     }
 
-    pub fn get_action_selection_strategy(&self) -> &Box<RefCell<dyn ActionSelection>> {
+    pub fn get_action_selection_strategy(&self) -> &Box<RefCell<dyn ActionSelection<T>>> {
         return &self.action_selection_strategy;
     }
 
-    pub fn get_policy(&self) -> &Policy {
+    pub fn get_policy(&self) -> &Policy<T> {
         return &self.policy;
     }
 
@@ -50,11 +50,11 @@ impl Agent {
 
     pub fn update(
         &mut self,
-        curr_obs: &Observation,
+        curr_obs: &T,
         curr_action: usize,
         reward: f64,
         terminated: bool,
-        next_obs: &Observation,
+        next_obs: &T,
         next_action: usize
     ) {
         if terminated {

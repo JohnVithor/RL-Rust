@@ -1,18 +1,17 @@
-use std::{collections::HashMap, cell::{RefCell, RefMut}};
+use std::{hash::Hash, collections::HashMap, cell::{RefCell, RefMut}};
 
-
-use crate::{env::{Observation, ActionSpace}, utils::argmax, Policy};
+use crate::{env::ActionSpace, utils::argmax, Policy};
 
 use super::ActionSelection;
 
 #[derive(Debug, Clone)]
-pub struct UpperConfidenceBound {
-    action_counter: RefCell<HashMap<Observation, Vec<u128>>>,
+pub struct UpperConfidenceBound<T> {
+    action_counter: RefCell<HashMap<T, Vec<u128>>>,
     t: RefCell<u128>,
     confidence_level: f64
 }
 
-impl UpperConfidenceBound {
+impl<T> UpperConfidenceBound<T> {
     pub fn new(confidence_level: f64) -> Self {
         return Self {
             action_counter: RefCell::new(HashMap::new()),
@@ -22,8 +21,8 @@ impl UpperConfidenceBound {
     }
 }
 
-impl ActionSelection for UpperConfidenceBound {
-    fn get_action(&self, obs: &Observation, action_space: &ActionSpace, policy: &Policy) -> usize {
+impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UpperConfidenceBound<T> {
+    fn get_action(&self, obs: &T, action_space: &ActionSpace, policy: &Policy<T>) -> usize {
         match policy.get_ref_if_has(obs) {
             Some(value) => {
             let mut action_counter = self.action_counter.borrow_mut();

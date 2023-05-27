@@ -1,7 +1,5 @@
 use std::cell::RefCell;
 
-use crate::env::Observation;
-
 use crate::Policy;
 
 mod q_step;
@@ -19,16 +17,16 @@ pub use expected_sarsa_step::ExpectedSarsaStep;
 use super::action_selection::ActionSelection;
 
 
-pub trait PolicyUpdate {
+pub trait PolicyUpdate<T> {
     fn update(
         &mut self,
-        curr_obs:Observation,
+        curr_obs:T,
         curr_action: usize,
-        next_obs: Observation,
+        next_obs: T,
         next_action: usize,
         reward: f64,
         terminated: bool,
-        policy: &mut Policy,
-        action_selection: &Box<RefCell<dyn ActionSelection>>
+        policy: &mut Policy<T>,
+        action_selection: &Box<RefCell<dyn ActionSelection<T>>>
     );
 }

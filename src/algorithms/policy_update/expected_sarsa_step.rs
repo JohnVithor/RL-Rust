@@ -1,8 +1,9 @@
 use std::cell::RefCell;
+use std::hash::Hash;
 
 use super::PolicyUpdate;
 
-use crate::{env::{Observation, ActionSpace}, Policy, algorithms::action_selection::ActionSelection, utils::argmax};
+use crate::{env::ActionSpace, Policy, algorithms::action_selection::ActionSelection, utils::argmax};
 
 pub struct ExpectedSarsaStep {
     learning_rate: f64,
@@ -15,17 +16,17 @@ impl ExpectedSarsaStep {
     }
 }
 
-impl PolicyUpdate for ExpectedSarsaStep {
+impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
     fn update(
         &mut self,
-        curr_obs:Observation,
+        curr_obs: T,
         curr_action: usize,
-        next_obs: Observation,
+        next_obs: T,
         _next_action: usize,
         reward: f64,
         _terminated: bool,
-        policy: &mut Policy,
-        action_selection: &Box<RefCell<dyn ActionSelection>>
+        policy: &mut Policy<T>,
+        action_selection: &Box<RefCell<dyn ActionSelection<T>>>
     ) {
         let action_space: ActionSpace = policy.action_space.clone();
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());

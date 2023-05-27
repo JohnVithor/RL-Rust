@@ -1,8 +1,25 @@
-use crate::env::{Env, Observation, ActionSpace, EnvNotReady};
+use crate::env::{Env, ActionSpace, EnvNotReady};
 
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
 use rand::distributions::Uniform;
+
+#[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct BlackJackObservation {
+    pub p_score: u8,
+    pub d_score: u8,
+    pub p_ace: bool,
+}
+
+impl BlackJackObservation {
+    pub fn new(p_score: u8, d_score: u8, p_ace: bool) -> Self {
+        return Self {
+            p_score,
+            d_score,
+            p_ace,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct BlackJackEnv {
@@ -71,17 +88,17 @@ impl BlackJackEnv {
     }
 }
 
-impl Env for BlackJackEnv {
-    fn reset(&mut self) -> Observation {
+impl Env<BlackJackObservation> for BlackJackEnv {
+    fn reset(&mut self) -> BlackJackObservation {
         self.player = [0;16];
         self.dealer = [0;16];
         self.initialize_hands();
-        let obs: Observation = Observation::new(self.compute_player_score(), self.get_dealer_card(), self.player_has_ace);
+        let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), self.get_dealer_card(), self.player_has_ace);
         self.ready = true;
         return obs
     }
 
-    fn step(&mut self, action: usize) -> Result<(Observation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(BlackJackObservation, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -91,10 +108,10 @@ impl Env for BlackJackEnv {
             let p_score: u8 = self.compute_player_score();
             if p_score > 21 {
                 self.ready = false;
-                let obs: Observation = Observation::new(p_score, self.compute_dealer_score(), self.player_has_ace);
+                let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.compute_dealer_score(), self.player_has_ace);
                 return Ok((obs, -1.0, true));
             }
-            let obs: Observation = Observation::new(p_score, self.get_dealer_card(), self.player_has_ace);
+            let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
             return Ok((obs, 0.0, false));
         } else {
             self.ready = false;
@@ -104,7 +121,7 @@ impl Env for BlackJackEnv {
                 self.dealer_i += 1;
                 d_score = self.compute_dealer_score();
             }
-            let obs: Observation = Observation::new(self.compute_player_score(), d_score, self.player_has_ace);
+            let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), d_score, self.player_has_ace);
             if d_score > 21{
                 return Ok((obs, 1.0, true));
             }

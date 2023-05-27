@@ -1,17 +1,18 @@
 use std::cell::{RefCell, RefMut};
+use std::hash::Hash;
 
 use super::PolicyUpdate;
 
-use crate::{env::{Observation, ActionSpace}, Policy, utils::argmax, algorithms::action_selection::ActionSelection};
+use crate::{env::ActionSpace, Policy, utils::argmax, algorithms::action_selection::ActionSelection};
 
-pub struct QLambda {
+pub struct QLambda<T: Hash+PartialEq+Eq+Clone> {
     learning_rate: f64,
     discount_factor: f64,
-    pub trace: RefCell<Policy>,
+    pub trace: RefCell<Policy<T>>,
     lambda_factor: f64
 }
 
-impl QLambda {
+impl<T: Hash+PartialEq+Eq+Clone> QLambda<T> {
     pub fn new(
         learning_rate: f64,
         discount_factor: f64,
@@ -28,17 +29,17 @@ impl QLambda {
     }
 }
 
-impl PolicyUpdate for QLambda {
+impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for QLambda<T> {
     fn update(
         &mut self,
-        curr_obs: Observation,
+        curr_obs: T,
         curr_action: usize,
-        next_obs: Observation,
+        next_obs: T,
         next_action: usize,
         reward: f64,
         _terminated: bool,
-        policy: &mut Policy,
-        _action_selection: &Box<RefCell<dyn ActionSelection>>
+        policy: &mut Policy<T>,
+        _action_selection: &Box<RefCell<dyn ActionSelection<T>>>
     ) {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs);
         let best_next_action: usize = argmax(&next_q_values);
@@ -46,7 +47,7 @@ impl PolicyUpdate for QLambda {
         let values: &mut Vec<f64> = policy.get_mut(curr_obs.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
         
-        let mut trace: RefMut<Policy> = self.trace.borrow_mut();
+        let mut trace: RefMut<Policy<T>> = self.trace.borrow_mut();
         trace.get_mut(curr_obs.clone())[curr_action] += 1.0;
 
         for (obs, values) in &mut policy.values {

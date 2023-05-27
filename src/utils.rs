@@ -1,10 +1,24 @@
 pub fn argmax<T: PartialOrd>(vec: &Vec<T>) -> usize {
-    return vec
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-        .map(|(index, _)| index)
-        .unwrap_or_default();
+    let mut max: &T = &vec[0];
+    let mut result: usize = 0;
+    let mut i: usize = 0;
+    for v in vec {
+        if v > &max {
+            max = v;
+            result = i;
+        }
+        i+=1;
+    }
+    return result;
+}
+
+pub fn categorical_sample(probs: &Vec<f64>, random: f64) -> usize {
+    let mut b: f64 = 0.0;
+    let r: Vec<bool> = probs.iter().map(|a| {
+        b+=a;
+        b > random
+    }).collect();
+    return argmax(&r);
 }
 
 pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
