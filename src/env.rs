@@ -2,6 +2,7 @@ mod action_space;
 mod blackjack;
 mod frozen_lake;
 mod cliff_walking;
+mod taxi;
 
 #[derive(Debug, Clone)]
 pub struct EnvNotReady;
@@ -17,3 +18,4 @@ pub use action_space::ActionSpace;
 pub use blackjack::BlackJackEnv;
 pub use frozen_lake::FrozenLakeEnv;
 pub use cliff_walking::CliffWalkingEnv;
+pub use taxi::TaxiEnv;

@@ -43,7 +43,7 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
         new_col = col;
         new_row = if row != 0 { max(row - 1, 0) } else {0};
     } else {
-        panic!("Invalid action! {:?}", a);
+        return (row, col)
     }
     return (new_row, new_col)
 }
