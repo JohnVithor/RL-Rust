@@ -6,8 +6,8 @@ use plotters::series::LineSeries;
 use plotters::style::{BLUE, WHITE};
 
 use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::algorithms::policy_update::QStep;
-use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, FrozenLakeEnv};
+use reinforcement_learning::algorithms::policy_update::{QStep, SarsaStep, SarsaLambda, QLambda};
+use reinforcement_learning::env::{BlackJackEnv, Env, EnvNotReady, FrozenLakeEnv, CliffWalkingEnv};
 use reinforcement_learning::utils::moving_average;
 use reinforcement_learning::{Agent, Policy};
 
@@ -19,11 +19,16 @@ fn main() {
     let final_epsilon: f64 = 0.0;
     let confidence_level: f64 = 0.8;
     let discount_factor: f64 = 0.95;
-    let mut env: FrozenLakeEnv = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, true);
+    let lambda_factor: f64 = 0.5;
+    let max_steps = 1000;
+    // let mut env = BlackJackEnv::new();
+    // let mut env = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, true, max_steps);
+    let mut env = CliffWalkingEnv::new(max_steps);
 
+    // let policy_update_strategy = QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let policy_update_strategy = QStep::new(learning_rate, discount_factor);
-    // let action_selection_strategy = UniformEpsilonGreed::new(start_epsilon, epsilon_decay, final_epsilon);
-    let action_selection_strategy = UpperConfidenceBound::new(confidence_level);
+    let action_selection_strategy = UniformEpsilonGreed::new(start_epsilon, epsilon_decay, final_epsilon);
+    // let action_selection_strategy = UpperConfidenceBound::new(confidence_level);
     let policy = Policy::new(0.0, env.action_space());
 
     let agent = &mut Agent::new(
@@ -74,16 +79,17 @@ fn main() {
 
     let values_moving_average: Vec<f64> =
         moving_average(n_episodes as usize / 100, &reward_history);
+    let min_reward = values_moving_average.iter().copied().reduce(f64::min).unwrap();
+    let max_reward = values_moving_average.iter().copied().reduce(f64::max).unwrap();
 
     let root_area = BitMapBackend::new("test.png", (600, 400)).into_drawing_area();
-
     root_area.fill(&WHITE).unwrap();
 
     let mut ctx = ChartBuilder::on(&root_area)
         .set_label_area_size(LabelAreaPosition::Left, 40)
         .set_label_area_size(LabelAreaPosition::Bottom, 40)
         .caption("Episode reward", ("sans-serif", 40))
-        .build_cartesian_2d(0..values_moving_average.len(), -1.0..1.0)
+        .build_cartesian_2d(0..values_moving_average.len(), min_reward..max_reward)
         .unwrap();
 
     ctx.configure_mesh().draw().unwrap();
@@ -95,4 +101,31 @@ fn main() {
         &BLUE,
     ))
     .unwrap();
+
+    let mut curr_obs = env.reset();
+    let mut curr_action: usize = agent.get_action(&curr_obs);
+    let mut steps: i32 = 0;
+    loop {
+        steps+=1;
+        match env.step(curr_action) {
+            Ok((next_obs, reward, terminated)) => {
+                let next_action: usize = agent.get_action(&next_obs);
+                println!("curr_obs {:?}", curr_obs);
+                println!("curr_action {:?}", curr_action);
+                println!("reward {:?}", reward);
+                curr_obs = next_obs;
+                curr_action = next_action;
+                if terminated {
+                    println!("next_obs {:?}", curr_obs);
+                    println!("terminated with {:?} steps", steps);
+                    break;
+                }
+            }
+            Err(EnvNotReady) => {
+                println!("Environment is not ready to receive actions!");
+                break;
+            }
+        }
+    }
+
 }

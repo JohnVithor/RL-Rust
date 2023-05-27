@@ -1,7 +1,5 @@
-use std::cmp::{max, min};
-
 use crate::env::{Env, ActionSpace, EnvNotReady};
-use crate::utils::categorical_sample;
+use crate::utils::{categorical_sample, inc, to_s};
 
 use rand::prelude::Distribution;
 use rand::distributions::Uniform;
@@ -12,7 +10,9 @@ pub struct FrozenLakeEnv {
     initial_state_distrib: Vec<f64>,
     probs: Vec<[[(f64, usize, f64, bool); 3]; 4]>,
     player_pos: usize,
-    dist: Uniform<f64>
+    dist: Uniform<f64>,
+    max_steps: u128,
+    curr_step: u128
 }
 
 impl FrozenLakeEnv {
@@ -35,41 +35,17 @@ impl FrozenLakeEnv {
         "FFFHFFFG",
     ];
 
-    fn to_s(ncol: usize, row: usize, col: usize) -> usize{
-        return row * ncol + col;
-    }
-
-    fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize, usize) {
-        let new_col: usize;
-        let new_row: usize;
-        if a == 0 {
-            new_col = if col != 0 { max(col - 1, 0) } else {0};
-            new_row = row;
-        } else if a == 1 {
-            new_col = col;
-            new_row = min(row + 1, nrow - 1);
-        } else if a == 2 {
-            new_col = min(col + 1, ncol - 1);
-            new_row = row;
-        } else if a == 3 {
-            new_col = col;
-            new_row = if row != 0 { max(row - 1, 0) } else {0};
-        } else {
-            panic!("Invalid action! {:?}", a);
-        }
-        return (new_row, new_col)
-    }
 
     fn update_probability_matrix(map: &[&str], nrow: usize, ncol: usize, row: usize, col: usize, action: usize) -> (usize, f64, bool) {
-        let (newrow, newcol) = Self::inc(nrow, ncol, row, col, action);
-        let newstate: usize = Self::to_s(ncol, newrow, newcol);
+        let (newrow, newcol) = inc(nrow, ncol, row, col, action);
+        let newstate: usize = to_s(ncol, newrow, newcol);
         let newletter: &str = map[newrow].get(newcol..newcol+1).unwrap();
         let terminated: bool = "GH".contains(newletter);
         let reward: f64 = (newletter == "G").into();
         return (newstate, reward, terminated)
     }
 
-    pub fn new(map: &[&str], is_slippery: bool) -> Self {
+    pub fn new(map: &[&str], is_slippery: bool, max_steps: u128) -> Self {
         let ncol: usize = map.len();
         let nrow: usize = map[0].len();
         // calculating start positions probabilities
@@ -90,7 +66,7 @@ impl FrozenLakeEnv {
         let mut probs: Vec<[[(f64, usize, f64, bool); 3]; 4]> = vec![[[(0.0, 0, 0.0, false);3];4]; nrow * ncol];
         for row in 0..nrow {
             for col in 0..ncol {
-                let s = Self::to_s(ncol, row, col);
+                let s = to_s(ncol, row, col);
                 for a in 0..4 {
                     let li = &mut probs[s][a];
                     let letter = map[row].get(col..col+1).unwrap();
@@ -116,7 +92,9 @@ impl FrozenLakeEnv {
             initial_state_distrib,
             probs,
             player_pos: 0,
-            dist: Uniform::from(0.0..1.0)
+            dist: Uniform::from(0.0..1.0),
+            max_steps,
+            curr_step: 0
         };
         return env; 
     }
@@ -128,6 +106,7 @@ impl Env<usize> for FrozenLakeEnv {
         let random: f64 = dist.sample(&mut rand::thread_rng());
         self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
+        self.curr_step = 0;
         return self.player_pos;
     }
 
@@ -135,12 +114,20 @@ impl Env<usize> for FrozenLakeEnv {
         if !self.ready {
             return Err(EnvNotReady);
         }
+        if self.curr_step >= self.max_steps {
+            self.ready = false;
+            return Ok((0, -1.0, true))
+        }
+        self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action];
         let t_probs = transitions.map(|a| a.0);
         let random: f64 = self.dist.sample(&mut rand::thread_rng());
         let i = categorical_sample(&t_probs.to_vec(), random);
         let (_p, s, r, t) = transitions[i];
         self.player_pos = s;
+        if t {
+            self.ready = false;
+        }
         return Ok((s, r, t));
     }
 
