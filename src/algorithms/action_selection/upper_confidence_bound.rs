@@ -1,4 +1,4 @@
-use std::{hash::Hash, collections::HashMap, cell::{RefCell, RefMut}};
+use std::{hash::Hash, cell::{RefCell, RefMut}};
 
 use fxhash::FxHashMap;
 
@@ -16,7 +16,7 @@ pub struct UpperConfidenceBound<T> {
 impl<T> UpperConfidenceBound<T> {
     pub fn new(confidence_level: f64) -> Self {
         return Self {
-            action_counter: RefCell::new(HashMap::default()),
+            action_counter: RefCell::new(FxHashMap::default()),
             t: RefCell::new(1),
             confidence_level
         }
