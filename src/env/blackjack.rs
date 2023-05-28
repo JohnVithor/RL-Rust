@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use crate::env::{Env, ActionSpace, EnvNotReady};
 
 use rand::prelude::Distribution;
@@ -18,6 +20,9 @@ impl BlackJackObservation {
             d_score,
             p_ace,
         }
+    }
+    pub fn get_id(&self) -> usize {
+        return fxhash::hash(self);
     }
 }
 
@@ -88,17 +93,17 @@ impl BlackJackEnv {
     }
 }
 
-impl Env<BlackJackObservation> for BlackJackEnv {
-    fn reset(&mut self) -> BlackJackObservation {
+impl Env<usize> for BlackJackEnv {
+    fn reset(&mut self) -> usize {
         self.player = [0;16];
         self.dealer = [0;16];
         self.initialize_hands();
         let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), self.get_dealer_card(), self.player_has_ace);
         self.ready = true;
-        return obs
+        return obs.get_id();
     }
 
-    fn step(&mut self, action: usize) -> Result<(BlackJackObservation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -109,10 +114,10 @@ impl Env<BlackJackObservation> for BlackJackEnv {
             if p_score > 21 {
                 self.ready = false;
                 let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.compute_dealer_score(), self.player_has_ace);
-                return Ok((obs, -1.0, true));
+                return Ok((obs.get_id(), -1.0, true));
             }
             let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
-            return Ok((obs, 0.0, false));
+            return Ok((obs.get_id(), 0.0, false));
         } else {
             self.ready = false;
             let mut d_score: u8 = self.compute_dealer_score();
@@ -123,10 +128,10 @@ impl Env<BlackJackObservation> for BlackJackEnv {
             }
             let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), d_score, self.player_has_ace);
             if d_score > 21{
-                return Ok((obs, 1.0, true));
+                return Ok((obs.get_id(), 1.0, true));
             }
             let reward: f64 = if obs.p_score > d_score {1.0} else if d_score > obs.p_score {-1.0} else {0.0};
-            return Ok((obs, reward, true));
+            return Ok((obs.get_id(), reward, true));
         }
     }
 

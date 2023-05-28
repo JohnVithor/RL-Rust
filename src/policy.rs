@@ -1,11 +1,12 @@
-use std::collections::HashMap;
 use std::hash::Hash;
+use fxhash::FxHashMap;
+
 use crate::env::ActionSpace;
 
 #[derive(Debug, Clone)]
 pub struct Policy<T> {
     pub default: Vec<f64>,
-    pub values: HashMap<T, Vec<f64>>,
+    pub values: FxHashMap<T, Vec<f64>>,
     pub action_space: ActionSpace,
 }
 
@@ -13,7 +14,7 @@ impl<T: Hash+PartialEq+Eq+Clone> Policy<T> {
     pub fn new(default_value: f64, action_space: ActionSpace) -> Self {
         return Self {
             default: vec![default_value; action_space.size],
-            values: HashMap::new(),
+            values: FxHashMap::default(),
             action_space,
         };
     }

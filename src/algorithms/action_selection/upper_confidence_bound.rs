@@ -1,12 +1,14 @@
 use std::{hash::Hash, collections::HashMap, cell::{RefCell, RefMut}};
 
+use fxhash::FxHashMap;
+
 use crate::{env::ActionSpace, utils::argmax, Policy};
 
 use super::ActionSelection;
 
 #[derive(Debug, Clone)]
 pub struct UpperConfidenceBound<T> {
-    action_counter: RefCell<HashMap<T, Vec<u128>>>,
+    action_counter: RefCell<FxHashMap<T, Vec<u128>>>,
     t: RefCell<u128>,
     confidence_level: f64
 }
@@ -14,7 +16,7 @@ pub struct UpperConfidenceBound<T> {
 impl<T> UpperConfidenceBound<T> {
     pub fn new(confidence_level: f64) -> Self {
         return Self {
-            action_counter: RefCell::new(HashMap::new()),
+            action_counter: RefCell::new(HashMap::default()),
             t: RefCell::new(1),
             confidence_level
         }
