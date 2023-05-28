@@ -61,7 +61,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug> Agent<T> {
         if terminated {
             self.action_selection_strategy.borrow_mut().update();
         }
-        self.policy_update_strategy.borrow_mut().update(
+        let temporal_difference: f64 = self.policy_update_strategy.borrow_mut().update(
             curr_obs.clone(),
             curr_action,
             next_obs.clone(),
@@ -72,16 +72,19 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug> Agent<T> {
             &self.action_selection_strategy
         );
 
-        // self.training_error.push(temporal_difference);
+        self.training_error.push(temporal_difference);
     }
 
-    pub fn train(&mut self, env: &mut dyn Env<T>, n_episodes: u128) -> Vec<f64> {
+    pub fn train(&mut self, env: &mut dyn Env<T>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
+        let mut episode_length: Vec<u128> = vec![];
         for _episode in 0..n_episodes {
-            let mut epi_reward = 0.0;
-            let mut curr_obs = env.reset();
+            let mut action_counter: u128 = 0;
+            let mut epi_reward: f64 = 0.0;
+            let mut curr_obs: T = env.reset();
             let mut curr_action: usize = self.get_action(&curr_obs);
             loop {
+                action_counter+=1;
                 let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
                 let next_action: usize = self.get_action(&next_obs);
                 self.update(
@@ -100,7 +103,8 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug> Agent<T> {
                     break;
                 }
             }
+            episode_length.push(action_counter);
         }
-        return reward_history;
+        return (reward_history, episode_length);
     }
 }

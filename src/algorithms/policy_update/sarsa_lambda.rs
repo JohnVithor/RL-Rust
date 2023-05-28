@@ -40,7 +40,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for SarsaLambda<T> {
         _terminated: bool,
         policy: &mut Policy<T>,
         _action_selection: &Box<RefCell<dyn ActionSelection<T>>>
-    ) {
+    ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
         let future_q_value = next_q_values[next_action];
         let values: &mut Vec<f64> = policy.get_mut(curr_obs.clone());
@@ -56,5 +56,6 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for SarsaLambda<T> {
                 e_obs_values[i] = self.discount_factor * self.lambda_factor * e_obs_values[i]
             }
         }
+        return temporal_difference;
     }
 }

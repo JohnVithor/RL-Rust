@@ -28,5 +28,5 @@ pub trait PolicyUpdate<T> {
         terminated: bool,
         policy: &mut Policy<T>,
         action_selection: &Box<RefCell<dyn ActionSelection<T>>>
-    );
+    ) -> f64;
 }

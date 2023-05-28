@@ -27,7 +27,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
         _terminated: bool,
         policy: &mut Policy<T>,
         action_selection: &Box<RefCell<dyn ActionSelection<T>>>
-    ) {
+    ) -> f64 {
         let action_space: ActionSpace = policy.action_space.clone();
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
         let epsilon: f64 = action_selection.borrow().get_exploration_rate();
@@ -52,6 +52,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
         let values: &mut Vec<f64> = policy.get_mut(curr_obs);
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
         values[curr_action] = values[curr_action] + self.learning_rate * temporal_difference;
+        return temporal_difference;
     }
 }
 
