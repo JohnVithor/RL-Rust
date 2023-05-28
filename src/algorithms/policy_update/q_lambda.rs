@@ -39,7 +39,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for QLambda<T> {
         reward: f64,
         _terminated: bool,
         policy: &mut Policy<T>,
-        _action_selection: &Box<RefCell<dyn ActionSelection<T>>>
+        _action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs);
         let best_next_action: usize = argmax(&next_q_values);

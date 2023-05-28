@@ -6,24 +6,24 @@ use crate::algorithms::action_selection::ActionSelection;
 use crate::algorithms::policy_update::PolicyUpdate;
 use crate::policy::Policy;
 
-pub struct Agent<T> {
-    action_selection_strategy: Box<RefCell<dyn ActionSelection<T>>>,
-    policy_update_strategy: Box<RefCell<dyn PolicyUpdate<T>>>,
+pub struct Agent<'a, T> {
+    action_selection_strategy: Box<RefCell<&'a mut dyn ActionSelection<T>>>,
+    policy_update_strategy: Box<RefCell<&'a mut dyn PolicyUpdate<T>>>,
     pub policy: Policy<T>,
     training_error: Vec<f64>,
     action_space: ActionSpace
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug> Agent<T> {
+impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
     pub fn new(
-        action_selection_strategy: Box<RefCell<dyn ActionSelection<T>>>,
-        policy_update_strategy: Box<RefCell<dyn PolicyUpdate<T>>>,
+        action_selection_strategy: &'a mut (dyn ActionSelection<T> + 'a),
+        policy_update_strategy: &'a mut (dyn PolicyUpdate<T> + 'a),
         policy: Policy<T>,
         action_space: ActionSpace
     ) -> Self {
         return Self {
-            action_selection_strategy,
-            policy_update_strategy,
+            action_selection_strategy: Box::new(RefCell::new(action_selection_strategy)),
+            policy_update_strategy: Box::new(RefCell::new(policy_update_strategy)),
             policy,
             training_error: vec![],
             action_space
@@ -37,7 +37,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug> Agent<T> {
         return &self.training_error;
     }
 
-    pub fn get_action_selection_strategy(&self) -> &Box<RefCell<dyn ActionSelection<T>>> {
+    pub fn get_action_selection_strategy(&self) -> &Box<RefCell<&'a mut dyn ActionSelection<T>>> {
         return &self.action_selection_strategy;
     }
 

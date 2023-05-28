@@ -27,6 +27,6 @@ pub trait PolicyUpdate<T> {
         reward: f64,
         terminated: bool,
         policy: &mut Policy<T>,
-        action_selection: &Box<RefCell<dyn ActionSelection<T>>>
+        action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64;
 }

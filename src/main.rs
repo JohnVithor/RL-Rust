@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW};
 
-use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
+use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound, self};
 use reinforcement_learning::algorithms::policy_update::{QStep, SarsaStep, SarsaLambda, QLambda};
 use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
@@ -13,9 +13,9 @@ extern crate structopt;
 
 use structopt::StructOpt;
 
-/// Do fancy things
+/// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "fancify")]
+#[structopt(name = "RLRust")]
 struct Cli {
 
     /// Name of the environment to be used: 0: blackjack, 1: frozenlake, 2: cliffwalk, 3: taxi
@@ -37,7 +37,7 @@ struct Cli {
     #[structopt(long = "learning_rate", short = "lr", default_value = "0.05")]
     learning_rate: f64,
 
-    /// Action selection strategy: 1 - uniform epsilon greed, 2 - upper confidence bound
+    /// Action selection strategy: 0 - uniform epsilon greed, 1 - upper confidence bound
     #[structopt(long = "action_selection", short = "as", default_value = "0")]
     action_selection: u8,
 
@@ -68,10 +68,7 @@ struct Cli {
     /// Moving average window to be used on the visualization of results
     #[structopt(long = "moving_average_window", short = "maw", default_value = "100")]
     moving_average_window: usize,
-
 }
-
-
 
 fn main() {
     
@@ -110,58 +107,74 @@ fn main() {
     let mut episodes_length: Vec<&Vec<f64>> = vec![];
     let mut errors : Vec<&Vec<f64>> = vec![];
 
+    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
+    let mut policy_update_strategy: SarsaStep = SarsaStep::new(learning_rate, discount_factor);
     let epsilon_greed_sarsa = &mut Agent::new(
-        Box::new(RefCell::new(UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon))),
-        Box::new(RefCell::new(SarsaStep::new(learning_rate, discount_factor))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
+    let mut policy_update_strategy = QStep::new(learning_rate, discount_factor);
     let epsilon_greed_qlearning = &mut Agent::new(
-        Box::new(RefCell::new(UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon))),
-        Box::new(RefCell::new(QStep::new(learning_rate, discount_factor))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
+    let mut policy_update_strategy = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let epsilon_greed_sarsa_lambda = &mut Agent::new(
-        Box::new(RefCell::new(UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon))),
-        Box::new(RefCell::new(SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space()))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
+    let mut policy_update_strategy = QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let epsilon_greed_qlearning_lambda = &mut Agent::new(
-        Box::new(RefCell::new(UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon))),
-        Box::new(RefCell::new(QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space()))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
+    let mut policy_update_strategy = SarsaStep::new(learning_rate, discount_factor);
     let ucb_sarsa = &mut Agent::new(
-        Box::new(RefCell::new(UpperConfidenceBound::new(confidence_level))),
-        Box::new(RefCell::new(SarsaStep::new(learning_rate, discount_factor))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
+    let mut policy_update_strategy = QStep::new(learning_rate, discount_factor);
     let ucb_qlearning = &mut Agent::new(
-        Box::new(RefCell::new(UpperConfidenceBound::new(confidence_level))),
-        Box::new(RefCell::new(QStep::new(learning_rate, discount_factor))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
+    let mut policy_update_strategy = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let ucb_sarsa_lambda = &mut Agent::new(
-        Box::new(RefCell::new(UpperConfidenceBound::new(confidence_level))),
-        Box::new(RefCell::new(SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space()))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
 
+    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
+    let mut policy_update_strategy = QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let ucb_qlearning_lambda = &mut Agent::new(
-        Box::new(RefCell::new(UpperConfidenceBound::new(confidence_level))),
-        Box::new(RefCell::new(QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space()))),
+        &mut action_selection_strategy,
+        &mut policy_update_strategy,
         Policy::new(0.0, env.action_space()),
         env.action_space(),
     );
@@ -190,12 +203,10 @@ fn main() {
         _ => panic!("Action selection invalid!")
     };
 
-    println!("Training Sarsa agent!");
     let now: Instant = Instant::now();
     let (reward_history, episode_length)  = sarsa.train(env, n_episodes);
     let elapsed: std::time::Duration = now.elapsed();
-    println!("Training done!");
-    println!("Time elapsed: {:.2?}", elapsed);
+    println!("Sarsa {:.2?}", elapsed);
 
     let ma_error = moving_average(sarsa.get_training_error().len() as usize / moving_average_window, &sarsa.get_training_error());
     errors.push(&ma_error);
@@ -204,12 +215,10 @@ fn main() {
     let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
     episodes_length.push(&ma_episode);
 
-    println!("Training QLearning agent!");
     let now: Instant = Instant::now();
     let (reward_history, episode_length)  = qlearning.train(env, n_episodes);
     let elapsed: std::time::Duration = now.elapsed();
-    println!("Training done!");
-    println!("Time elapsed: {:.2?}", elapsed);
+    println!("QLearning {:.2?}", elapsed);
 
     let ma_error = moving_average(qlearning.get_training_error().len() as usize / moving_average_window, &qlearning.get_training_error());
     errors.push(&ma_error);
@@ -218,12 +227,10 @@ fn main() {
     let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
     episodes_length.push(&ma_episode);
 
-    println!("Training SarsaLambda agent!");
     let now: Instant = Instant::now();
     let (reward_history, episode_length)  = sarsa_lambda.train(env, n_episodes);
     let elapsed: std::time::Duration = now.elapsed();
-    println!("Training done!");
-    println!("Time elapsed: {:.2?}", elapsed);
+    println!("SarsaLambda {:.2?}", elapsed);
 
     let ma_error = moving_average(sarsa_lambda.get_training_error().len() as usize / moving_average_window, &sarsa_lambda.get_training_error());
     errors.push(&ma_error);
@@ -232,13 +239,10 @@ fn main() {
     let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
     episodes_length.push(&ma_episode);
 
-    println!("Training QLearningLambda agent!");
     let now: Instant = Instant::now();
     let (reward_history, episode_length)  = qlearning_lambda.train(env, n_episodes);
     let elapsed: std::time::Duration = now.elapsed();
-    println!("Training done!");
-    println!("Time elapsed: {:.2?}", elapsed);
-
+    println!("QLearningLambda {:.2?}", elapsed);
 
     let legends: Vec<&str> = [
         "Sarsa",

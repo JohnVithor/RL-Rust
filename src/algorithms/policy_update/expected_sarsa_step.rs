@@ -26,7 +26,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
         reward: f64,
         _terminated: bool,
         policy: &mut Policy<T>,
-        action_selection: &Box<RefCell<dyn ActionSelection<T>>>
+        action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64 {
         let action_space: ActionSpace = policy.action_space.clone();
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
