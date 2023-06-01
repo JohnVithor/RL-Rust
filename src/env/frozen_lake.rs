@@ -12,7 +12,8 @@ pub struct FrozenLakeEnv {
     player_pos: usize,
     dist: Uniform<f64>,
     max_steps: u128,
-    curr_step: u128
+    curr_step: u128,
+    map: String
 }
 
 impl FrozenLakeEnv {
@@ -34,6 +35,8 @@ impl FrozenLakeEnv {
         "FHFFHFHF",
         "FFFHFFFG",
     ];
+    
+    pub const ACTIONS: [&str;4] = ["LEFT", "DOWN", "RIGHT", "UP"];
 
 
     fn update_probability_matrix(map: &[&str], nrow: usize, ncol: usize, row: usize, col: usize, action: usize) -> (usize, f64, bool) {
@@ -94,7 +97,8 @@ impl FrozenLakeEnv {
             player_pos: 0,
             dist: Uniform::from(0.0..1.0),
             max_steps,
-            curr_step: 0
+            curr_step: 0,
+            map: map.join(&"\n").to_string()
         };
         return env; 
     }
@@ -135,5 +139,23 @@ impl Env<usize> for FrozenLakeEnv {
         return ActionSpace::new(4);
     }
 
+    fn render(&self) -> String {
+        let mut new_map: String = self.map.clone().to_string();
+        for (i, _) in new_map.clone().match_indices('S') {
+            new_map.replace_range(i..i+1,"F");
+        }
+        let mut pos: usize = self.player_pos;
+        for (i, _) in new_map.match_indices('\n') {
+            if pos >= i {
+                pos += 1;
+            }
+        }
+        new_map.replace_range(pos..pos+1,"@");
+        return new_map;
+    }
+
+    fn get_action_label(&self, action: usize) -> &str {
+        return Self::ACTIONS[action]
+    }
     
 }

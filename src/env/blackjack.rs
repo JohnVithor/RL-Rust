@@ -40,6 +40,7 @@ pub struct BlackJackEnv {
 }
 
 impl BlackJackEnv {
+    pub const ACTIONS: [&str;2] = ["HIT", "STICK"];
     pub fn new() -> Self {
         let mut env: BlackJackEnv = Self {
             ready: false,
@@ -139,5 +140,29 @@ impl Env<usize> for BlackJackEnv {
         return ActionSpace::new(2);
     }
 
+    fn render(&self) -> String {
+        let mut result;
+        if self.ready {
+            result = format!("Dealer: {} \nPlayer: ",self.dealer[0]);
+        } else {
+            let mut dealer_cards = "".to_string();
+            for i in &self.dealer[0..self.dealer_i] {
+                dealer_cards.push_str(i.to_string().as_str());
+                dealer_cards.push_str(" ");
+            }
+            result = format!("Dealer: {} \nPlayer: ",dealer_cards);
+        }
+        let mut player_cards = "".to_string();
+        for i in &self.player[0..self.player_i] {
+            player_cards.push_str(i.to_string().as_str());
+            player_cards.push_str(" ");
+        }
+        result.push_str(&player_cards);
+        return result;
+    }
+    
+    fn get_action_label(&self, action: usize) -> &str {
+        return Self::ACTIONS[action]
+    }
     
 }

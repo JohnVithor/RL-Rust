@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW};
 
-use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound, self};
+use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
 use reinforcement_learning::algorithms::policy_update::{QStep, SarsaStep, SarsaLambda, QLambda};
 use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
@@ -22,51 +21,55 @@ struct Cli {
     env: u8,
 
     /// Should the env be stochastic
-    #[structopt(long = "stochastic_env", short = "se")]
+    #[structopt(long = "stochastic_env")]
     stochastic_env: bool,
 
+    /// Change the env's map, if possible
+    #[structopt(long = "map", default_value = "4x4")]
+    map: String,
+
     /// Number of episodes for the training
-    #[structopt(long = "n_episodes", short = "epi", default_value = "100000")]
+    #[structopt(long = "n_episodes", default_value = "100000")]
     n_episodes: u128,
 
     /// Maximum number of steps per episode
-    #[structopt(long = "max_steps", short = "ms", default_value = "100")]
+    #[structopt(long = "max_steps", default_value = "100")]
     max_steps: u128,
 
     /// Learning rate of the RL agent
-    #[structopt(long = "learning_rate", short = "lr", default_value = "0.05")]
+    #[structopt(long = "learning_rate", default_value = "0.05")]
     learning_rate: f64,
 
     /// Action selection strategy: 0 - uniform epsilon greed, 1 - upper confidence bound
-    #[structopt(long = "action_selection", short = "as", default_value = "0")]
+    #[structopt(long = "action_selection", default_value = "0")]
     action_selection: u8,
 
     /// Initial value for the exploration ratio
-    #[structopt(long = "initial_epsilon", short = "ie", default_value = "1.0")]
+    #[structopt(long = "initial_epsilon", default_value = "1.0")]
     initial_epsilon: f64,
 
     /// Value to decrease of the exploration ratio at each step default to: initial_epsilon / (n_episodes / 2);
-    #[structopt(long = "epsilon_decay", short = "ed", default_value = "NAN")]
+    #[structopt(long = "epsilon_decay", default_value = "NAN")]
     epsilon_decay: f64,
 
     /// Final value for the exploration ratio
-    #[structopt(long = "final_epsilon", short = "fe", default_value = "0.0")]
+    #[structopt(long = "final_epsilon", default_value = "0.0")]
     final_epsilon: f64,
 
     /// Confidence level for the UCB action selection strategy
-    #[structopt(long = "confidence_level", short = "cl", default_value = "0.5")]
+    #[structopt(long = "confidence_level", default_value = "0.5")]
     confidence_level: f64,
 
     /// Discont factor to be used on the temporal difference calculation
-    #[structopt(long = "discount_factor", short = "df", default_value = "0.95")]
+    #[structopt(long = "discount_factor", default_value = "0.95")]
     discount_factor: f64,
 
     /// Lambda factor to be used on the eligibility traces algorithms
-    #[structopt(long = "lambda_factor", short = "lf", default_value = "0.5")]
+    #[structopt(long = "lambda_factor", default_value = "0.5")]
     lambda_factor: f64,
 
     /// Moving average window to be used on the visualization of results
-    #[structopt(long = "moving_average_window", short = "maw", default_value = "100")]
+    #[structopt(long = "moving_average_window", default_value = "100")]
     moving_average_window: usize,
 }
 
@@ -76,10 +79,12 @@ fn main() {
 
     let n_episodes: u128 = cli.n_episodes;
     let max_steps: u128 = cli.max_steps;
+    let map: String = cli.map;
+
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
-    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (n_episodes as f64 / 2.0)} else {cli.epsilon_decay};
+    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (9.0 * n_episodes as f64 / 10.0)} else {cli.epsilon_decay};
     let final_epsilon: f64 = cli.final_epsilon;
     let confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
@@ -88,13 +93,22 @@ fn main() {
     let moving_average_window: usize = cli.moving_average_window;
 
     let mut blackjack = BlackJackEnv::new();
-    let mut frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, cli.stochastic_env, max_steps);
+    let mut frozen_lake;
+    if cli.env == 1 && map == "8X8" {
+        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_8X8, cli.stochastic_env, max_steps);
+    } else if cli.env == 1 && map == "4x4" {
+        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, cli.stochastic_env, max_steps);
+    } else if cli.env != 1 {
+        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, cli.stochastic_env, max_steps);
+    } else {
+        panic!("Map option of {:?} is not supported!", map);
+    }
     let mut cliffwalking = CliffWalkingEnv::new(max_steps);
     let mut taxi = TaxiEnv::new(max_steps);
 
     let env: &mut dyn Env<usize> = match cli.env {
         0 =>  {println!("Selected env blackjack"); &mut blackjack},
-        1 =>  {println!("Selected env frozen_lake"); &mut frozen_lake},
+        1 =>  {println!("Selected env frozen_lake{}", &map); &mut frozen_lake},
         2 =>  {println!("Selected env cliffwalking"); &mut cliffwalking},
         3 =>  {println!("Selected env taxi"); &mut taxi},
         _ =>  panic!("Not a valid env selected")
@@ -281,33 +295,23 @@ fn main() {
         "Training Error"
     );
 
-    // let mut epi_reward = 0.0;
-    // let mut curr_obs = env.reset();
-    // let mut curr_action: usize = agent.get_action(&curr_obs);
-    // let mut steps: i32 = 0;
-    // for _i in 0..100 {
-    //     steps+=1;
-    //     match env.step(curr_action) {
-    //         Ok((next_obs, reward, terminated)) => {
-    //             let next_action: usize = agent.get_action(&next_obs);
-    //             println!("curr_obs {:?}", curr_obs);
-    //             println!("curr_action {:?}", curr_action);
-    //             println!("reward {:?}", reward);
-    //             curr_obs = next_obs;
-    //             curr_action = next_action;
-    //             epi_reward+=reward;
-    //             if terminated {
-    //                 println!("curr_obs {:?}", curr_obs);
-    //                 println!("episode reward {:?}", epi_reward);
-    //                 println!("terminated with {:?} steps", steps);
-    //                 break;
-    //             }
-    //         }
-    //         Err(EnvNotReady) => {
-    //             println!("Environment is not ready to receive actions!");
-    //             break;
-    //         }
-    //     }
-    // }
-
+    let mut epi_reward = 0.0;
+    let mut curr_action: usize = qlearning_lambda.get_action(&env.reset());
+    let mut steps: i32 = 0;
+    for _i in 0..100 {
+        steps+=1;
+        println!("{}", env.render());
+        let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+        let next_action: usize = qlearning_lambda.get_action(&next_obs);
+        println!("{:?}", env.get_action_label(curr_action));
+        println!("reward {:?}", reward);
+        curr_action = next_action;
+        epi_reward+=reward;
+        if terminated {
+            println!("{}", env.render());
+            println!("episode reward {:?}", epi_reward);
+            println!("terminated with {:?} steps", steps);
+            break;
+        }
+    }
 }

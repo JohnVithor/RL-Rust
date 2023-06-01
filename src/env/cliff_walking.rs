@@ -14,6 +14,7 @@ impl CliffWalkingEnv {
     const CLIFF_POSITIONS: [usize; 10] = [37,38,39,40,41,42,43,44,45,46];
     const GOAL_POSITION: usize = 47;
     pub const ACTIONS: [&str;4] = ["LEFT", "DOWN", "RIGHT", "UP"];
+    const MAP: &str = "____________\n____________\n____________\n@!!!!!!!!!!G";
 
     fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
         let (newrow, newcol) = inc(4, 12, row, col, action);
@@ -88,5 +89,21 @@ impl Env<usize> for CliffWalkingEnv {
         return ActionSpace::new(4);
     }
 
+    fn render(&self) -> String {
+        let mut new_map: String = Self::MAP.clone().to_string();
+        new_map.replace_range(39..40,"_");
+        let mut pos: usize = self.player_pos;
+        for (i, _) in new_map.match_indices('\n') {
+            if pos >= i {
+                pos += 1;
+            }
+        }
+        new_map.replace_range(pos..pos+1,"@");
+        return new_map;
+    }
+
+    fn get_action_label(&self, action: usize) -> &str {
+        return Self::ACTIONS[action]
+    }
     
 }

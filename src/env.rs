@@ -41,4 +41,6 @@ pub trait Env<T: Debug> {
             }
         }
     }
+    fn render(&self) -> String;
+    fn get_action_label(&self, action: usize) -> &str;
 }

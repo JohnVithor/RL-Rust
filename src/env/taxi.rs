@@ -2,14 +2,14 @@ use std::cmp::{min, max};
 
 use rand::{distributions::Uniform, prelude::Distribution};
 
-use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::categorical_sample};
+use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{categorical_sample, to_s}};
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
     ready: bool,
     initial_state_distrib: [f64;500],
     obs: [[(usize, f64, bool); 6]; 500],
-    taxi_pos: usize,
+    curr_obs: usize,
     max_steps: u128,
     curr_step: u128
 }
@@ -110,7 +110,7 @@ impl TaxiEnv {
             ready: false,
             initial_state_distrib,
             obs,
-            taxi_pos: 0,
+            curr_obs: 0,
             max_steps,
             curr_step: 0
         };
@@ -122,10 +122,10 @@ impl Env<usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
-        self.taxi_pos = categorical_sample(&self.initial_state_distrib.to_vec(), random);
+        self.curr_obs = categorical_sample(&self.initial_state_distrib.to_vec(), random);
         self.ready = true;
         self.curr_step = 0;
-        return self.taxi_pos;
+        return self.curr_obs;
     }
 
     fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
@@ -137,8 +137,8 @@ impl Env<usize> for TaxiEnv {
             return Ok((0, 0.0, true))
         }
         self.curr_step += 1;
-        let obs: (usize, f64, bool) = self.obs[self.taxi_pos][action];
-        self.taxi_pos = obs.0;
+        let obs: (usize, f64, bool) = self.obs[self.curr_obs][action];
+        self.curr_obs = obs.0;
         if obs.2 {
             self.ready = false;
         }
@@ -147,6 +147,23 @@ impl Env<usize> for TaxiEnv {
 
     fn action_space(&self) -> ActionSpace {
         return ActionSpace::new(6);
+    }
+
+    fn render(&self) -> String {
+        let mut new_map = Self::MAP.clone().join(&"\n").to_string();
+        let (row, col, _, _) = Self::decode(self.curr_obs);
+        let mut pos = to_s(11, row+1, 2 * col + 1);
+        for (i, _) in new_map.match_indices('\n') {
+            if pos >= i {
+                pos += 1;
+            }
+        }
+        new_map.replace_range(pos..pos+1,"T");
+        return new_map;
+    }
+
+    fn get_action_label(&self, action: usize) -> &str {
+        return Self::ACTIONS[action]
     }
     
 }
