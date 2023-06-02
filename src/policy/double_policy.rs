@@ -1,20 +1,20 @@
-use std::hash::Hash;
+use std::{hash::Hash, rc::Rc};
 use fxhash::FxHashMap;
 
-use crate::env::ActionSpace;
+use crate::{env::{ActionSpace}, observation::Observation};
 
 use super::Policy;
 
-pub struct DoublePolicy<T> {
+pub struct DoublePolicy {
     default: Vec<f64>,
-    alpha_values: FxHashMap<T, Vec<f64>>,
-    beta_values: FxHashMap<T, Vec<f64>>,
+    alpha_values: FxHashMap<Rc<dyn Observation>, Vec<f64>>,
+    beta_values: FxHashMap<Rc<dyn Observation>, Vec<f64>>,
     state: bool,
     action_space: ActionSpace,
     temp: Vec<f64>
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> DoublePolicy<T> {
+impl DoublePolicy {
     pub fn new(default_value: f64, action_space: ActionSpace) -> Self {
         return Self {
             default: vec![default_value; action_space.size],
@@ -27,8 +27,8 @@ impl<T: Hash+PartialEq+Eq+Clone> DoublePolicy<T> {
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> Policy<T> for DoublePolicy<T>{
-    fn get_ref(&mut self, curr_obs: T) -> &Vec<f64> {
+impl Policy for DoublePolicy {
+    fn get_ref(&mut self, curr_obs: Rc<dyn Observation>) -> &Vec<f64> {
         if self.state {
             return self.alpha_values.entry(curr_obs).or_insert(self.default.clone());
         } else {
@@ -36,7 +36,7 @@ impl<T: Hash+PartialEq+Eq+Clone> Policy<T> for DoublePolicy<T>{
         }
     }
 
-    fn get_ref_if_has(&mut self, curr_obs: &T) -> Option<&Vec<f64>> {
+    fn get_ref_if_has(&mut self, curr_obs: &Rc<dyn Observation>) -> Option<&Vec<f64>> {
         
         let a_values = self.alpha_values.get(curr_obs);
         let b_values = self.beta_values.get(curr_obs);
@@ -60,7 +60,7 @@ impl<T: Hash+PartialEq+Eq+Clone> Policy<T> for DoublePolicy<T>{
         return Some(&self.temp);
     }
 
-    fn get_mut(&mut self, curr_obs: T) -> &mut Vec<f64> {
+    fn get_mut(&mut self, curr_obs: Rc<dyn Observation>) -> &mut Vec<f64> {
         if self.state {
             return self.beta_values.entry(curr_obs).or_insert(self.default.clone());
         } else {
@@ -68,7 +68,7 @@ impl<T: Hash+PartialEq+Eq+Clone> Policy<T> for DoublePolicy<T>{
         }
     }
 
-    fn get_mut_if_has(&mut self, curr_obs: &T) -> Option<&mut Vec<f64>> {
+    fn get_mut_if_has(&mut self, curr_obs: &Rc<dyn Observation>) -> Option<&mut Vec<f64>> {
         if self.state {
             return self.beta_values.get_mut(curr_obs);
         } else {
@@ -76,7 +76,7 @@ impl<T: Hash+PartialEq+Eq+Clone> Policy<T> for DoublePolicy<T>{
         }
     }
 
-    fn get_mut_values(&mut self) -> &mut FxHashMap<T, Vec<f64>>{
+    fn get_mut_values(&mut self) -> &mut FxHashMap<Rc<dyn Observation>, Vec<f64>>{
         if self.state {
             return &mut self.beta_values;
         } else {

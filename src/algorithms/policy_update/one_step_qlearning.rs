@@ -1,8 +1,10 @@
 use std::cell::{RefCell, RefMut};
 use std::hash::Hash;
+use std::rc::Rc;
 
 use super::PolicyUpdate;
 
+use crate::observation::Observation;
 use crate::{policy::Policy, utils::argmax, algorithms::action_selection::ActionSelection};
 
 pub struct OneStepQLearning {
@@ -16,17 +18,17 @@ impl OneStepQLearning {
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for OneStepQLearning {
+impl PolicyUpdate for OneStepQLearning {
     fn update(
         &mut self,
-        curr_obs: T,
+        curr_obs: Rc<dyn Observation>,
         curr_action: usize,
-        next_obs: T,
+        next_obs: Rc<dyn Observation>,
         _next_action: usize,
         reward: f64,
         _terminated: bool,
-        mut policy: RefMut<'_, &mut dyn Policy<T>>,
-        _action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
+        mut policy: RefMut<'_, &mut dyn Policy>,
+        _action_selection: &Box<RefCell<&mut dyn ActionSelection>>
     ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
         let future_q_value: f64 = next_q_values[argmax(&next_q_values)];

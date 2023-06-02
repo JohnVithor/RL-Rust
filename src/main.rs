@@ -110,7 +110,7 @@ fn main() {
     let mut cliffwalking = CliffWalkingEnv::new(max_steps);
     let mut taxi = TaxiEnv::new(max_steps);
 
-    let env: &mut dyn Env<usize> = match cli.env {
+    let env: &mut dyn Env = match cli.env {
         0 =>  {println!("Selected env blackjack"); &mut blackjack},
         1 =>  {println!("Selected env frozen_lake{}", &map); &mut frozen_lake},
         2 =>  {println!("Selected env cliffwalking"); &mut cliffwalking},
@@ -134,7 +134,7 @@ fn main() {
     let mut qlearning_lambda = QLearningLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
     let mut expected_sarsa = OneStepExpectedSarsa::new(learning_rate, discount_factor);
     
-    let mut policy_update_strategies: Vec<(&str, Box<&mut dyn PolicyUpdate<usize>>)> = vec![];
+    let mut policy_update_strategies: Vec<(&str, Box<&mut dyn PolicyUpdate>)> = vec![];
 
     let legends: Vec<&str> = [
         "One-Step Sarsa",
@@ -155,8 +155,8 @@ fn main() {
     policy_update_strategies.push((legends[0], Box::new(&mut one_step_sarsa)));
     policy_update_strategies.push((legends[1], Box::new(&mut one_step_qlearning)));
     policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
-    policy_update_strategies.push((legends[3], Box::new(&mut sarsa_lambda)));
-    policy_update_strategies.push((legends[4], Box::new(&mut qlearning_lambda)));
+    // policy_update_strategies.push((legends[3], Box::new(&mut sarsa_lambda)));
+    // policy_update_strategies.push((legends[4], Box::new(&mut qlearning_lambda)));
 
     let mut basic_policy = BasicPolicy::new(0.0, env.action_space());
     let mut double_policy = DoublePolicy::new(0.0, env.action_space());

@@ -1,4 +1,23 @@
-use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{inc, to_s}};
+use std::rc::Rc;
+
+use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{inc, to_s}, observation::Observation};
+
+#[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct CliffWalkingObservation {
+    pub pos: usize,
+}
+
+impl CliffWalkingObservation {
+    fn new (pos: usize) -> Self {
+        return Self { pos }
+    }
+}
+
+impl Observation for CliffWalkingObservation {
+    fn base_size(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CliffWalkingEnv {
@@ -60,29 +79,29 @@ impl CliffWalkingEnv {
     }
 }
 
-impl Env<usize> for CliffWalkingEnv {
-    fn reset(&mut self) -> usize {
+impl Env for CliffWalkingEnv {
+    fn reset(&mut self) -> Rc<dyn Observation> {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
         self.curr_step = 0;
-        return self.player_pos;
+        return Rc::new(CliffWalkingObservation::new(self.player_pos));
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(Rc<dyn Observation>, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, -100.0, true))
+            return Ok((Rc::new(CliffWalkingObservation::new(0)), -100.0, true))
         }
         self.curr_step += 1;
-        let obs: (usize, f64, bool) = self.obs[self.player_pos][action];
-        self.player_pos = obs.0;
-        if obs.2 {
+        let (pos, r, t): (usize, f64, bool) = self.obs[self.player_pos][action];
+        self.player_pos = pos;
+        if t {
             self.ready = false;
         }
-        return Ok(obs);
+        return Ok((Rc::new(CliffWalkingObservation::new(pos)), r, t));
     }
 
     fn action_space(&self) -> ActionSpace {

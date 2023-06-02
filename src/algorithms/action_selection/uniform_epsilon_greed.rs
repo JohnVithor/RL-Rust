@@ -1,6 +1,6 @@
 use rand::distributions::{Distribution, Uniform};
-use std::{hash::Hash, cell::RefMut};
-use crate::{env::ActionSpace, utils::argmax, policy::Policy};
+use std::{hash::Hash, cell::RefMut, rc::Rc};
+use crate::{env::{ActionSpace}, utils::argmax, policy::Policy, observation::Observation};
 
 use super::ActionSelection;
 
@@ -34,8 +34,8 @@ impl UniformEpsilonGreed {
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UniformEpsilonGreed {
-    fn get_action(&self, obs: &T, policy: &mut RefMut<&mut dyn Policy<T>>) -> usize {
+impl ActionSelection for UniformEpsilonGreed {
+    fn get_action(&self, obs: &Rc<dyn Observation>, policy: &mut RefMut<&mut dyn Policy>) -> usize {
         if self.sample() {
             return policy.get_action_space().sample();
         } else {

@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::{cmp::{max, min}, any::Any};
 
 pub fn argmax<T: PartialOrd>(vec: &Vec<T>) -> usize {
     let mut max: &T = &vec[0];
@@ -122,3 +122,4 @@ pub fn plot_moving_average(values: &Vec<Vec<f64>>,
         .unwrap();
     
 }
+

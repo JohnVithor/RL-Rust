@@ -1,8 +1,25 @@
-use std::cmp::{min, max};
+use std::{cmp::{min, max}, rc::Rc};
 
 use rand::{distributions::Uniform, prelude::Distribution};
 
-use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{categorical_sample, to_s}};
+use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{categorical_sample, to_s}, observation::Observation};
+
+#[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct TaxiObservation {
+    pub pos: usize,
+}
+
+impl TaxiObservation {
+    fn new (pos: usize) -> Self {
+        return Self { pos }
+    }
+}
+
+impl Observation for TaxiObservation {
+    fn base_size(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
@@ -118,31 +135,31 @@ impl TaxiEnv {
     }
 }
 
-impl Env<usize> for TaxiEnv {
-    fn reset(&mut self) -> usize {
+impl Env for TaxiEnv {
+    fn reset(&mut self) -> Rc<dyn Observation> {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
         self.curr_obs = categorical_sample(&self.initial_state_distrib.to_vec(), random);
         self.ready = true;
         self.curr_step = 0;
-        return self.curr_obs;
+        return Rc::new(TaxiObservation::new(self.curr_obs));
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(Rc<dyn Observation>, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, 0.0, true))
+            return Ok((Rc::new(TaxiObservation::new(0)), 0.0, true))
         }
         self.curr_step += 1;
-        let obs: (usize, f64, bool) = self.obs[self.curr_obs][action];
-        self.curr_obs = obs.0;
-        if obs.2 {
+        let (pos, r, t): (usize, f64, bool) = self.obs[self.curr_obs][action];
+        self.curr_obs = pos;
+        if t {
             self.ready = false;
         }
-        return Ok(obs);
+        return Ok((Rc::new(TaxiObservation::new(pos)), r, t));
     }
 
     fn action_space(&self) -> ActionSpace {

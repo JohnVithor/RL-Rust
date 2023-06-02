@@ -1,8 +1,28 @@
+use std::rc::Rc;
+
 use crate::env::{Env, ActionSpace, EnvNotReady};
+use crate::observation::Observation;
 use crate::utils::{categorical_sample, inc, to_s};
 
 use rand::prelude::Distribution;
 use rand::distributions::Uniform;
+
+#[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct FrozenLakeObservation {
+    pub pos: usize,
+}
+
+impl FrozenLakeObservation {
+    fn new (pos: usize) -> Self {
+        return Self { pos }
+    }
+}
+
+impl Observation for FrozenLakeObservation {
+    fn base_size(&self) -> usize {
+        std::mem::size_of::<Self>()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FrozenLakeEnv {
@@ -104,23 +124,23 @@ impl FrozenLakeEnv {
     }
 }
 
-impl Env<usize> for FrozenLakeEnv {
-    fn reset(&mut self) -> usize {
+impl Env for FrozenLakeEnv {
+    fn reset(&mut self) -> Rc<dyn Observation> {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
         self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
         self.curr_step = 0;
-        return self.player_pos;
+        return Rc::new(FrozenLakeObservation::new(self.player_pos));
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(Rc<dyn Observation>, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, -1.0, true))
+            return Ok((Rc::new(FrozenLakeObservation::new(0)), -1.0, true))
         }
         self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action];
@@ -132,7 +152,7 @@ impl Env<usize> for FrozenLakeEnv {
         if t {
             self.ready = false;
         }
-        return Ok((s, r, t));
+        return Ok((Rc::new(FrozenLakeObservation::new(self.player_pos)), r, t));
     }
 
     fn action_space(&self) -> ActionSpace {

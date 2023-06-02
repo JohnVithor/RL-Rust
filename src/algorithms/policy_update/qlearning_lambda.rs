@@ -1,19 +1,21 @@
 use std::cell::{RefCell, RefMut};
 use std::hash::Hash;
+use std::rc::Rc;
 
 use super::PolicyUpdate;
 
+use crate::observation::Observation;
 use crate::policy::BasicPolicy;
 use crate::{env::ActionSpace, policy::Policy, utils::argmax, algorithms::action_selection::ActionSelection};
 
-pub struct QLearningLambda<T: Hash+PartialEq+Eq+Clone> {
+pub struct QLearningLambda {
     learning_rate: f64,
     discount_factor: f64,
-    pub trace: RefCell<BasicPolicy<T>>,
+    pub trace: RefCell<BasicPolicy>,
     lambda_factor: f64
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> QLearningLambda<T> {
+impl QLearningLambda {
     pub fn new(
         learning_rate: f64,
         discount_factor: f64,
@@ -30,17 +32,17 @@ impl<T: Hash+PartialEq+Eq+Clone> QLearningLambda<T> {
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for QLearningLambda<T> {
+impl PolicyUpdate for QLearningLambda {
     fn update(
         &mut self,
-        curr_obs: T,
+        curr_obs: Rc<dyn Observation>,
         curr_action: usize,
-        next_obs: T,
+        next_obs: Rc<dyn Observation>,
         next_action: usize,
         reward: f64,
         _terminated: bool,
-        mut policy: RefMut<'_, &mut dyn Policy<T>>,
-        _action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
+        mut policy: RefMut<'_, &mut dyn Policy>,
+        _action_selection: &Box<RefCell<&mut dyn ActionSelection>>
     ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs);
         let best_next_action: usize = argmax(&next_q_values);
@@ -48,7 +50,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for QLearningLambda<T> {
         let values: &mut Vec<f64> = policy.get_mut(curr_obs.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
         
-        let mut trace: RefMut<BasicPolicy<T>> = self.trace.borrow_mut();
+        let mut trace: RefMut<BasicPolicy> = self.trace.borrow_mut();
         trace.get_mut(curr_obs.clone())[curr_action] += 1.0;
 
         for (obs, values) in policy.get_mut_values() {

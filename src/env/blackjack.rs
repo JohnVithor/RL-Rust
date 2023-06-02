@@ -1,10 +1,13 @@
 use std::hash::Hash;
+use std::rc::Rc;
 
 use crate::env::{Env, ActionSpace, EnvNotReady};
 
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
 use rand::distributions::Uniform;
+
+use super::Observation;
 
 #[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct BlackJackObservation {
@@ -23,6 +26,12 @@ impl BlackJackObservation {
     }
     pub fn get_id(&self) -> usize {
         return fxhash::hash(self);
+    }
+}
+
+impl Observation for BlackJackObservation {
+    fn base_size(&self) -> usize {
+        std::mem::size_of::<Self>()
     }
 }
 
@@ -94,17 +103,17 @@ impl BlackJackEnv {
     }
 }
 
-impl Env<usize> for BlackJackEnv {
-    fn reset(&mut self) -> usize {
+impl Env for BlackJackEnv {
+    fn reset(&mut self) -> Rc<dyn Observation> {
         self.player = [0;16];
         self.dealer = [0;16];
         self.initialize_hands();
         let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), self.get_dealer_card(), self.player_has_ace);
         self.ready = true;
-        return obs.get_id();
+        return Rc::new(obs);
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(Rc<dyn Observation>, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -115,10 +124,10 @@ impl Env<usize> for BlackJackEnv {
             if p_score > 21 {
                 self.ready = false;
                 let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.compute_dealer_score(), self.player_has_ace);
-                return Ok((obs.get_id(), -1.0, true));
+                return Ok((Rc::new(obs), -1.0, true));
             }
             let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
-            return Ok((obs.get_id(), 0.0, false));
+            return Ok((Rc::new(obs), 0.0, false));
         } else {
             self.ready = false;
             let mut d_score: u8 = self.compute_dealer_score();
@@ -129,10 +138,10 @@ impl Env<usize> for BlackJackEnv {
             }
             let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), d_score, self.player_has_ace);
             if d_score > 21{
-                return Ok((obs.get_id(), 1.0, true));
+                return Ok((Rc::new(obs), 1.0, true));
             }
             let reward: f64 = if obs.p_score > d_score {1.0} else if d_score > obs.p_score {-1.0} else {0.0};
-            return Ok((obs.get_id(), reward, true));
+            return Ok((Rc::new(obs), reward, true));
         }
     }
 

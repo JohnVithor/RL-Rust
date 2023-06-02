@@ -1,19 +1,19 @@
-use std::{hash::Hash, cell::{RefCell, RefMut}};
+use std::{hash::Hash, cell::{RefCell, RefMut}, rc::Rc};
 
 use fxhash::FxHashMap;
 
-use crate::{env::ActionSpace, utils::argmax, policy::Policy};
+use crate::{env::{ActionSpace}, utils::argmax, policy::Policy, observation::Observation};
 
 use super::ActionSelection;
 
 #[derive(Debug, Clone)]
-pub struct UpperConfidenceBound<T> {
-    action_counter: RefCell<FxHashMap<T, Vec<u128>>>,
+pub struct UpperConfidenceBound {
+    action_counter: RefCell<FxHashMap<Rc<dyn Observation>, Vec<u128>>>,
     t: RefCell<u128>,
     confidence_level: f64
 }
 
-impl<T> UpperConfidenceBound<T> {
+impl UpperConfidenceBound {
     pub fn new(confidence_level: f64) -> Self {
         return Self {
             action_counter: RefCell::new(FxHashMap::default()),
@@ -23,8 +23,8 @@ impl<T> UpperConfidenceBound<T> {
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UpperConfidenceBound<T> {
-    fn get_action(&self, obs: &T,  policy: &mut RefMut<&mut dyn Policy<T>>) -> usize {
+impl ActionSelection for UpperConfidenceBound {
+    fn get_action(&self, obs: &Rc<dyn Observation>,  policy: &mut RefMut<&mut dyn Policy>) -> usize {
         let ac = policy.get_action_space().clone();
         match policy.get_ref_if_has(obs) {
             Some(value) => {
