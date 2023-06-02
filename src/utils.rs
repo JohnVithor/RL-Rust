@@ -67,7 +67,7 @@ pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
 
 use plotters::prelude::*;
 
-pub fn plot_moving_average(values: &Vec<&Vec<f64>>,
+pub fn plot_moving_average(values: &Vec<Vec<f64>>,
                     colors: &Vec<&RGBColor>,
                     legends: &Vec<&str>,
                     title: &str) {

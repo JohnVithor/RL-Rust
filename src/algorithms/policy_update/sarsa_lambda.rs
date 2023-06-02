@@ -3,12 +3,13 @@ use std::hash::Hash;
 
 use super::PolicyUpdate;
 
-use crate::{env::ActionSpace, Policy, algorithms::action_selection::ActionSelection};
+use crate::policy::BasicPolicy;
+use crate::{env::ActionSpace, policy::Policy, algorithms::action_selection::ActionSelection};
 
 pub struct SarsaLambda<T: Hash+PartialEq+Eq+Clone> {
     learning_rate: f64,
     discount_factor: f64,
-    pub trace: RefCell<Policy<T>>,
+    pub trace: RefCell<BasicPolicy<T>>,
     lambda_factor: f64
 }
 
@@ -23,7 +24,7 @@ impl<T: Hash+PartialEq+Eq+Clone> SarsaLambda<T> {
         return Self{
             learning_rate,
             discount_factor,
-            trace: RefCell::new(Policy::new(default_value, action_space)),
+            trace: RefCell::new(BasicPolicy::new(default_value, action_space)),
             lambda_factor
         }
     }
@@ -38,7 +39,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for SarsaLambda<T> {
         next_action: usize,
         reward: f64,
         _terminated: bool,
-        policy: &mut Policy<T>,
+        mut policy: RefMut<&mut dyn Policy<T>>,
         _action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
@@ -46,10 +47,10 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for SarsaLambda<T> {
         let values: &mut Vec<f64> = policy.get_mut(curr_obs.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
         
-        let mut trace: RefMut<Policy<T>> = self.trace.borrow_mut();
+        let mut trace: RefMut<BasicPolicy<T>> = self.trace.borrow_mut();
         trace.get_mut(curr_obs)[curr_action] += 1.0;
 
-        for (obs, values) in &mut policy.values {
+        for (obs, values) in policy.get_mut_values() {
             let e_obs_values: &mut Vec<f64> = trace.get_mut(obs.clone());
             for i in 0..values.len() {
                 values[i] = values[i] + self.learning_rate * temporal_difference * e_obs_values[i];

@@ -1,22 +1,22 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::hash::Hash;
 
 use super::PolicyUpdate;
 
-use crate::{env::ActionSpace, Policy, algorithms::action_selection::ActionSelection, utils::argmax};
+use crate::{env::ActionSpace, policy::Policy, algorithms::action_selection::ActionSelection, utils::argmax};
 
-pub struct ExpectedSarsaStep {
+pub struct OneStepExpectedSarsa {
     learning_rate: f64,
     discount_factor: f64
 }
 
-impl ExpectedSarsaStep {
+impl OneStepExpectedSarsa {
     pub fn new(learning_rate: f64, discount_factor: f64) -> Self {
         return Self{learning_rate, discount_factor}
     }
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
+impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for OneStepExpectedSarsa {
     fn update(
         &mut self,
         curr_obs: T,
@@ -25,10 +25,10 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for ExpectedSarsaStep {
         _next_action: usize,
         reward: f64,
         _terminated: bool,
-        policy: &mut Policy<T>,
+        mut policy: RefMut<'_, &mut dyn Policy<T>>,
         action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64 {
-        let action_space: ActionSpace = policy.action_space.clone();
+        let action_space: ActionSpace = policy.get_action_space().clone();
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
         let epsilon: f64 = action_selection.borrow().get_exploration_rate();
         let policy_probs: Vec<f64> = action_selection.borrow().get_exploration_probs(&action_space);

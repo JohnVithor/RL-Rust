@@ -9,7 +9,7 @@ use crate::policy::Policy;
 pub struct Agent<'a, T> {
     action_selection_strategy: Box<RefCell<&'a mut dyn ActionSelection<T>>>,
     policy_update_strategy: Box<RefCell<&'a mut dyn PolicyUpdate<T>>>,
-    pub policy: Policy<T>,
+    policy: Box<RefCell<&'a mut dyn Policy<T>>>,
     training_error: Vec<f64>,
     action_space: ActionSpace
 }
@@ -18,19 +18,21 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
     pub fn new(
         action_selection_strategy: &'a mut (dyn ActionSelection<T> + 'a),
         policy_update_strategy: &'a mut (dyn PolicyUpdate<T> + 'a),
-        policy: Policy<T>,
+        policy: &'a mut (dyn Policy<T> + 'a),
         action_space: ActionSpace
     ) -> Self {
+        action_selection_strategy.reset();
+        policy.reset();
         return Self {
             action_selection_strategy: Box::new(RefCell::new(action_selection_strategy)),
             policy_update_strategy: Box::new(RefCell::new(policy_update_strategy)),
-            policy,
+            policy: Box::new(RefCell::new(policy)),
             training_error: vec![],
             action_space
         };
     }
     pub fn get_action(&mut self, obs:&T) -> usize {
-        return self.action_selection_strategy.borrow_mut().get_action(obs, &self.action_space, &self.policy); 
+        return self.action_selection_strategy.borrow_mut().get_action(obs,  &mut self.policy.borrow_mut()); 
     }
 
     pub fn get_training_error(&self) -> &Vec<f64> {
@@ -41,7 +43,7 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
         return &self.action_selection_strategy;
     }
 
-    pub fn get_policy(&self) -> &Policy<T> {
+    pub fn get_policy(&self) -> &Box<RefCell<&'a mut (dyn Policy<T>)>> {
         return &self.policy;
     }
 
@@ -68,10 +70,10 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
             next_action,
             reward,
             terminated,
-            &mut self.policy,
+            self.policy.borrow_mut(),
             &self.action_selection_strategy
         );
-
+        self.policy.borrow_mut().after_update();
         self.training_error.push(temporal_difference);
     }
 
@@ -106,5 +108,27 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
             episode_length.push(action_counter);
         }
         return (reward_history, episode_length);
+    }
+
+    pub fn example(&mut self, env: &mut dyn Env<T>) {
+        let mut epi_reward = 0.0;
+        let mut curr_action: usize = self.get_action(&env.reset());
+        let mut steps: i32 = 0;
+        for _i in 0..100 {
+            steps+=1;
+            println!("{}", env.render());
+            let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+            let next_action: usize = self.get_action(&next_obs);
+            println!("{:?}", env.get_action_label(curr_action));
+            println!("step reward {:?}", reward);
+            curr_action = next_action;
+            epi_reward+=reward;
+            if terminated {
+                println!("{}", env.render());
+                println!("episode reward {:?}", epi_reward);
+                println!("terminated with {:?} steps", steps);
+                break;
+            }
+        }
     }
 }

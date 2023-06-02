@@ -1,11 +1,10 @@
 pub mod env;
 pub mod algorithms;
 pub mod utils;
+pub mod policy;
 
 mod agent;
-mod policy;
 
-pub use policy::Policy;
 pub use agent::Agent;
 
 

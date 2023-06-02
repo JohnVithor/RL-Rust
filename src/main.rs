@@ -1,12 +1,13 @@
 use std::time::Instant;
 
-use plotters::style::{BLUE, GREEN, RED, YELLOW};
+use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
 use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::algorithms::policy_update::{QStep, SarsaStep, SarsaLambda, QLambda};
+use reinforcement_learning::algorithms::policy_update::{OneStepQLearning, OneStepSARSA, SarsaLambda, QLearningLambda, OneStepExpectedSarsa, PolicyUpdate};
 use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
+use reinforcement_learning::policy::DoublePolicy;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
-use reinforcement_learning::{Agent, Policy};
+use reinforcement_learning::{Agent, policy::BasicPolicy};
 
 extern crate structopt;
 
@@ -43,6 +44,10 @@ struct Cli {
     /// Action selection strategy: 0 - uniform epsilon greed, 1 - upper confidence bound
     #[structopt(long = "action_selection", default_value = "0")]
     action_selection: u8,
+
+    /// Policy type: 0 - basic policy, 1 - double policy
+    #[structopt(long = "policy_type", default_value = "0")]
+    policy_type: u8,
 
     /// Initial value for the exploration ratio
     #[structopt(long = "initial_epsilon", default_value = "1.0")]
@@ -81,7 +86,6 @@ fn main() {
     let max_steps: u128 = cli.max_steps;
     let map: String = cli.map;
 
-
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
     let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (9.0 * n_episodes as f64 / 10.0)} else {cli.epsilon_decay};
@@ -117,162 +121,69 @@ fn main() {
     // println!("Play!");
     // env.play();
 
-    let mut rewards: Vec<&Vec<f64>> = vec![];
-    let mut episodes_length: Vec<&Vec<f64>> = vec![];
-    let mut errors : Vec<&Vec<f64>> = vec![];
+    let mut rewards: Vec<Vec<f64>> = vec![];
+    let mut episodes_length: Vec<Vec<f64>> = vec![];
+    let mut errors : Vec<Vec<f64>> = vec![];
 
-    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
-    let mut policy_update_strategy: SarsaStep = SarsaStep::new(learning_rate, discount_factor);
-    let epsilon_greed_sarsa = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
-    let mut policy_update_strategy = QStep::new(learning_rate, discount_factor);
-    let epsilon_greed_qlearning = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
-    let mut policy_update_strategy = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let epsilon_greed_sarsa_lambda = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
-    let mut policy_update_strategy = QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let epsilon_greed_qlearning_lambda = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
-    let mut policy_update_strategy = SarsaStep::new(learning_rate, discount_factor);
-    let ucb_sarsa = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
-    let mut policy_update_strategy = QStep::new(learning_rate, discount_factor);
-    let ucb_qlearning = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
-    let mut policy_update_strategy = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let ucb_sarsa_lambda = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let mut action_selection_strategy = UpperConfidenceBound::new(confidence_level);
-    let mut policy_update_strategy = QLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let ucb_qlearning_lambda = &mut Agent::new(
-        &mut action_selection_strategy,
-        &mut policy_update_strategy,
-        Policy::new(0.0, env.action_space()),
-        env.action_space(),
-    );
-
-    let sarsa = match cli.action_selection {
-        0 => epsilon_greed_sarsa,
-        1 => ucb_sarsa,
-        _ => panic!("Action selection invalid!")
-    };
-
-    let qlearning = match cli.action_selection {
-        0 => epsilon_greed_qlearning,
-        1 => ucb_qlearning,
-        _ => panic!("Action selection invalid!")
-    };
-
-    let sarsa_lambda = match cli.action_selection {
-        0 => epsilon_greed_sarsa_lambda,
-        1 => ucb_sarsa_lambda,
-        _ => panic!("Action selection invalid!")
-    };
-
-    let qlearning_lambda = match cli.action_selection {
-        0 => epsilon_greed_qlearning_lambda,
-        1 => ucb_qlearning_lambda,
-        _ => panic!("Action selection invalid!")
-    };
-
-    let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = sarsa.train(env, n_episodes);
-    let elapsed: std::time::Duration = now.elapsed();
-    println!("Sarsa {:.2?}", elapsed);
-
-    let ma_error = moving_average(sarsa.get_training_error().len() as usize / moving_average_window, &sarsa.get_training_error());
-    errors.push(&ma_error);
-    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-    rewards.push(&ma_reward);
-    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-    episodes_length.push(&ma_episode);
-
-    let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = qlearning.train(env, n_episodes);
-    let elapsed: std::time::Duration = now.elapsed();
-    println!("QLearning {:.2?}", elapsed);
-
-    let ma_error = moving_average(qlearning.get_training_error().len() as usize / moving_average_window, &qlearning.get_training_error());
-    errors.push(&ma_error);
-    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-    rewards.push(&ma_reward);
-    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-    episodes_length.push(&ma_episode);
-
-    let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = sarsa_lambda.train(env, n_episodes);
-    let elapsed: std::time::Duration = now.elapsed();
-    println!("SarsaLambda {:.2?}", elapsed);
-
-    let ma_error = moving_average(sarsa_lambda.get_training_error().len() as usize / moving_average_window, &sarsa_lambda.get_training_error());
-    errors.push(&ma_error);
-    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-    rewards.push(&ma_reward);
-    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-    episodes_length.push(&ma_episode);
-
-    let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = qlearning_lambda.train(env, n_episodes);
-    let elapsed: std::time::Duration = now.elapsed();
-    println!("QLearningLambda {:.2?}", elapsed);
+    let mut uniforme_psilon_greed = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
+    let mut ucb = UpperConfidenceBound::new(confidence_level);
+    
+    let mut one_step_sarsa = OneStepSARSA::new(learning_rate, discount_factor);
+    let mut one_step_qlearning = OneStepQLearning::new(learning_rate, discount_factor);
+    let mut sarsa_lambda = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
+    let mut qlearning_lambda = QLearningLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
+    let mut expected_sarsa = OneStepExpectedSarsa::new(learning_rate, discount_factor);
+    
+    let mut policy_update_strategies: Vec<(&str, Box<&mut dyn PolicyUpdate<usize>>)> = vec![];
 
     let legends: Vec<&str> = [
-        "Sarsa",
-        "Qlearning",
-        "SarsaLambda",
-        "QlearningLambda"
+        "One-Step Sarsa",
+        "One-Step Qlearning",
+        "One-Step Expected Sarsa",
+        "Sarsa Lambda",
+        "Qlearning Lambda",
     ].to_vec();
 
-    let colors: Vec<&plotters::style::RGBColor> = [&BLUE, &GREEN, &RED, &YELLOW].to_vec();
+    let colors: Vec<&plotters::style::RGBColor> = [
+        &BLUE,
+        &GREEN,
+        &CYAN,
+        &RED,
+        &YELLOW
+    ].to_vec();
 
-    let ma_error = moving_average(qlearning_lambda.get_training_error().len() as usize / moving_average_window, &qlearning_lambda.get_training_error());
-    errors.push(&ma_error);
-    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-    rewards.push(&ma_reward);
-    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-    episodes_length.push(&ma_episode);
+    policy_update_strategies.push((legends[0], Box::new(&mut one_step_sarsa)));
+    policy_update_strategies.push((legends[1], Box::new(&mut one_step_qlearning)));
+    policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
+    policy_update_strategies.push((legends[3], Box::new(&mut sarsa_lambda)));
+    policy_update_strategies.push((legends[4], Box::new(&mut qlearning_lambda)));
+
+    let mut basic_policy = BasicPolicy::new(0.0, env.action_space());
+    let mut double_policy = DoublePolicy::new(0.0, env.action_space());
+
+    for (n,s) in policy_update_strategies {
+        let agent = &mut Agent::new(
+            if cli.action_selection == 0 {&mut uniforme_psilon_greed} else {&mut ucb},
+            *s,
+            if cli.policy_type == 0 {&mut basic_policy} else {&mut double_policy},
+            env.action_space(),
+        );
+        let now: Instant = Instant::now();
+        let (reward_history, episode_length)  = agent.train(env, n_episodes);
+        let elapsed: std::time::Duration = now.elapsed();
+        println!("{} {:.2?}", n.clone(), elapsed);
+
+        let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
+        errors.push(ma_error);
+        let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
+        rewards.push(ma_reward);
+        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
+        episodes_length.push(ma_episode);
+    }
+
+
+
+    
 
     plot_moving_average(
         &rewards,
@@ -295,23 +206,18 @@ fn main() {
         "Training Error"
     );
 
-    let mut epi_reward = 0.0;
-    let mut curr_action: usize = qlearning_lambda.get_action(&env.reset());
-    let mut steps: i32 = 0;
-    for _i in 0..100 {
-        steps+=1;
-        println!("{}", env.render());
-        let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-        let next_action: usize = qlearning_lambda.get_action(&next_obs);
-        println!("{:?}", env.get_action_label(curr_action));
-        println!("reward {:?}", reward);
-        curr_action = next_action;
-        epi_reward+=reward;
-        if terminated {
-            println!("{}", env.render());
-            println!("episode reward {:?}", epi_reward);
-            println!("terminated with {:?} steps", steps);
-            break;
-        }
-    }
+    // println!("\t\t\tSarsa Example");
+    // sarsa.example(env);
+    // println!("\t\t\tQLearning Example");
+    // qlearning.example(env);
+    // println!("\t\t\tSarsaLambda Example");
+    // sarsa_lambda.example(env);
+    // println!("\t\t\tQLearningLambda Example");
+    // qlearning_lambda.example(env);
+    // println!("\t\t\tExpectedSarsa Example");
+    // expected_sarsa.example(env);
+    // println!("\t\t\tMeanStep Example");
+    // mean_step.example(env);
+
+    
 }

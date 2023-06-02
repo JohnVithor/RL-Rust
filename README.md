@@ -12,9 +12,9 @@ Four environments were implemented:
 The environment's implementation was based on the [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) library for Python.
 
 About the features implemented:
- - Only tabular policies.
+ - Only tabular policies: Basic Policy and Double Policy (for double learning)
  - Two action selections strategies: ε-greedy with uniform distribuition and Upper Confidence Bound (UCB).
- - Four policy update strategies: One-Step Sarsa, One-Step QLearning, Sarsa with Eligibility Traces and QLearning with Eligibility Traces.
+ - Four policy update strategies: One-Step Sarsa, One-Step QLearning, One-Step Expected Sarsa, Sarsa with Eligibility Traces and QLearning with Eligibility Traces.
  - Three charts for visualizations about the agent's training: Episode's length, Rewards and Training error.
  - Visualizations for the states of each environment.
  - A small CLI program to change the parameters used on the training and generate the charts.
@@ -31,8 +31,8 @@ Then compile the source code:
 ## Usage of the CLI program
 To run the experiments use:
 
-`./target/release/reinforcement_learning 1`
+`./target/release/reinforcement_learning 0`
 
-Where '1' is the identifier for the BlackJack env, to see the other options use:
+Where '0' is the identifier for the BlackJack env, to see the other options use:
 
 `./target/release/reinforcement_learning --help`

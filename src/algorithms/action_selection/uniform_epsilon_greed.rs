@@ -1,12 +1,13 @@
 use rand::distributions::{Distribution, Uniform};
-use std::hash::Hash;
-use crate::{env::ActionSpace, utils::argmax, Policy};
+use std::{hash::Hash, cell::RefMut};
+use crate::{env::ActionSpace, utils::argmax, policy::Policy};
 
 use super::ActionSelection;
 
 #[derive(Debug, Clone)]
 pub struct UniformEpsilonGreed {
     dist: Uniform<f64>,
+    pub initial_epsilon: f64,
     pub epsilon: f64,
     epsilon_decay: f64,
     final_epsilon: f64
@@ -16,6 +17,7 @@ impl UniformEpsilonGreed {
     pub fn new(epsilon: f64, epsilon_decay: f64, final_epsilon: f64) -> Self {
         return Self {
             dist: Uniform::from(0.0..1.0),
+            initial_epsilon: epsilon,
             epsilon,
             epsilon_decay,
             final_epsilon
@@ -33,13 +35,13 @@ impl UniformEpsilonGreed {
 }
 
 impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UniformEpsilonGreed {
-    fn get_action(&self, obs: &T, action_space: &ActionSpace, policy: &Policy<T>) -> usize {
+    fn get_action(&self, obs: &T, policy: &mut RefMut<&mut dyn Policy<T>>) -> usize {
         if self.sample() {
-            return action_space.sample();
+            return policy.get_action_space().sample();
         } else {
             match policy.get_ref_if_has(obs) {
                 Some(value) => argmax(value),
-                None => action_space.sample(),
+                None => policy.get_action_space().sample(),
             }
         }
     }
@@ -54,5 +56,9 @@ impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UniformEpsilonGreed {
 
     fn get_exploration_rate(&self) -> f64 {
         return self.epsilon;
+    }
+
+    fn reset(&mut self) {
+        self.epsilon = self.initial_epsilon;
     }
 }

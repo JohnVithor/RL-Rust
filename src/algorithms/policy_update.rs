@@ -1,18 +1,18 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 
-use crate::Policy;
+use crate::policy::Policy;
 
-mod q_step;
-mod sarsa_step;
-mod q_lambda;
+mod one_step_qlearning;
+mod one_step_sarsa;
+mod qlearning_lambda;
 mod sarsa_lambda;
-mod expected_sarsa_step;
+mod one_step_expected_sarsa;
 
-pub use q_step::QStep;
-pub use sarsa_step::SarsaStep;
-pub use q_lambda::QLambda;
+pub use one_step_qlearning::OneStepQLearning;
+pub use one_step_sarsa::OneStepSARSA;
+pub use qlearning_lambda::QLearningLambda;
 pub use sarsa_lambda::SarsaLambda;
-pub use expected_sarsa_step::ExpectedSarsaStep;
+pub use one_step_expected_sarsa::OneStepExpectedSarsa;
 
 use super::action_selection::ActionSelection;
 
@@ -26,7 +26,7 @@ pub trait PolicyUpdate<T> {
         next_action: usize,
         reward: f64,
         terminated: bool,
-        policy: &mut Policy<T>,
+        policy: RefMut<&mut dyn Policy<T>>,
         action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64;
 }
