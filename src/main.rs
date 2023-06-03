@@ -2,12 +2,10 @@ use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
-use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::algorithms::policy_update::{OneStepQLearning, OneStepSARSA, SarsaLambda, QLearningLambda, OneStepExpectedSarsa, PolicyUpdate};
+use reinforcement_learning::agent::train;
 use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
-use reinforcement_learning::policy::DoublePolicy;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
-use reinforcement_learning::{Agent, policy::BasicPolicy};
+use reinforcement_learning::{agent::OneStepTabularEGreedySarsa};
 
 extern crate structopt;
 
@@ -129,65 +127,48 @@ fn main() {
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors : Vec<Vec<f64>> = vec![];
 
-    let mut uniforme_psilon_greed = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
-    let mut ucb = UpperConfidenceBound::new(confidence_level);
-    
-    let mut one_step_sarsa = OneStepSARSA::new(learning_rate, discount_factor);
-    let mut one_step_qlearning = OneStepQLearning::new(learning_rate, discount_factor);
-    let mut sarsa_lambda = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let mut qlearning_lambda = QLearningLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let mut expected_sarsa = OneStepExpectedSarsa::new(learning_rate, discount_factor);
-    
-    let mut policy_update_strategies: Vec<(&str, Box<&mut dyn PolicyUpdate<usize>>)> = vec![];
-
     let legends: Vec<&str> = [
         "One-Step Sarsa",
-        "One-Step Qlearning",
+        // "One-Step Qlearning",
         // "One-Step Expected Sarsa",
-        "Sarsa Lambda",
-        "Qlearning Lambda",
+        // "Sarsa Lambda",
+        // "Qlearning Lambda",
     ].to_vec();
 
     let colors: Vec<&plotters::style::RGBColor> = [
         &BLUE,
-        &GREEN,
+        // &GREEN,
         // &CYAN,
-        &RED,
-        &YELLOW
+        // &RED,
+        // &YELLOW
     ].to_vec();
 
-    policy_update_strategies.push((legends[0], Box::new(&mut one_step_sarsa)));
-    policy_update_strategies.push((legends[1], Box::new(&mut one_step_qlearning)));
-    // policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
-    policy_update_strategies.push((legends[2], Box::new(&mut sarsa_lambda)));
-    policy_update_strategies.push((legends[3], Box::new(&mut qlearning_lambda)));
+    let mut agent = OneStepTabularEGreedySarsa::new(
+        0.0,
+        env.action_space(),
+        learning_rate,
+        discount_factor,
+        initial_epsilon,
+        epsilon_decay,
+        final_epsilon
+    );
 
-    let mut basic_policy = BasicPolicy::new(0.0, env.action_space());
-    let mut double_policy = DoublePolicy::new(0.0, env.action_space());
 
-    for (n,s) in policy_update_strategies {
-        let agent = &mut Agent::new(
-            if cli.action_selection == 0 {&mut uniforme_psilon_greed} else {&mut ucb},
-            *s,
-            if cli.policy_type == 0 {&mut basic_policy} else {&mut double_policy},
-            env.action_space(),
-        );
-        let now: Instant = Instant::now();
-        let (reward_history, episode_length)  = agent.train(env, n_episodes);
-        let elapsed: std::time::Duration = now.elapsed();
-        println!("{} {:.2?}", n.clone(), elapsed);
+    let now: Instant = Instant::now();
+    let (reward_history, episode_length)  = train(&mut agent, env, n_episodes);
+    let elapsed: std::time::Duration = now.elapsed();
+    println!("{} {:.2?}", "sarsa", elapsed);
 
-        let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
-        errors.push(ma_error);
-        let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-        rewards.push(ma_reward);
-        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-        episodes_length.push(ma_episode);
-        if cli.show_example {
-            agent.example(env);
-        }
-    }
-
+    let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
+    errors.push(ma_error);
+    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
+    rewards.push(ma_reward);
+    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
+    episodes_length.push(ma_episode);
+    // if cli.show_example {
+    //     agent.example(env);
+    // }
+    
     plot_moving_average(
         &rewards,
         &colors,

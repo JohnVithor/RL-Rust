@@ -1,0 +1,95 @@
+use fxhash::FxHashMap;
+use rand::{distributions::Uniform, prelude::Distribution};
+use std::hash::Hash;
+use crate::{env::ActionSpace, utils::argmax};
+
+pub struct OneStepTabularEGreedySarsa<T: Hash+PartialEq+Eq+Clone> {
+    // policy
+    default: Vec<f64>,
+    policy: FxHashMap<T, Vec<f64>>,
+    action_space: ActionSpace,
+    // policy update
+    learning_rate: f64,
+    discount_factor: f64,
+    // action selection
+    dist: Uniform<f64>,
+    initial_epsilon: f64,
+    epsilon: f64,
+    epsilon_decay: f64,
+    final_epsilon: f64,
+    training_error: Vec<f64>,
+}
+
+impl<T: Hash+PartialEq+Eq+Clone> OneStepTabularEGreedySarsa<T> {
+    pub fn new(
+        // policy
+        default_value: f64,
+        action_space: ActionSpace,
+        // policy update
+        learning_rate: f64,
+        discount_factor: f64,
+        // action selection
+        initial_epsilon: f64,
+        epsilon_decay: f64,
+        final_epsilon: f64,
+    ) -> Self {
+        return Self {
+            default: vec![default_value; action_space.size],
+            policy: FxHashMap::default(),
+            action_space,
+            learning_rate,
+            discount_factor,
+            dist: Uniform::from(0.0..1.0),
+            initial_epsilon,
+            epsilon: initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            training_error: vec![]
+        }
+    }   
+
+    fn decay_epsilon(&mut self) {
+        let new_epsilon: f64 = self.epsilon - self.epsilon_decay;
+        self.epsilon = if self.final_epsilon > new_epsilon {self.epsilon} else {new_epsilon};
+    }
+
+    fn should_explore(&self) -> bool {
+        return self.dist.sample(&mut rand::thread_rng()) < self.epsilon;
+    }
+
+    pub fn get_action(&self, obs: &T) -> usize {
+        if self.should_explore() {
+            return self.action_space.sample();
+        } else {
+            match self.policy.get(obs) {
+                Some(value) => argmax(value),
+                None => self.action_space.sample(),
+            }
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        curr_obs: &T,
+        curr_action: usize,
+        reward: f64,
+        terminated: bool,
+        next_obs: &T,
+        next_action: usize
+    ) {
+        let next_q_values = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
+        let future_q_value: f64 = next_q_values[next_action];
+        let curr_q_values = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
+        let temporal_difference: f64 = reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
+        curr_q_values[curr_action] = curr_q_values[curr_action] + self.learning_rate * temporal_difference;
+        self.training_error.push(temporal_difference);
+        if terminated {
+            self.decay_epsilon();
+        }
+    }
+
+    pub fn get_training_error(&self) -> &Vec<f64>{
+        return &self.training_error;
+    }
+
+}
