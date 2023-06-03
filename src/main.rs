@@ -25,6 +25,10 @@ struct Cli {
     #[structopt(long = "stochastic_env")]
     stochastic_env: bool,
 
+    /// Should the env be stochastic
+    #[structopt(long = "show_example")]
+    show_example: bool,
+
     /// Change the env's map, if possible
     #[structopt(long = "map", default_value = "4x4")]
     map: String,
@@ -139,7 +143,7 @@ fn main() {
     let legends: Vec<&str> = [
         "One-Step Sarsa",
         "One-Step Qlearning",
-        "One-Step Expected Sarsa",
+        // "One-Step Expected Sarsa",
         "Sarsa Lambda",
         "Qlearning Lambda",
     ].to_vec();
@@ -147,16 +151,16 @@ fn main() {
     let colors: Vec<&plotters::style::RGBColor> = [
         &BLUE,
         &GREEN,
-        &CYAN,
+        // &CYAN,
         &RED,
         &YELLOW
     ].to_vec();
 
     policy_update_strategies.push((legends[0], Box::new(&mut one_step_sarsa)));
     policy_update_strategies.push((legends[1], Box::new(&mut one_step_qlearning)));
-    policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
-    policy_update_strategies.push((legends[3], Box::new(&mut sarsa_lambda)));
-    policy_update_strategies.push((legends[4], Box::new(&mut qlearning_lambda)));
+    // policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
+    policy_update_strategies.push((legends[2], Box::new(&mut sarsa_lambda)));
+    policy_update_strategies.push((legends[3], Box::new(&mut qlearning_lambda)));
 
     let mut basic_policy = BasicPolicy::new(0.0, env.action_space());
     let mut double_policy = DoublePolicy::new(0.0, env.action_space());
@@ -179,11 +183,10 @@ fn main() {
         rewards.push(ma_reward);
         let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
         episodes_length.push(ma_episode);
+        if cli.show_example {
+            agent.example(env);
+        }
     }
-
-
-
-    
 
     plot_moving_average(
         &rewards,
@@ -205,19 +208,4 @@ fn main() {
         &legends,
         "Training Error"
     );
-
-    // println!("\t\t\tSarsa Example");
-    // sarsa.example(env);
-    // println!("\t\t\tQLearning Example");
-    // qlearning.example(env);
-    // println!("\t\t\tSarsaLambda Example");
-    // sarsa_lambda.example(env);
-    // println!("\t\t\tQLearningLambda Example");
-    // qlearning_lambda.example(env);
-    // println!("\t\t\tExpectedSarsa Example");
-    // expected_sarsa.example(env);
-    // println!("\t\t\tMeanStep Example");
-    // mean_step.example(env);
-
-    
 }

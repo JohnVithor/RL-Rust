@@ -29,7 +29,7 @@ impl<T: Hash+PartialEq+Eq+Clone> PolicyUpdate<T> for OneStepSARSA {
         _action_selection: &Box<RefCell<&mut dyn ActionSelection<T>>>
     ) -> f64 {
         let next_q_values: &Vec<f64> = policy.get_ref(next_obs.clone());
-        let future_q_value = next_q_values[next_action];
+        let future_q_value: f64 = next_q_values[next_action];
         let values: &mut Vec<f64> = policy.get_mut(curr_obs);
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - values[curr_action];
         values[curr_action] = values[curr_action] + self.learning_rate * temporal_difference;
