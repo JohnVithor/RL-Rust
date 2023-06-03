@@ -3,9 +3,9 @@ use std::time::Instant;
 use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
 use reinforcement_learning::algorithms::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::algorithms::policy_update::{OneStepQLearning, OneStepSARSA, SarsaLambda, QLearningLambda, OneStepExpectedSarsa, PolicyUpdate};
+use reinforcement_learning::algorithms::policy_update::{NextQvalueFunction, sarsa, q_learning, expected_sarsa};
 use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
-use reinforcement_learning::policy::DoublePolicy;
+use reinforcement_learning::policy::{DoublePolicy, TracePolicy, TraceMode, Policy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 use reinforcement_learning::{Agent, policy::BasicPolicy};
 
@@ -129,21 +129,22 @@ fn main() {
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors : Vec<Vec<f64>> = vec![];
 
+    let mut basic_policy = BasicPolicy::new(learning_rate, discount_factor, 0.0, env.action_space());
+    let mut double_policy = DoublePolicy::new(learning_rate, discount_factor, 0.0, env.action_space());
+
+    let mut sarsa_trace_policy = TracePolicy::new(Box::new(basic_policy.clone()), lambda_factor, TraceMode::SARSA);
+    let mut qlearning_trace_policy = TracePolicy::new(Box::new(basic_policy.clone()), lambda_factor, TraceMode::SARSA);
+
+    let mut double_sarsa_trace_policy = TracePolicy::new(Box::new(double_policy.clone()), lambda_factor, TraceMode::SARSA);
+    let mut double_qlearning_trace_policy = TracePolicy::new(Box::new(double_policy.clone()), lambda_factor, TraceMode::SARSA);
+
     let mut uniforme_psilon_greed = UniformEpsilonGreed::new(initial_epsilon, epsilon_decay, final_epsilon);
     let mut ucb = UpperConfidenceBound::new(confidence_level);
     
-    let mut one_step_sarsa = OneStepSARSA::new(learning_rate, discount_factor);
-    let mut one_step_qlearning = OneStepQLearning::new(learning_rate, discount_factor);
-    let mut sarsa_lambda = SarsaLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let mut qlearning_lambda = QLearningLambda::new(learning_rate, discount_factor, lambda_factor, 0.0, env.action_space());
-    let mut expected_sarsa = OneStepExpectedSarsa::new(learning_rate, discount_factor);
-    
-    let mut policy_update_strategies: Vec<(&str, Box<&mut dyn PolicyUpdate<usize>>)> = vec![];
-
     let legends: Vec<&str> = [
-        "One-Step Sarsa",
-        "One-Step Qlearning",
-        // "One-Step Expected Sarsa",
+        "Sarsa",
+        "Qlearning",
+        "One-Step Expected Sarsa",
         "Sarsa Lambda",
         "Qlearning Lambda",
     ].to_vec();
@@ -151,25 +152,37 @@ fn main() {
     let colors: Vec<&plotters::style::RGBColor> = [
         &BLUE,
         &GREEN,
-        // &CYAN,
+        &CYAN,
         &RED,
         &YELLOW
     ].to_vec();
 
-    policy_update_strategies.push((legends[0], Box::new(&mut one_step_sarsa)));
-    policy_update_strategies.push((legends[1], Box::new(&mut one_step_qlearning)));
-    // policy_update_strategies.push((legends[2], Box::new(&mut expected_sarsa)));
-    policy_update_strategies.push((legends[2], Box::new(&mut sarsa_lambda)));
-    policy_update_strategies.push((legends[3], Box::new(&mut qlearning_lambda)));
+    let mut policy_update_strategies: Vec<(&str, NextQvalueFunction<usize>, &mut dyn Policy<usize>)> = vec![];
+    let mut a = basic_policy.clone();
+    let mut b = basic_policy.clone();   
+    let mut c = double_policy.clone();
+    let mut d = double_policy.clone();   
+    if cli.policy_type == 0 {
+        policy_update_strategies.push((legends[0], sarsa, &mut basic_policy));
+        policy_update_strategies.push((legends[1], q_learning, &mut a));
+        policy_update_strategies.push((legends[2], expected_sarsa, &mut b));
+        policy_update_strategies.push((legends[3], sarsa, &mut sarsa_trace_policy));
+        policy_update_strategies.push((legends[4], q_learning, &mut qlearning_trace_policy));
+    } else {
+        policy_update_strategies.push((legends[0], sarsa, &mut double_policy));
+        policy_update_strategies.push((legends[1], q_learning, &mut c));
+        policy_update_strategies.push((legends[2], expected_sarsa, &mut d));
+        policy_update_strategies.push((legends[3], sarsa, &mut double_sarsa_trace_policy));
+        policy_update_strategies.push((legends[4], q_learning, &mut double_qlearning_trace_policy));
+    }
 
-    let mut basic_policy = BasicPolicy::new(0.0, env.action_space());
-    let mut double_policy = DoublePolicy::new(0.0, env.action_space());
+    
 
-    for (n,s) in policy_update_strategies {
+    for (n,s, p) in policy_update_strategies {
         let agent = &mut Agent::new(
             if cli.action_selection == 0 {&mut uniforme_psilon_greed} else {&mut ucb},
-            *s,
-            if cli.policy_type == 0 {&mut basic_policy} else {&mut double_policy},
+            s,
+            p,
             env.action_space(),
         );
         let now: Instant = Instant::now();

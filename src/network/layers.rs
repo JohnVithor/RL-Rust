@@ -1,6 +1,10 @@
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::Uniform;
 
+use super::activation::ActiavationFunction;
+
+
+
 pub trait Layer {
     // computes the output Y of a layer for a given input X
     fn forward_propagation(&mut self, input: ndarray::Array2<f64> ) -> ndarray::Array2<f64>;
@@ -40,14 +44,14 @@ impl Layer for DenseLayer {
 
 pub struct ActivationLayer {
     input: ndarray::Array2<f64>,
-    activation: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
-    activation_prime: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>
+    activation: ActiavationFunction,
+    activation_prime: ActiavationFunction
 } 
 
 impl ActivationLayer {
     pub fn new(
-        activation: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
-        activation_prime: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>
+        activation: ActiavationFunction,
+        activation_prime: ActiavationFunction
     ) -> Self {
         let input = ndarray::Array2::zeros((0, 0));
         return Self{ input, activation, activation_prime};

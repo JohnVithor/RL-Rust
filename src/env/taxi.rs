@@ -1,5 +1,6 @@
 use std::cmp::{min, max};
 
+use ndarray::arr1;
 use rand::{distributions::Uniform, prelude::Distribution};
 
 use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{categorical_sample, to_s}};
@@ -122,7 +123,7 @@ impl Env<usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
-        self.curr_obs = categorical_sample(&self.initial_state_distrib.to_vec(), random);
+        self.curr_obs = categorical_sample(&arr1(&self.initial_state_distrib), random);
         self.ready = true;
         self.curr_step = 0;
         return self.curr_obs;

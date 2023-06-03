@@ -39,10 +39,7 @@ impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UniformEpsilonGreed {
         if self.sample() {
             return policy.get_action_space().sample();
         } else {
-            match policy.get_ref_if_has(obs) {
-                Some(value) => argmax(value),
-                None => policy.get_action_space().sample(),
-            }
+            return argmax(policy.predict(obs.clone()));
         }
     }
 
@@ -50,8 +47,8 @@ impl<T: Hash+PartialEq+Eq+Clone> ActionSelection<T> for UniformEpsilonGreed {
         self.decay_epsilon();
     }
 
-    fn get_exploration_probs(&self, action_space: &ActionSpace) -> Vec<f64> {
-        return vec![self.epsilon/action_space.size as f64; action_space.size];
+    fn get_exploration_probs(&self, action_space: &ActionSpace) -> ndarray::Array1<f64> {
+        return ndarray::Array1::from_elem(action_space.size, self.epsilon/action_space.size as f64);
     }
 
     fn get_exploration_rate(&self) -> f64 {

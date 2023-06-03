@@ -1,3 +1,5 @@
+pub type ActiavationFunction = fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>;
+
 pub fn tanh(x: &ndarray::Array2<f64>) -> ndarray::Array2<f64> {
     return x.map(|v| v.tanh());
 }

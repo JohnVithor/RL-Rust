@@ -1,8 +1,7 @@
 
 /// Based on https://towardsdatascience.com/math-neural-network-from-scratch-in-python-d6da9f29ce65
 
-
-use self::layers::Layer;
+use self::{layers::Layer, loss::{LossFunction, LossPrimeFunction}};
 
 pub mod activation;
 pub mod layers;
@@ -11,15 +10,15 @@ pub mod loss;
 pub struct Network {
     learning_rate: f64,
     layers: Vec<Box<dyn Layer>>,
-    loss: Box<fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> Option<f64>>,
-    loss_prime: Box<fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> ndarray::Array2<f64>>
+    loss: LossFunction,
+    loss_prime: LossPrimeFunction
 }
 
 impl Network {
     pub fn new(
         learning_rate: f64,
-        loss: Box<fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> Option<f64>>,
-        loss_prime: Box<fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> ndarray::Array2<f64>>
+        loss: LossFunction,
+        loss_prime: LossPrimeFunction
     ) -> Self {
         return Self{ learning_rate, layers: vec![], loss, loss_prime};
     }

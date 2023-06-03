@@ -13,7 +13,7 @@ use crate::policy::Policy;
 pub trait ActionSelection<T>  {
     fn get_action(&self, obs: &T, policy: &mut RefMut<& mut (dyn Policy<T>)>) -> usize;
     fn update(&mut self);
-    fn get_exploration_probs(&self, action_space: &ActionSpace) -> Vec<f64>;
+    fn get_exploration_probs(&self, action_space: &ActionSpace) -> ndarray::Array1<f64>;
     fn get_exploration_rate(&self) -> f64;
     fn reset(&mut self);
 }

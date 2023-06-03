@@ -1,3 +1,7 @@
+pub type LossFunction = fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> Option<f64>;
+pub type LossPrimeFunction = fn (&ndarray::Array2<f64>,&ndarray::Array2<f64>) -> ndarray::Array2<f64>;
+
+
 pub fn mse(y_true: &ndarray::Array2<f64>, y_pred: &ndarray::Array2<f64>) -> Option<f64> {
     return (y_true-y_pred).map(|v| v.powf(2.0)).mean();
 }

@@ -1,13 +1,14 @@
 use crate::env::{Env, ActionSpace, EnvNotReady};
 use crate::utils::{categorical_sample, inc, to_s};
 
+use ndarray::arr1;
 use rand::prelude::Distribution;
 use rand::distributions::Uniform;
 
 #[derive(Debug, Clone)]
 pub struct FrozenLakeEnv {
     ready: bool,
-    initial_state_distrib: Vec<f64>,
+    initial_state_distrib: ndarray::Array1<f64>,
     probs: Vec<[[(f64, usize, f64, bool); 3]; 4]>,
     player_pos: usize,
     dist: Uniform<f64>,
@@ -53,7 +54,7 @@ impl FrozenLakeEnv {
         let nrow: usize = map[0].len();
         // calculating start positions probabilities
         let flat_map: String = map.join(&"");
-        let mut initial_state_distrib: Vec<f64> = vec![0.0;flat_map.len()];
+        let mut initial_state_distrib: ndarray::Array1<f64> = ndarray::Array1::zeros(flat_map.len());
         let mut counter = 0;
         let mut pos = vec![];
         for (i, c) in flat_map.char_indices() {
@@ -126,7 +127,7 @@ impl Env<usize> for FrozenLakeEnv {
         let transitions = self.probs[self.player_pos][action];
         let t_probs = transitions.map(|a| a.0);
         let random: f64 = self.dist.sample(&mut rand::thread_rng());
-        let i = categorical_sample(&t_probs.to_vec(), random);
+        let i = categorical_sample(&arr1(&t_probs), random);
         let (_p, s, r, t) = transitions[i];
         self.player_pos = s;
         if t {

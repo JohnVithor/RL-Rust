@@ -1,14 +1,14 @@
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::fmt::Debug;
+use crate::algorithms::policy_update::NextQvalueFunction;
 use crate::env::{ActionSpace, Env};
 use crate::algorithms::action_selection::ActionSelection;
-use crate::algorithms::policy_update::PolicyUpdate;
 use crate::policy::Policy;
 
 pub struct Agent<'a, T> {
     action_selection_strategy: Box<RefCell<&'a mut dyn ActionSelection<T>>>,
-    policy_update_strategy: Box<RefCell<&'a mut dyn PolicyUpdate<T>>>,
+    next_qvalue_function: NextQvalueFunction<T>,
     policy: Box<RefCell<&'a mut dyn Policy<T>>>,
     training_error: Vec<f64>,
     action_space: ActionSpace
@@ -17,7 +17,7 @@ pub struct Agent<'a, T> {
 impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
     pub fn new(
         action_selection_strategy: &'a mut (dyn ActionSelection<T> + 'a),
-        policy_update_strategy: &'a mut (dyn PolicyUpdate<T> + 'a),
+        next_qvalue_function: NextQvalueFunction<T>,
         policy: &'a mut (dyn Policy<T> + 'a),
         action_space: ActionSpace
     ) -> Self {
@@ -25,7 +25,7 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
         policy.reset();
         return Self {
             action_selection_strategy: Box::new(RefCell::new(action_selection_strategy)),
-            policy_update_strategy: Box::new(RefCell::new(policy_update_strategy)),
+            next_qvalue_function,
             policy: Box::new(RefCell::new(policy)),
             training_error: vec![],
             action_space
@@ -63,16 +63,16 @@ impl<'a, T: Hash+PartialEq+Eq+Clone+Debug> Agent<'a, T> {
         if terminated {
             self.action_selection_strategy.borrow_mut().update();
         }
-        let temporal_difference: f64 = self.policy_update_strategy.borrow_mut().update(
+        let future_q_value: f64 = (self.next_qvalue_function)(
             curr_obs.clone(),
             curr_action,
             next_obs.clone(),
             next_action,
-            reward,
-            terminated,
             self.policy.borrow_mut(),
             &self.action_selection_strategy
         );
+        let temporal_difference: f64 = self.policy.borrow_mut().get_td(curr_obs.clone(), curr_action, reward, future_q_value);
+        self.policy.borrow_mut().update_values(curr_obs.clone(), curr_action, next_obs.clone(), next_action, temporal_difference);
         self.policy.borrow_mut().after_update();
         self.training_error.push(temporal_difference);
     }
