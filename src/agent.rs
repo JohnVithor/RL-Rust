@@ -1,11 +1,13 @@
 mod sarsa;
 mod qlearning;
+mod expected_sarsa;
 
 use std::hash::Hash;
 use std::fmt::Debug;
 
 pub use sarsa::OneStepTabularEGreedySarsa;
 pub use qlearning::OneStepTabularEGreedyQLearning;
+pub use expected_sarsa::OneStepTabularEGreedyExpectedSarsa;
 
 use crate::env::Env;
 
@@ -63,7 +65,7 @@ pub trait Agent<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
         let mut epi_reward = 0.0;
         let mut curr_action: usize = self.get_action(&env.reset());
         let mut steps: i32 = 0;
-        for _i in 0..100 {
+        loop {
             steps+=1;
             println!("{}", env.render());
             let (next_obs, reward, terminated) = env.step(curr_action).unwrap();

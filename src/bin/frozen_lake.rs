@@ -1,10 +1,9 @@
-use std::f32::consts::E;
 use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
 use reinforcement_learning::agent::Agent;
-use reinforcement_learning::env::BlackJackEnv;
+use reinforcement_learning::env::FrozenLakeEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 use reinforcement_learning::agent::{OneStepTabularEGreedySarsa, OneStepTabularEGreedyQLearning, OneStepTabularEGreedyExpectedSarsa};
 
@@ -16,6 +15,14 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "RLRust - BlackJack")]
 struct Cli {
+
+    /// Should the env be stochastic
+    #[structopt(long = "stochastic_env")]
+    stochastic_env: bool,
+
+    /// Change the env's map, if possible
+    #[structopt(long = "map", default_value = "4x4")]
+    map: String,
 
     /// Show example of episode
     #[structopt(long = "show_example")]
@@ -32,14 +39,6 @@ struct Cli {
     /// Learning rate of the RL agent
     #[structopt(long = "learning_rate", default_value = "0.05")]
     learning_rate: f64,
-
-    /// Action selection strategy: 0 - uniform epsilon greed, 1 - upper confidence bound
-    #[structopt(long = "action_selection", default_value = "0")]
-    action_selection: u8,
-
-    /// Policy type: 0 - basic policy, 1 - double policy
-    #[structopt(long = "policy_type", default_value = "0")]
-    policy_type: u8,
 
     /// Initial value for the exploration ratio
     #[structopt(long = "initial_epsilon", default_value = "1.0")]
@@ -79,7 +78,7 @@ fn main() {
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
-    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (9.0 * n_episodes as f64 / 10.0)} else {cli.epsilon_decay};
+    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (n_episodes as f64 / 2.0)} else {cli.epsilon_decay};
     let final_epsilon: f64 = cli.final_epsilon;
     let confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
@@ -87,7 +86,11 @@ fn main() {
     
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = BlackJackEnv::new();
+    let mut env = FrozenLakeEnv::new(
+        if cli.map == "4X4" {&FrozenLakeEnv::MAP_4X4} else {&FrozenLakeEnv::MAP_8X8},
+        cli.stochastic_env,
+        max_steps
+    );
     
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
@@ -109,7 +112,7 @@ fn main() {
         // &YELLOW
     ].to_vec();
 
-    let mut sarsa: OneStepTabularEGreedySarsa<usize, 2> = OneStepTabularEGreedySarsa::new(
+    let mut sarsa: OneStepTabularEGreedySarsa<usize, 4> = OneStepTabularEGreedySarsa::new(
         0.0,
         learning_rate,
         discount_factor,
@@ -118,7 +121,7 @@ fn main() {
         final_epsilon
     );
 
-    let mut qlearning: OneStepTabularEGreedyQLearning<usize, 2> = OneStepTabularEGreedyQLearning::new(
+    let mut qlearning: OneStepTabularEGreedyQLearning<usize, 4> = OneStepTabularEGreedyQLearning::new(
         0.0,
         learning_rate,
         discount_factor,
@@ -127,7 +130,7 @@ fn main() {
         final_epsilon
     );
 
-    let mut expected_sarsa: OneStepTabularEGreedyExpectedSarsa<usize, 2> = OneStepTabularEGreedyExpectedSarsa::new(
+    let mut expected_sarsa: OneStepTabularEGreedyExpectedSarsa<usize, 4> = OneStepTabularEGreedyExpectedSarsa::new(
         0.0,
         learning_rate,
         discount_factor,
@@ -136,7 +139,7 @@ fn main() {
         final_epsilon
     );
 
-    let mut agents: Vec<&mut dyn Agent<usize, 2>> = vec![];
+    let mut agents: Vec<&mut dyn Agent<usize, 4>> = vec![];
     agents.push(&mut sarsa);
     agents.push(&mut qlearning);
     agents.push(&mut expected_sarsa);

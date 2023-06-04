@@ -1,11 +1,11 @@
 use fxhash::FxHashMap;
 use rand::{distributions::Uniform, prelude::Distribution};
 use std::hash::Hash;
-use crate::utils::argmax;
+use crate::utils::{max, argmax};
 use std::fmt::Debug;
 use super::Agent;
 
-pub struct OneStepTabularEGreedySarsa<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
+pub struct OneStepTabularEGreedyExpectedSarsa<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
     // policy
     default: [f64; COUNT],
     policy: FxHashMap<T, [f64; COUNT]>,
@@ -22,7 +22,7 @@ pub struct OneStepTabularEGreedySarsa<T: Hash+PartialEq+Eq+Clone+Debug, const CO
     training_error: Vec<f64>,
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedySarsa<T, COUNT> {
+impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedyExpectedSarsa<T, COUNT> {
     pub fn new(
         // policy
         default_value: f64,
@@ -60,7 +60,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedy
 
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for OneStepTabularEGreedySarsa<T, COUNT> {
+impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for OneStepTabularEGreedyExpectedSarsa<T, COUNT> {
     fn reset(&mut self) {
         self.epsilon = self.initial_epsilon;
         self.policy = FxHashMap::default();
@@ -84,13 +84,29 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for O
         reward: f64,
         terminated: bool,
         next_obs: &T,
-        next_action: usize
+        _next_action: usize
     ) {
-        let next_q_values = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
+        let next_q_values: &mut [f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
         
-        let future_q_value: f64 = next_q_values[next_action];
+        let policy_probs: [f64; COUNT] = [self.epsilon/COUNT as f64; COUNT];
+        let best_action_value: f64 = max(next_q_values);
         
-        let curr_q_values = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
+        let mut n_max_action: i32 = 0;
+        for i in 0..COUNT {
+            if next_q_values[i] == best_action_value {
+                n_max_action += 1;
+            }
+        }
+        let mut future_q_value: f64 = 0.0;
+        for i in 0..COUNT {
+            if next_q_values[i] == best_action_value {
+                future_q_value += (policy_probs[i] + (1.0-self.epsilon) / n_max_action as f64) * next_q_values[i]
+            } else {
+                future_q_value += policy_probs[i] * next_q_values[i]
+            }
+        }
+        
+        let curr_q_values: &mut [f64; COUNT] = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
         curr_q_values[curr_action] = curr_q_values[curr_action] + self.learning_rate * temporal_difference;
         self.training_error.push(temporal_difference);
