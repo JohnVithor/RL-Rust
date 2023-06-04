@@ -5,11 +5,15 @@ use rand::{distributions::Uniform, prelude::Distribution};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct OneStepTabularEGreedyAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-{
+pub struct OneStepTabularEGreedyDoubleAgent<
+    T: Hash + PartialEq + Eq + Clone + Debug,
+    const COUNT: usize,
+> {
     // policy
     default: [f64; COUNT],
-    policy: FxHashMap<T, [f64; COUNT]>,
+    alpha_policy: FxHashMap<T, [f64; COUNT]>,
+    beta_policy: FxHashMap<T, [f64; COUNT]>,
+    policy_flag: bool,
     // policy update
     learning_rate: f64,
     discount_factor: f64,
@@ -25,7 +29,7 @@ pub struct OneStepTabularEGreedyAgent<T: Hash + PartialEq + Eq + Clone + Debug, 
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    OneStepTabularEGreedyAgent<T, COUNT>
+    OneStepTabularEGreedyDoubleAgent<T, COUNT>
 {
     pub fn new(
         // policy
@@ -41,7 +45,9 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     ) -> Self {
         return Self {
             default: [default_value; COUNT],
-            policy: FxHashMap::default(),
+            alpha_policy: FxHashMap::default(),
+            beta_policy: FxHashMap::default(),
+            policy_flag: true,
             learning_rate,
             discount_factor,
             exploration_decider: Uniform::from(0.0..1.0),
@@ -70,21 +76,39 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for OneStepTabularEGreedyAgent<T, COUNT>
+    for OneStepTabularEGreedyDoubleAgent<T, COUNT>
 {
     fn reset(&mut self) {
         self.epsilon = self.initial_epsilon;
-        self.policy = FxHashMap::default();
+        self.alpha_policy = FxHashMap::default();
+        self.beta_policy = FxHashMap::default();
     }
 
     fn get_action(&mut self, obs: &T) -> usize {
         if self.should_explore() {
             return self.rand_action_selecter.sample(&mut rand::thread_rng());
         } else {
-            match self.policy.get(obs) {
-                Some(value) => argmax(value),
-                None => self.rand_action_selecter.sample(&mut rand::thread_rng()),
+            let a_values = self.alpha_policy.get(&obs);
+            let b_values = self.beta_policy.get(&obs);
+            if a_values.is_none() && b_values.is_none() {
+                return self.rand_action_selecter.sample(&mut rand::thread_rng());
             }
+            let mut temp;
+            if a_values.is_some() {
+                temp = a_values.unwrap().clone();
+                for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
+                    temp[i] += v;
+                    temp[i] /= 2.0;
+                }
+            } else {
+                temp = b_values.unwrap().clone();
+                for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
+                    temp[i] += v;
+                    temp[i] /= 2.0;
+                }
+            }
+
+            return argmax(&temp);
         }
     }
 
@@ -97,10 +121,17 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         next_obs: &T,
         next_action: usize,
     ) {
-        let next_q_values: &[f64; COUNT] = self.policy.get(next_obs).unwrap_or(&self.default);
+        let query_policy = match self.policy_flag {
+            true => &self.alpha_policy,
+            false => &self.beta_policy,
+        };
+        let next_q_values: &[f64; COUNT] = query_policy.get(next_obs).unwrap_or(&self.default);
         let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
-        let curr_q_values: &mut [f64; COUNT] = self
-            .policy
+        let target_policy = match self.policy_flag {
+            true => &mut self.beta_policy,
+            false => &mut self.alpha_policy,
+        };
+        let curr_q_values: &mut [f64; COUNT] = target_policy
             .entry(curr_obs.clone())
             .or_insert(self.default.clone());
         let temporal_difference: f64 =
@@ -111,6 +142,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         if terminated {
             self.decay_epsilon();
         }
+        self.policy_flag = !self.policy_flag;
     }
 
     fn get_training_error(&self) -> &Vec<f64> {

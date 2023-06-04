@@ -1,9 +1,3 @@
-mod elegibility_traces_tabular_egreedy_agent;
-mod one_step_tabular_egreedy_agent;
-
-pub use elegibility_traces_tabular_egreedy_agent::ElegibilityTracesTabularEGreedyAgent;
-pub use one_step_tabular_egreedy_agent::OneStepTabularEGreedyAgent;
-
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -55,7 +49,7 @@ pub fn expected_sarsa<const COUNT: usize>(
 }
 
 pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    fn get_action(&self, obs: &T) -> usize;
+    fn get_action(&mut self, obs: &T) -> usize;
 
     fn update(
         &mut self,
@@ -126,3 +120,13 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
         }
     }
 }
+
+mod elegibility_traces_tabular_egreedy_agent;
+mod one_step_tabular_egreedy_agent;
+mod one_step_tabular_egreedy_double_agent;
+mod one_step_tabular_ucb_agent;
+
+pub use elegibility_traces_tabular_egreedy_agent::ElegibilityTracesTabularEGreedyAgent;
+pub use one_step_tabular_egreedy_agent::OneStepTabularEGreedyAgent;
+pub use one_step_tabular_egreedy_double_agent::OneStepTabularEGreedyDoubleAgent;
+pub use one_step_tabular_ucb_agent::OneStepTabularUCBAgent;

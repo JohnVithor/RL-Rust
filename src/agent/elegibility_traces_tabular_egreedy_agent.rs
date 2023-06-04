@@ -84,7 +84,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         self.policy = FxHashMap::default();
     }
 
-    fn get_action(&self, obs: &T) -> usize {
+    fn get_action(&mut self, obs: &T) -> usize {
         if self.epsilon != 0.0 && self.should_explore() {
             return self.rand_action_selecter.sample(&mut rand::thread_rng());
         } else {
@@ -104,10 +104,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         next_obs: &T,
         next_action: usize,
     ) {
-        let next_q_values: &[f64; COUNT] = self
-            .policy
-            .entry(next_obs.clone())
-            .or_insert(self.default.clone());
+        let next_q_values: &[f64; COUNT] = self.policy.get(next_obs).unwrap_or(&self.default);
         let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
         let curr_q_values: &[f64; COUNT] = self
             .policy

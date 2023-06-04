@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-use plotters::style::{BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
+use plotters::style::{BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW, RGBColor};
 
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
+use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularUCBAgent};
 use reinforcement_learning::agent::{
     Agent, ElegibilityTracesTabularEGreedyAgent, OneStepTabularEGreedyAgent,
 };
@@ -17,20 +17,13 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "RLRust - CliffWalking")]
 struct Cli {
-    /// Should the env be stochastic
-    #[structopt(long = "stochastic_env")]
-    stochastic_env: bool,
-
-    /// Change the env's map, if possible
-    #[structopt(long = "map", default_value = "4x4")]
-    map: String,
 
     /// Show example of episode
     #[structopt(long = "show_example")]
     show_example: bool,
 
     /// Number of episodes for the training
-    #[structopt(long = "n_episodes", default_value = "100000")]
+    #[structopt(long = "n_episodes", short = "n", default_value = "100000")]
     n_episodes: u128,
 
     /// Maximum number of steps per episode
@@ -99,17 +92,26 @@ fn main() {
     const SIZE: usize = 4;
 
     let legends: Vec<&str> = [
-        "One-Step Sarsa",
-        "One-Step Qlearning",
-        "One-Step Expected Sarsa",
-        "Trace Sarsa",
-        "Trace Qlearning",
-        "Trace Expected Sarsa",
+        "ε-Greedy One-Step Sarsa",
+        "ε-Greedy One-Step Qlearning",
+        "ε-Greedy One-Step Expected Sarsa",
+        "ε-Greedy Trace Sarsa",
+        "ε-Greedy Trace Qlearning",
+        "ε-Greedy Trace Expected Sarsa",
+        "UCB One-Step Sarsa",
+        "UCB One-Step Qlearning",
+        "UCB One-Step Expected Sarsa",
     ]
     .to_vec();
 
-    let colors: Vec<&plotters::style::RGBColor> =
-        [&BLUE, &GREEN, &CYAN, &RED, &YELLOW, &MAGENTA].to_vec();
+    const DRED: RGBColor = RGBColor(150, 0, 0);
+    const DBLUE: RGBColor = RGBColor(0, 0, 150);
+    const DGREEN: RGBColor = RGBColor(0, 150, 0);
+
+    let colors: Vec<&plotters::style::RGBColor> = [
+        &BLUE, &GREEN, &CYAN, &RED, &YELLOW, &MAGENTA, &DRED, &DBLUE, &DGREEN,
+    ]
+    .to_vec();
 
     let mut step_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
         0.0,
@@ -179,6 +181,33 @@ fn main() {
             expected_sarsa,
         );
 
+    let mut ucb_sarsa: OneStepTabularUCBAgent<usize, SIZE> =
+    OneStepTabularUCBAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        confidence_level,
+        sarsa,
+    );
+
+    let mut ucb_qlearning: OneStepTabularUCBAgent<usize, SIZE> =
+    OneStepTabularUCBAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        confidence_level,
+        qlearning,
+    );
+
+    let mut ucb_expected_sarsa: OneStepTabularUCBAgent<usize, SIZE> =
+    OneStepTabularUCBAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        confidence_level,
+        expected_sarsa,
+    );
+
     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
     agents.push(&mut step_sarsa);
     agents.push(&mut step_qlearning);
@@ -186,6 +215,10 @@ fn main() {
     agents.push(&mut trace_sarsa);
     agents.push(&mut trace_qlearning);
     agents.push(&mut trace_expected_sarsa);
+    agents.push(&mut ucb_sarsa);
+    agents.push(&mut ucb_qlearning);
+    agents.push(&mut ucb_expected_sarsa);
+
     for (i, agent) in agents.into_iter().enumerate() {
         let now: Instant = Instant::now();
         let (reward_history, episode_length) = agent.train(&mut env, n_episodes);

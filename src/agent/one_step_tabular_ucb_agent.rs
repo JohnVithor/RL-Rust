@@ -1,12 +1,10 @@
 use super::{Agent, GetNextQValue};
 use crate::utils::argmax;
 use fxhash::FxHashMap;
-use rand::{distributions::Uniform, prelude::Distribution};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct OneStepTabularEGreedyAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-{
+pub struct OneStepTabularUCBAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     // policy
     default: [f64; COUNT],
     policy: FxHashMap<T, [f64; COUNT]>,
@@ -14,18 +12,15 @@ pub struct OneStepTabularEGreedyAgent<T: Hash + PartialEq + Eq + Clone + Debug, 
     learning_rate: f64,
     discount_factor: f64,
     // action selection
-    exploration_decider: Uniform<f64>,
-    rand_action_selecter: Uniform<usize>,
-    initial_epsilon: f64,
-    epsilon: f64,
-    epsilon_decay: f64,
-    final_epsilon: f64,
+    confidence_level: f64,
+    action_counter: FxHashMap<T, [u128; COUNT]>,
+    t: u128,
     training_error: Vec<f64>,
     get_next_q_value: GetNextQValue<COUNT>,
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    OneStepTabularEGreedyAgent<T, COUNT>
+    OneStepTabularUCBAgent<T, COUNT>
 {
     pub fn new(
         // policy
@@ -34,9 +29,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
         learning_rate: f64,
         discount_factor: f64,
         // action selection
-        initial_epsilon: f64,
-        epsilon_decay: f64,
-        final_epsilon: f64,
+        confidence_level: f64,
         get_next_q_value: GetNextQValue<COUNT>,
     ) -> Self {
         return Self {
@@ -44,48 +37,37 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
             policy: FxHashMap::default(),
             learning_rate,
             discount_factor,
-            exploration_decider: Uniform::from(0.0..1.0),
-            rand_action_selecter: Uniform::from(0..COUNT),
-            initial_epsilon,
-            epsilon: initial_epsilon,
-            epsilon_decay,
-            final_epsilon,
+            confidence_level,
+            action_counter: FxHashMap::default(),
+            t: 0,
             training_error: vec![],
             get_next_q_value,
         };
     }
-
-    fn decay_epsilon(&mut self) {
-        let new_epsilon: f64 = self.epsilon - self.epsilon_decay;
-        self.epsilon = if self.final_epsilon > new_epsilon {
-            self.epsilon
-        } else {
-            new_epsilon
-        };
-    }
-
-    fn should_explore(&self) -> bool {
-        return self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
-    }
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for OneStepTabularEGreedyAgent<T, COUNT>
+    for OneStepTabularUCBAgent<T, COUNT>
 {
     fn reset(&mut self) {
-        self.epsilon = self.initial_epsilon;
         self.policy = FxHashMap::default();
+        self.training_error = vec![];
     }
 
     fn get_action(&mut self, obs: &T) -> usize {
-        if self.should_explore() {
-            return self.rand_action_selecter.sample(&mut rand::thread_rng());
-        } else {
-            match self.policy.get(obs) {
-                Some(value) => argmax(value),
-                None => self.rand_action_selecter.sample(&mut rand::thread_rng()),
-            }
+        let values: &[f64; COUNT] = self.policy.get(&obs).unwrap_or(&self.default);
+        let obs_actions: &mut [u128; COUNT] =
+            self.action_counter.entry(obs.clone()).or_insert([0; COUNT]);
+        let mut ucbs: [f64; COUNT] = [0.0; COUNT];
+        for i in 0..COUNT {
+            ucbs[i] = values[i]
+                + self.confidence_level
+                    * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt()
         }
+        let action = argmax(&ucbs);
+        obs_actions[action] += 1;
+        self.t += 1;
+        return action;
     }
 
     fn update(
@@ -93,12 +75,13 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         curr_obs: &T,
         curr_action: usize,
         reward: f64,
-        terminated: bool,
+        _terminated: bool,
         next_obs: &T,
         next_action: usize,
     ) {
         let next_q_values: &[f64; COUNT] = self.policy.get(next_obs).unwrap_or(&self.default);
-        let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
+        let future_q_value: f64 =
+            (self.get_next_q_value)(next_q_values, next_action, self.confidence_level);
         let curr_q_values: &mut [f64; COUNT] = self
             .policy
             .entry(curr_obs.clone())
@@ -108,9 +91,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         curr_q_values[curr_action] =
             curr_q_values[curr_action] + self.learning_rate * temporal_difference;
         self.training_error.push(temporal_difference);
-        if terminated {
-            self.decay_epsilon();
-        }
     }
 
     fn get_training_error(&self) -> &Vec<f64> {
