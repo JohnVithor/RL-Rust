@@ -33,9 +33,9 @@ struct Cli {
     #[structopt(long = "initial_epsilon", default_value = "1.0")]
     initial_epsilon: f64,
 
-    /// Value to decrease of the exploration ratio at each step default to: initial_epsilon / (n_episodes / 2);
-    #[structopt(long = "epsilon_decay", default_value = "NAN")]
-    epsilon_decay: f64,
+    /// Value to determine percentage of episodes where exploration is possible;
+    #[structopt(long = "exploration_time", default_value = "0.5")]
+    exploration_time: f64,
 
     /// Final value for the exploration ratio
     #[structopt(long = "final_epsilon", default_value = "0.0")]
@@ -65,11 +65,7 @@ fn main() {
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
-    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {
-        initial_epsilon / (9.0 * n_episodes as f64 / 10.0)
-    } else {
-        cli.epsilon_decay
-    };
+    let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
     let final_epsilon: f64 = cli.final_epsilon;
     let confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;

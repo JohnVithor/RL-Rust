@@ -72,7 +72,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     }
 
     fn should_explore(&self) -> bool {
-        return self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
+        return self.epsilon != 0.0 && self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
     }
 }
 
@@ -85,7 +85,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
     }
 
     fn get_action(&mut self, obs: &T) -> usize {
-        if self.epsilon != 0.0 && self.should_explore() {
+        if self.should_explore() {
             return self.rand_action_selecter.sample(&mut rand::thread_rng());
         } else {
             match self.policy.get(obs) {

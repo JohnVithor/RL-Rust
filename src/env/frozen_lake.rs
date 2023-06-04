@@ -44,8 +44,8 @@ impl FrozenLakeEnv {
     }
 
     pub fn new(map: &[&str], is_slippery: bool, max_steps: u128) -> Self {
-        let ncol: usize = map.len();
-        let nrow: usize = map[0].len();
+        let nrow: usize = map.len();
+        let ncol: usize = map[0].len();
         // calculating start positions probabilities
         let flat_map: String = map.join(&"");
         let mut initial_state_distrib: ndarray::Array1<f64> =

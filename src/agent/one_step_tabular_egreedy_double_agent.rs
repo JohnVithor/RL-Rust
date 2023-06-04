@@ -71,7 +71,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     }
 
     fn should_explore(&self) -> bool {
-        return self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
+        return self.epsilon != 0.0 && self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
     }
 }
 
