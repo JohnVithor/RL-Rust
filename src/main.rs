@@ -176,8 +176,6 @@ fn main() {
         policy_update_strategies.push((legends[4], q_learning, &mut double_qlearning_trace_policy));
     }
 
-    
-
     for (n,s, p) in policy_update_strategies {
         let agent = &mut Agent::new(
             if cli.action_selection == 0 {&mut uniforme_psilon_greed} else {&mut ucb},

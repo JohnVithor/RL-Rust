@@ -23,6 +23,12 @@ impl Network {
         return Self{ learning_rate, layers: vec![], loss, loss_prime};
     }
 
+    pub fn reset(&mut self) {
+        for l in &mut self.layers {
+            l.reset();
+        }
+    }
+
     // add layer to network
     pub fn add(&mut self, layer: Box<dyn Layer>) {
         self.layers.push(layer)

@@ -10,6 +10,8 @@ pub trait Layer {
     fn forward_propagation(&mut self, input: ndarray::Array2<f64> ) -> ndarray::Array2<f64>;
     // computes dE/dX for a given dE/dY (and update parameters if any)
     fn backward_propagation(&mut self, output_error: ndarray::Array2<f64>, learning_rate: f64) -> ndarray::Array2<f64>;
+
+    fn reset(&mut self);
 }
 
 pub struct DenseLayer {
@@ -40,6 +42,12 @@ impl Layer for DenseLayer {
         self.bias = &self.bias - learning_rate * output_error;
         return input_error;
     }
+
+    fn reset(&mut self) {
+        self.input = ndarray::Array2::zeros(self.input.raw_dim());
+        self.weights = ndarray::Array::random(self.weights.raw_dim(), Uniform::new(0., 1.));
+        self.bias = ndarray::Array::random(self.bias.raw_dim(), Uniform::new(0., 1.));
+    }
 }
 
 pub struct ActivationLayer {
@@ -66,5 +74,9 @@ impl Layer for ActivationLayer {
 
     fn backward_propagation(&mut self, output_error: ndarray::Array2<f64>, _learning_rate: f64) -> ndarray::Array2<f64> {
         return (self.activation_prime)(&self.input) * output_error
+    }
+    
+    fn reset(&mut self) {
+        
     }
 }
