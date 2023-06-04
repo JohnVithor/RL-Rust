@@ -1,9 +1,11 @@
 use std::time::Instant;
 
-use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
+use plotters::style::{BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
-use reinforcement_learning::agent::{sarsa, expected_sarsa, qlearning};
-use reinforcement_learning::agent::{Agent, OneStepTabularEGreedyAgent, ElegibilityTracesTabularEGreedyAgent};
+use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
+use reinforcement_learning::agent::{
+    Agent, ElegibilityTracesTabularEGreedyAgent, OneStepTabularEGreedyAgent,
+};
 use reinforcement_learning::env::CliffWalkingEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
@@ -15,7 +17,6 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "RLRust - CliffWalking")]
 struct Cli {
-
     /// Should the env be stochastic
     #[structopt(long = "stochastic_env")]
     stochastic_env: bool,
@@ -70,7 +71,6 @@ struct Cli {
 }
 
 fn main() {
-    
     let cli: Cli = Cli::from_args();
 
     let n_episodes: u128 = cli.n_episodes;
@@ -78,19 +78,23 @@ fn main() {
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
-    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {initial_epsilon / (n_episodes as f64 / 2.0)} else {cli.epsilon_decay};
+    let epsilon_decay: f64 = if cli.epsilon_decay.is_nan() {
+        initial_epsilon / (n_episodes as f64 / 2.0)
+    } else {
+        cli.epsilon_decay
+    };
     let final_epsilon: f64 = cli.final_epsilon;
     let confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
     let lambda_factor: f64 = cli.lambda_factor;
-    
+
     let moving_average_window: usize = cli.moving_average_window;
 
     let mut env = CliffWalkingEnv::new(max_steps);
-    
+
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
-    let mut errors : Vec<Vec<f64>> = vec![];
+    let mut errors: Vec<Vec<f64>> = vec![];
 
     const SIZE: usize = 4;
 
@@ -101,16 +105,11 @@ fn main() {
         "Trace Sarsa",
         "Trace Qlearning",
         "Trace Expected Sarsa",
-    ].to_vec();
+    ]
+    .to_vec();
 
-    let colors: Vec<&plotters::style::RGBColor> = [
-        &BLUE,
-        &GREEN,
-        &CYAN,
-        &RED,
-        &YELLOW,
-        &MAGENTA
-    ].to_vec();
+    let colors: Vec<&plotters::style::RGBColor> =
+        [&BLUE, &GREEN, &CYAN, &RED, &YELLOW, &MAGENTA].to_vec();
 
     let mut step_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
         0.0,
@@ -119,61 +118,66 @@ fn main() {
         initial_epsilon,
         epsilon_decay,
         final_epsilon,
-        sarsa
+        sarsa,
     );
 
-    let mut step_qlearning: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
-        0.0,
-        learning_rate,
-        discount_factor,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
-        qlearning
-    );
+    let mut step_qlearning: OneStepTabularEGreedyAgent<usize, SIZE> =
+        OneStepTabularEGreedyAgent::new(
+            0.0,
+            learning_rate,
+            discount_factor,
+            initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            qlearning,
+        );
 
-    let mut step_expected_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
-        0.0,
-        learning_rate,
-        discount_factor,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
-        expected_sarsa
-    );
+    let mut step_expected_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> =
+        OneStepTabularEGreedyAgent::new(
+            0.0,
+            learning_rate,
+            discount_factor,
+            initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            expected_sarsa,
+        );
 
-    let mut trace_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
-        0.0,
-        learning_rate,
-        discount_factor,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
-        lambda_factor,
-        sarsa
-    );
+    let mut trace_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> =
+        ElegibilityTracesTabularEGreedyAgent::new(
+            0.0,
+            learning_rate,
+            discount_factor,
+            initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            lambda_factor,
+            sarsa,
+        );
 
-    let mut trace_qlearning: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
-        0.0,
-        learning_rate,
-        discount_factor,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
-        lambda_factor,
-        qlearning,
-    );
+    let mut trace_qlearning: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> =
+        ElegibilityTracesTabularEGreedyAgent::new(
+            0.0,
+            learning_rate,
+            discount_factor,
+            initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            lambda_factor,
+            qlearning,
+        );
 
-    let mut trace_expected_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
-        0.0,
-        learning_rate,
-        discount_factor,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
-        lambda_factor,
-        expected_sarsa
-    );
+    let mut trace_expected_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> =
+        ElegibilityTracesTabularEGreedyAgent::new(
+            0.0,
+            learning_rate,
+            discount_factor,
+            initial_epsilon,
+            epsilon_decay,
+            final_epsilon,
+            lambda_factor,
+            expected_sarsa,
+        );
 
     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
     agents.push(&mut step_sarsa);
@@ -182,44 +186,34 @@ fn main() {
     agents.push(&mut trace_sarsa);
     agents.push(&mut trace_qlearning);
     agents.push(&mut trace_expected_sarsa);
-    for (i,agent) in agents.into_iter().enumerate() {
+    for (i, agent) in agents.into_iter().enumerate() {
         let now: Instant = Instant::now();
-        let (reward_history, episode_length)  = agent.train(&mut env, n_episodes);
+        let (reward_history, episode_length) = agent.train(&mut env, n_episodes);
         let elapsed: std::time::Duration = now.elapsed();
         println!("{} {:.2?}", legends[i], elapsed);
-    
-        let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
+
+        let ma_error = moving_average(
+            agent.get_training_error().len() as usize / moving_average_window,
+            &agent.get_training_error(),
+        );
         errors.push(ma_error);
-        let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
+        let ma_reward =
+            moving_average(n_episodes as usize / moving_average_window, &reward_history);
         rewards.push(ma_reward);
-        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
+        let ma_episode = moving_average(
+            n_episodes as usize / moving_average_window,
+            &episode_length.iter().map(|x| *x as f64).collect(),
+        );
         episodes_length.push(ma_episode);
-    
+
         if cli.show_example {
             agent.example(&mut env);
         }
     }
 
-    
-    
-    plot_moving_average(
-        &rewards,
-        &colors,
-        &legends,
-        "Rewards"
-    );
+    plot_moving_average(&rewards, &colors, &legends, "Rewards");
 
-    plot_moving_average(
-        &episodes_length,
-        &colors,
-        &legends,
-        "Episodes Length"
-    );
+    plot_moving_average(&episodes_length, &colors, &legends, "Episodes Length");
 
-    plot_moving_average(
-        &errors,
-        &colors,
-        &legends,
-        "Training Error"
-    );
+    plot_moving_average(&errors, &colors, &legends, "Training Error");
 }

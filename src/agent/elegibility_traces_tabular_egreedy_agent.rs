@@ -1,11 +1,14 @@
+use super::{Agent, GetNextQValue};
+use crate::utils::argmax;
 use fxhash::FxHashMap;
 use rand::{distributions::Uniform, prelude::Distribution};
-use std::hash::Hash;
-use crate::utils::argmax;
 use std::fmt::Debug;
-use super::{Agent, GetNextQValue};
+use std::hash::Hash;
 
-pub struct ElegibilityTracesTabularEGreedyAgent<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
+pub struct ElegibilityTracesTabularEGreedyAgent<
+    T: Hash + PartialEq + Eq + Clone + Debug,
+    const COUNT: usize,
+> {
     // policy
     default: [f64; COUNT],
     policy: FxHashMap<T, [f64; COUNT]>,
@@ -22,10 +25,12 @@ pub struct ElegibilityTracesTabularEGreedyAgent<T: Hash+PartialEq+Eq+Clone+Debug
     final_epsilon: f64,
     lambda_factor: f64,
     training_error: Vec<f64>,
-    get_next_q_value: GetNextQValue<COUNT>
+    get_next_q_value: GetNextQValue<COUNT>,
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> ElegibilityTracesTabularEGreedyAgent<T, COUNT> {
+impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
+    ElegibilityTracesTabularEGreedyAgent<T, COUNT>
+{
     pub fn new(
         // policy
         default_value: f64,
@@ -37,7 +42,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> ElegibilityTracesTabu
         epsilon_decay: f64,
         final_epsilon: f64,
         lambda_factor: f64,
-        get_next_q_value: GetNextQValue<COUNT>
+        get_next_q_value: GetNextQValue<COUNT>,
     ) -> Self {
         return Self {
             default: [default_value; COUNT],
@@ -53,29 +58,34 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> ElegibilityTracesTabu
             final_epsilon,
             lambda_factor,
             training_error: vec![],
-            get_next_q_value
-        }
-    }   
+            get_next_q_value,
+        };
+    }
 
     fn decay_epsilon(&mut self) {
         let new_epsilon: f64 = self.epsilon - self.epsilon_decay;
-        self.epsilon = if self.final_epsilon > new_epsilon {self.epsilon} else {new_epsilon};
+        self.epsilon = if self.final_epsilon > new_epsilon {
+            self.epsilon
+        } else {
+            new_epsilon
+        };
     }
 
     fn should_explore(&self) -> bool {
         return self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
     }
-
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for ElegibilityTracesTabularEGreedyAgent<T, COUNT> {
+impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
+    for ElegibilityTracesTabularEGreedyAgent<T, COUNT>
+{
     fn reset(&mut self) {
         self.epsilon = self.initial_epsilon;
         self.policy = FxHashMap::default();
     }
 
     fn get_action(&self, obs: &T) -> usize {
-        if self.should_explore() {
+        if self.epsilon != 0.0 && self.should_explore() {
             return self.rand_action_selecter.sample(&mut rand::thread_rng());
         } else {
             match self.policy.get(obs) {
@@ -92,18 +102,31 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for E
         reward: f64,
         terminated: bool,
         next_obs: &T,
-        next_action: usize
+        next_action: usize,
     ) {
-        let next_q_values: &[f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
+        let next_q_values: &[f64; COUNT] = self
+            .policy
+            .entry(next_obs.clone())
+            .or_insert(self.default.clone());
         let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
-        let curr_q_values: &[f64; COUNT] = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
-        let temporal_difference: f64 = reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
-        
-        let curr_trace: &mut [f64; COUNT] = self.trace.entry(curr_obs.clone()).or_insert(self.default.clone());
+        let curr_q_values: &[f64; COUNT] = self
+            .policy
+            .entry(curr_obs.clone())
+            .or_insert(self.default.clone());
+        let temporal_difference: f64 =
+            reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
+
+        let curr_trace: &mut [f64; COUNT] = self
+            .trace
+            .entry(curr_obs.clone())
+            .or_insert(self.default.clone());
         curr_trace[curr_action] += 1.0;
 
         for (obs, values) in &mut self.policy {
-            let trace_values: &mut [f64; COUNT] = self.trace.entry(obs.clone()).or_insert(self.default.clone());
+            let trace_values: &mut [f64; COUNT] = self
+                .trace
+                .entry(obs.clone())
+                .or_insert(self.default.clone());
             for i in 0..values.len() {
                 values[i] = values[i] + self.learning_rate * temporal_difference * trace_values[i];
                 trace_values[i] = self.discount_factor * self.lambda_factor * trace_values[i]
@@ -115,7 +138,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for E
         }
     }
 
-    fn get_training_error(&self) -> &Vec<f64>{
+    fn get_training_error(&self) -> &Vec<f64> {
         return &self.training_error;
     }
 }

@@ -2,20 +2,20 @@ use std::fmt::Debug;
 use std::io;
 
 mod blackjack;
-mod frozen_lake;
 mod cliff_walking;
+mod frozen_lake;
 mod taxi;
 
 pub use blackjack::BlackJackEnv;
-pub use frozen_lake::FrozenLakeEnv;
 pub use cliff_walking::CliffWalkingEnv;
+pub use frozen_lake::FrozenLakeEnv;
 pub use taxi::TaxiEnv;
 
 #[derive(Debug, Clone)]
 pub struct EnvNotReady;
 
 pub trait Env<T: Debug, const COUNT: usize> {
-    fn action_size(&self) -> usize{
+    fn action_size(&self) -> usize {
         return COUNT;
     }
     fn reset(&mut self) -> T;

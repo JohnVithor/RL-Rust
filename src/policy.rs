@@ -3,11 +3,11 @@ mod double_policy;
 
 pub use basic_policy::BasicPolicy;
 pub use double_policy::DoublePolicy;
-use std::hash::Hash;
 use fxhash::FxHashMap;
+use std::hash::Hash;
 
 use crate::env::ActionSpace;
-pub trait Policy<T: Hash+PartialEq+Eq+Clone> {
+pub trait Policy<T: Hash + PartialEq + Eq + Clone> {
     fn get_action_space(&self) -> &ActionSpace;
 
     fn get_ref(&mut self, curr_obs: T) -> &Vec<f64>;

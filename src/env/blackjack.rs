@@ -2,9 +2,9 @@ use std::hash::Hash;
 
 use crate::env::{Env, EnvNotReady};
 
+use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
-use rand::distributions::Uniform;
 
 #[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct BlackJackObservation {
@@ -19,7 +19,7 @@ impl BlackJackObservation {
             p_score,
             d_score,
             p_ace,
-        }
+        };
     }
     pub fn get_id(&self) -> usize {
         return fxhash::hash(self);
@@ -36,11 +36,11 @@ pub struct BlackJackEnv {
     player_has_ace: bool,
     dealer_has_ace: bool,
     rng: ThreadRng,
-    dist: Uniform<u8>
+    dist: Uniform<u8>,
 }
 
 impl BlackJackEnv {
-    pub const ACTIONS: [&str;2] = ["HIT", "STICK"];
+    pub const ACTIONS: [&str; 2] = ["HIT", "STICK"];
     pub fn new() -> Self {
         let mut env: BlackJackEnv = Self {
             ready: false,
@@ -51,12 +51,12 @@ impl BlackJackEnv {
             player_has_ace: false,
             dealer_has_ace: false,
             rng: rand::thread_rng(),
-            dist: Uniform::from(1..11)
+            dist: Uniform::from(1..11),
         };
         env.initialize_hands();
-        return env; 
+        return env;
     }
-    fn initialize_hands(&mut self){
+    fn initialize_hands(&mut self) {
         self.player[0] = self.get_new_card();
         self.player[1] = self.get_new_card();
         self.player_i = 2;
@@ -75,31 +75,35 @@ impl BlackJackEnv {
         return self.dist.sample(&mut self.rng);
     }
 
-    fn compute_player_score(&self) -> u8{
+    fn compute_player_score(&self) -> u8 {
         let score: u8 = self.player.iter().sum();
-        if self.player_has_ace && score+10 <= 21 {
-            return score+10
+        if self.player_has_ace && score + 10 <= 21 {
+            return score + 10;
         } else {
-            return score
+            return score;
         }
     }
 
-    fn compute_dealer_score(&self) -> u8{
+    fn compute_dealer_score(&self) -> u8 {
         let score: u8 = self.dealer.iter().sum();
-        if self.dealer_has_ace && score+10 <= 21 {
-            return score+10
+        if self.dealer_has_ace && score + 10 <= 21 {
+            return score + 10;
         } else {
-            return score
+            return score;
         }
     }
 }
 
 impl Env<usize, 2> for BlackJackEnv {
     fn reset(&mut self) -> usize {
-        self.player = [0;16];
-        self.dealer = [0;16];
+        self.player = [0; 16];
+        self.dealer = [0; 16];
         self.initialize_hands();
-        let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), self.get_dealer_card(), self.player_has_ace);
+        let obs: BlackJackObservation = BlackJackObservation::new(
+            self.compute_player_score(),
+            self.get_dealer_card(),
+            self.player_has_ace,
+        );
         self.ready = true;
         return obs.get_id();
     }
@@ -108,16 +112,21 @@ impl Env<usize, 2> for BlackJackEnv {
         if !self.ready {
             return Err(EnvNotReady);
         }
-        if action == 0{
+        if action == 0 {
             self.player[self.player_i] = self.get_new_card();
             self.player_i += 1;
             let p_score: u8 = self.compute_player_score();
             if p_score > 21 {
                 self.ready = false;
-                let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.compute_dealer_score(), self.player_has_ace);
+                let obs: BlackJackObservation = BlackJackObservation::new(
+                    p_score,
+                    self.compute_dealer_score(),
+                    self.player_has_ace,
+                );
                 return Ok((obs.get_id(), -1.0, true));
             }
-            let obs: BlackJackObservation = BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
+            let obs: BlackJackObservation =
+                BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
             return Ok((obs.get_id(), 0.0, false));
         } else {
             self.ready = false;
@@ -127,11 +136,21 @@ impl Env<usize, 2> for BlackJackEnv {
                 self.dealer_i += 1;
                 d_score = self.compute_dealer_score();
             }
-            let obs: BlackJackObservation = BlackJackObservation::new(self.compute_player_score(), d_score, self.player_has_ace);
-            if d_score > 21{
+            let obs: BlackJackObservation = BlackJackObservation::new(
+                self.compute_player_score(),
+                d_score,
+                self.player_has_ace,
+            );
+            if d_score > 21 {
                 return Ok((obs.get_id(), 1.0, true));
             }
-            let reward: f64 = if obs.p_score > d_score {1.0} else if d_score > obs.p_score {-1.0} else {0.0};
+            let reward: f64 = if obs.p_score > d_score {
+                1.0
+            } else if d_score > obs.p_score {
+                -1.0
+            } else {
+                0.0
+            };
             return Ok((obs.get_id(), reward, true));
         }
     }
@@ -139,14 +158,14 @@ impl Env<usize, 2> for BlackJackEnv {
     fn render(&self) -> String {
         let mut result;
         if self.ready {
-            result = format!("Dealer: {} \nPlayer: ",self.dealer[0]);
+            result = format!("Dealer: {} \nPlayer: ", self.dealer[0]);
         } else {
             let mut dealer_cards = "".to_string();
             for i in &self.dealer[0..self.dealer_i] {
                 dealer_cards.push_str(i.to_string().as_str());
                 dealer_cards.push_str(" ");
             }
-            result = format!("Dealer: {} \nPlayer: ",dealer_cards);
+            result = format!("Dealer: {} \nPlayer: ", dealer_cards);
         }
         let mut player_cards = "".to_string();
         for i in &self.player[0..self.player_i] {
@@ -156,9 +175,8 @@ impl Env<usize, 2> for BlackJackEnv {
         result.push_str(&player_cards);
         return result;
     }
-    
+
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action]
+        return Self::ACTIONS[action];
     }
-    
 }

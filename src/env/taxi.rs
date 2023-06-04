@@ -1,21 +1,24 @@
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 
 use rand::{distributions::Uniform, prelude::Distribution};
 
-use crate::{env::{Env, EnvNotReady}, utils::{categorical_sample, to_s}};
+use crate::{
+    env::{Env, EnvNotReady},
+    utils::{categorical_sample, to_s},
+};
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
     ready: bool,
-    initial_state_distrib: [f64;500],
+    initial_state_distrib: [f64; 500],
     obs: [[(usize, f64, bool); 6]; 500],
     curr_obs: usize,
     max_steps: u128,
-    curr_step: u128
+    curr_step: u128,
 }
 
 impl TaxiEnv {
-    const MAP: [&str;7] = [
+    const MAP: [&str; 7] = [
         "+---------+",
         "|R: | : :G|",
         "| : | : : |",
@@ -25,7 +28,7 @@ impl TaxiEnv {
         "+---------+",
     ];
     pub const LOCS: [(usize, usize); 4] = [(0, 0), (0, 4), (4, 0), (4, 3)];
-    pub const ACTIONS: [&str;6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
+    pub const ACTIONS: [&str; 6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
 
     fn encode(taxi_row: usize, taxi_col: usize, pass_loc: usize, dest_loc: usize) -> usize {
         let mut i: usize = taxi_row;
@@ -39,7 +42,7 @@ impl TaxiEnv {
     }
 
     pub fn decode(i: usize) -> (usize, usize, usize, usize) {
-        let mut out: (usize, usize, usize, usize) = (0,0,0,0);
+        let mut out: (usize, usize, usize, usize) = (0, 0, 0, 0);
         let mut state = i;
         out.3 = state % 4;
         state /= 4;
@@ -53,8 +56,8 @@ impl TaxiEnv {
 
     pub fn new(max_steps: u128) -> Self {
         let mut initial_state_distrib: [f64; 500] = [0.0; 500];
-        let mut obs: [[(usize, f64, bool); 6]; 500] = [[(0, 0.0, false);6]; 500];
-        let mut sum: f64 = 0.0; 
+        let mut obs: [[(usize, f64, bool); 6]; 500] = [[(0, 0.0, false); 6]; 500];
+        let mut sum: f64 = 0.0;
         for row in 0..5 {
             for col in 0..5 {
                 for pass_loc in 0..5 {
@@ -69,28 +72,39 @@ impl TaxiEnv {
                             let mut reward = -1.0; // default reward when there is no pickup/dropoff
                             let mut terminated = false;
                             let taxi_loc = (row, col);
-                            
+
                             if action == 0 {
                                 new_row = min(row + 1, 4)
                             } else if action == 1 {
-                                new_row = if row != 0 { max(row - 1, 0) } else {0};
+                                new_row = if row != 0 { max(row - 1, 0) } else { 0 };
                             }
-                            if action == 2 && Self::MAP[1 + row].get((2 * col + 2)..(2 * col + 2)+1).unwrap() == ":" {
+                            if action == 2
+                                && Self::MAP[1 + row]
+                                    .get((2 * col + 2)..(2 * col + 2) + 1)
+                                    .unwrap()
+                                    == ":"
+                            {
                                 new_col = min(col + 1, 4)
-                            } else if action == 3 && Self::MAP[1 + row].get((2 * col)..(2 * col)+1).unwrap() == ":" {
-                                new_col = if col != 0 { max(col - 1, 0) } else {0};
-                            } else if action == 4 {  // pickup
+                            } else if action == 3
+                                && Self::MAP[1 + row].get((2 * col)..(2 * col) + 1).unwrap() == ":"
+                            {
+                                new_col = if col != 0 { max(col - 1, 0) } else { 0 };
+                            } else if action == 4 {
+                                // pickup
                                 if pass_loc < 4 && taxi_loc == Self::LOCS[pass_loc] {
                                     new_pass_loc = 4;
-                                } else {  // passenger not at location
+                                } else {
+                                    // passenger not at location
                                     reward = -10.0;
                                 }
-                            } else if action == 5 {  // dropoff
+                            } else if action == 5 {
+                                // dropoff
                                 if (taxi_loc == Self::LOCS[dest_loc]) && pass_loc == 4 {
                                     new_pass_loc = dest_loc;
                                     terminated = true;
                                     reward = 20.0;
-                                } else {  // dropoff at wrong location
+                                } else {
+                                    // dropoff at wrong location
                                     reward = -10.0;
                                 }
                             }
@@ -103,7 +117,7 @@ impl TaxiEnv {
         }
 
         for i in 0..500 {
-            initial_state_distrib[i] = initial_state_distrib[i]/sum;
+            initial_state_distrib[i] = initial_state_distrib[i] / sum;
         }
 
         let env: TaxiEnv = Self {
@@ -112,9 +126,9 @@ impl TaxiEnv {
             obs,
             curr_obs: 0,
             max_steps,
-            curr_step: 0
+            curr_step: 0,
         };
-        return env; 
+        return env;
     }
 }
 
@@ -134,7 +148,7 @@ impl Env<usize, 6> for TaxiEnv {
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, 0.0, true))
+            return Ok((0, 0.0, true));
         }
         self.curr_step += 1;
         let obs: (usize, f64, bool) = self.obs[self.curr_obs][action];
@@ -148,18 +162,17 @@ impl Env<usize, 6> for TaxiEnv {
     fn render(&self) -> String {
         let mut new_map = Self::MAP.clone().join(&"\n").to_string();
         let (row, col, _, _) = Self::decode(self.curr_obs);
-        let mut pos = to_s(11, row+1, 2 * col + 1);
+        let mut pos = to_s(11, row + 1, 2 * col + 1);
         for (i, _) in new_map.match_indices('\n') {
             if pos >= i {
                 pos += 1;
             }
         }
-        new_map.replace_range(pos..pos+1,"T");
+        new_map.replace_range(pos..pos + 1, "T");
         return new_map;
     }
 
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action]
+        return Self::ACTIONS[action];
     }
-    
 }
