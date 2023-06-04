@@ -1,4 +1,4 @@
-use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{inc, to_s}};
+use crate::{env::{Env, EnvNotReady}, utils::{inc, to_s}};
 
 #[derive(Debug, Clone)]
 pub struct CliffWalkingEnv {
@@ -60,7 +60,7 @@ impl CliffWalkingEnv {
     }
 }
 
-impl Env<usize> for CliffWalkingEnv {
+impl Env<usize, 4> for CliffWalkingEnv {
     fn reset(&mut self) -> usize {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
@@ -83,10 +83,6 @@ impl Env<usize> for CliffWalkingEnv {
             self.ready = false;
         }
         return Ok(obs);
-    }
-
-    fn action_space(&self) -> ActionSpace {
-        return ActionSpace::new(4);
     }
 
     fn render(&self) -> String {

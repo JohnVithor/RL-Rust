@@ -1,5 +1,3 @@
-use std::cmp::{max, min};
-
 pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
     let mut max: &T = &vec[0];
     let mut result: usize = 0;
@@ -12,6 +10,16 @@ pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
         i+=1;
     }
     return result;
+}
+
+pub fn max<T: PartialOrd+Clone>(vec: &[T]) -> T {
+    let mut max: &T = &vec[0];
+    for v in vec {
+        if v > &max {
+            max = v;
+        }
+    }
+    return max.clone();
 }
 
 pub fn categorical_sample(probs: &Vec<f64>, random: f64) -> usize {
@@ -31,17 +39,17 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
     let new_col: usize;
     let new_row: usize;
     if a == 0 { // left
-        new_col = if col != 0 { max(col - 1, 0) } else {0};
+        new_col = if col != 0 { (col - 1).max(0) } else {0};
         new_row = row;
     } else if a == 1 { // down
         new_col = col;
-        new_row = min(row + 1, nrow - 1);
+        new_row = (row + 1).min(nrow - 1);
     } else if a == 2 { // right
-        new_col = min(col + 1, ncol - 1);
+        new_col = (col + 1).min(ncol - 1);
         new_row = row;
     } else if a == 3 { // up
         new_col = col;
-        new_row = if row != 0 { max(row - 1, 0) } else {0};
+        new_row = if row != 0 { (row - 1).max(0) } else {0};
     } else {
         return (row, col)
     }

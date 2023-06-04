@@ -2,10 +2,10 @@ use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
-use reinforcement_learning::agent::train;
-use reinforcement_learning::env::{Env, BlackJackEnv, FrozenLakeEnv, CliffWalkingEnv, TaxiEnv};
+use reinforcement_learning::agent::Agent;
+use reinforcement_learning::env::BlackJackEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
-use reinforcement_learning::{agent::OneStepTabularEGreedySarsa};
+use reinforcement_learning::{agent::{OneStepTabularEGreedySarsa, OneStepTabularEGreedyQLearning}};
 
 extern crate structopt;
 
@@ -94,7 +94,7 @@ fn main() {
 
     let legends: Vec<&str> = [
         "One-Step Sarsa",
-        // "One-Step Qlearning",
+        "One-Step Qlearning",
         // "One-Step Expected Sarsa",
         // "Sarsa Lambda",
         // "Qlearning Lambda",
@@ -102,13 +102,13 @@ fn main() {
 
     let colors: Vec<&plotters::style::RGBColor> = [
         &BLUE,
-        // &GREEN,
+        &GREEN,
         // &CYAN,
         // &RED,
         // &YELLOW
     ].to_vec();
 
-    let mut agent: OneStepTabularEGreedySarsa<usize, 2> = OneStepTabularEGreedySarsa::new(
+    let mut sarsa: OneStepTabularEGreedySarsa<usize, 2> = OneStepTabularEGreedySarsa::new(
         0.0,
         learning_rate,
         discount_factor,
@@ -117,22 +117,38 @@ fn main() {
         final_epsilon
     );
 
+    let mut qlearning: OneStepTabularEGreedyQLearning<usize, 2> = OneStepTabularEGreedyQLearning::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        initial_epsilon,
+        epsilon_decay,
+        final_epsilon
+    );
 
-    let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = train(&mut agent, &mut env, n_episodes);
-    let elapsed: std::time::Duration = now.elapsed();
-    println!("{} {:.2?}", "sarsa", elapsed);
+    let mut agents: Vec<&mut dyn Agent<usize, 2>> = vec![];
+    agents.push(&mut sarsa);
+    agents.push(&mut qlearning);
 
-    let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
-    errors.push(ma_error);
-    let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
-    rewards.push(ma_reward);
-    let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
-    episodes_length.push(ma_episode);
+    for (i,agent) in agents.into_iter().enumerate() {
+        let now: Instant = Instant::now();
+        let (reward_history, episode_length)  = agent.train(&mut env, n_episodes);
+        let elapsed: std::time::Duration = now.elapsed();
+        println!("{} {:.2?}", legends[i], elapsed);
+    
+        let ma_error = moving_average(agent.get_training_error().len() as usize / moving_average_window, &agent.get_training_error());
+        errors.push(ma_error);
+        let ma_reward = moving_average(n_episodes as usize / moving_average_window, &reward_history);
+        rewards.push(ma_reward);
+        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
+        episodes_length.push(ma_episode);
+    
+        if cli.show_example {
+            agent.example(&mut env);
+        }
+    }
 
-    // if cli.show_example {
-    //     agent.example(env);
-    // }
+    
     
     plot_moving_average(
         &rewards,

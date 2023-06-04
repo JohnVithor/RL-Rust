@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use crate::env::{Env, ActionSpace, EnvNotReady};
+use crate::env::{Env, EnvNotReady};
 
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
@@ -94,7 +94,7 @@ impl BlackJackEnv {
     }
 }
 
-impl Env<usize> for BlackJackEnv {
+impl Env<usize, 2> for BlackJackEnv {
     fn reset(&mut self) -> usize {
         self.player = [0;16];
         self.dealer = [0;16];
@@ -134,10 +134,6 @@ impl Env<usize> for BlackJackEnv {
             let reward: f64 = if obs.p_score > d_score {1.0} else if d_score > obs.p_score {-1.0} else {0.0};
             return Ok((obs.get_id(), reward, true));
         }
-    }
-
-    fn action_space(&self) -> ActionSpace {
-        return ActionSpace::new(2);
     }
 
     fn render(&self) -> String {

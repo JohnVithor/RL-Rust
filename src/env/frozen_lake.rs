@@ -1,4 +1,4 @@
-use crate::env::{Env, ActionSpace, EnvNotReady};
+use crate::env::{Env, EnvNotReady};
 use crate::utils::{categorical_sample, inc, to_s};
 
 use ndarray::arr1;
@@ -105,7 +105,7 @@ impl FrozenLakeEnv {
     }
 }
 
-impl Env<usize> for FrozenLakeEnv {
+impl Env<usize, 4> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -134,10 +134,6 @@ impl Env<usize> for FrozenLakeEnv {
             self.ready = false;
         }
         return Ok((s, r, t));
-    }
-
-    fn action_space(&self) -> ActionSpace {
-        return ActionSpace::new(4);
     }
 
     fn render(&self) -> String {

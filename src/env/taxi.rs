@@ -3,7 +3,7 @@ use std::cmp::{min, max};
 use ndarray::arr1;
 use rand::{distributions::Uniform, prelude::Distribution};
 
-use crate::{env::{Env, ActionSpace, EnvNotReady}, utils::{categorical_sample, to_s}};
+use crate::{env::{Env, EnvNotReady}, utils::{categorical_sample, to_s}};
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
@@ -119,7 +119,7 @@ impl TaxiEnv {
     }
 }
 
-impl Env<usize> for TaxiEnv {
+impl Env<usize, 6> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -144,10 +144,6 @@ impl Env<usize> for TaxiEnv {
             self.ready = false;
         }
         return Ok(obs);
-    }
-
-    fn action_space(&self) -> ActionSpace {
-        return ActionSpace::new(6);
     }
 
     fn render(&self) -> String {
