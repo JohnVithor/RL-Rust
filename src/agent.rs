@@ -1,15 +1,57 @@
-mod sarsa;
-mod qlearning;
-mod expected_sarsa;
+mod one_step_tabular_egreedy_agent;
+mod elegibility_traces_tabular_egreedy_agent;
+
+pub use one_step_tabular_egreedy_agent::OneStepTabularEGreedyAgent;
+pub use elegibility_traces_tabular_egreedy_agent::ElegibilityTracesTabularEGreedyAgent;
 
 use std::hash::Hash;
 use std::fmt::Debug;
 
-pub use sarsa::OneStepTabularEGreedySarsa;
-pub use qlearning::OneStepTabularEGreedyQLearning;
-pub use expected_sarsa::OneStepTabularEGreedyExpectedSarsa;
-
 use crate::env::Env;
+use crate::utils::max;
+
+pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, f64) -> f64;
+
+pub fn sarsa<const COUNT: usize>(
+    next_q_values: &[f64; COUNT],
+    next_action: usize,
+    _epsilon: f64
+) -> f64 {
+    return next_q_values[next_action];
+}
+
+pub fn qlearning<const COUNT: usize>(
+    next_q_values: &[f64; COUNT],
+    _next_action: usize,
+    _epsilon: f64
+) -> f64 {
+    return max(next_q_values);
+}
+
+pub fn expected_sarsa<const COUNT: usize>(
+    next_q_values: &[f64; COUNT],
+    _next_action: usize,
+    epsilon: f64
+) -> f64 {
+    let policy_probs: [f64; COUNT] = [epsilon/COUNT as f64; COUNT];
+    let best_action_value: f64 = max(next_q_values);
+    
+    let mut n_max_action: i32 = 0;
+    for i in 0..COUNT {
+        if next_q_values[i] == best_action_value {
+            n_max_action += 1;
+        }
+    }
+    let mut future_q_value: f64 = 0.0;
+    for i in 0..COUNT {
+        if next_q_values[i] == best_action_value {
+            future_q_value += (policy_probs[i] + (1.0-epsilon) / n_max_action as f64) * next_q_values[i]
+        } else {
+            future_q_value += policy_probs[i] * next_q_values[i]
+        }
+    }
+    return future_q_value;
+}
 
 pub trait Agent<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
     fn get_action(&self, obs: &T) -> usize;

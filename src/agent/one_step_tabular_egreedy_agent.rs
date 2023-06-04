@@ -1,11 +1,11 @@
 use fxhash::FxHashMap;
 use rand::{distributions::Uniform, prelude::Distribution};
 use std::hash::Hash;
-use crate::utils::{max, argmax};
+use crate::utils::argmax;
 use std::fmt::Debug;
-use super::Agent;
+use super::{Agent, GetNextQValue};
 
-pub struct OneStepTabularEGreedyExpectedSarsa<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
+pub struct OneStepTabularEGreedyAgent<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> {
     // policy
     default: [f64; COUNT],
     policy: FxHashMap<T, [f64; COUNT]>,
@@ -20,9 +20,10 @@ pub struct OneStepTabularEGreedyExpectedSarsa<T: Hash+PartialEq+Eq+Clone+Debug, 
     epsilon_decay: f64,
     final_epsilon: f64,
     training_error: Vec<f64>,
+    get_next_q_value: GetNextQValue<COUNT>
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedyExpectedSarsa<T, COUNT> {
+impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedyAgent<T, COUNT> {
     pub fn new(
         // policy
         default_value: f64,
@@ -33,6 +34,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedy
         initial_epsilon: f64,
         epsilon_decay: f64,
         final_epsilon: f64,
+        get_next_q_value: GetNextQValue<COUNT>,
     ) -> Self {
         return Self {
             default: [default_value; COUNT],
@@ -45,7 +47,8 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedy
             epsilon: initial_epsilon,
             epsilon_decay,
             final_epsilon,
-            training_error: vec![]
+            training_error: vec![],
+            get_next_q_value
         }
     }   
 
@@ -60,7 +63,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> OneStepTabularEGreedy
 
 }
 
-impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for OneStepTabularEGreedyExpectedSarsa<T, COUNT> {
+impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for OneStepTabularEGreedyAgent<T, COUNT> {
     fn reset(&mut self) {
         self.epsilon = self.initial_epsilon;
         self.policy = FxHashMap::default();
@@ -84,28 +87,10 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for O
         reward: f64,
         terminated: bool,
         next_obs: &T,
-        _next_action: usize
+        next_action: usize
     ) {
         let next_q_values: &[f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
-        
-        let policy_probs: [f64; COUNT] = [self.epsilon/COUNT as f64; COUNT];
-        let best_action_value: f64 = max(next_q_values);
-        
-        let mut n_max_action: i32 = 0;
-        for i in 0..COUNT {
-            if next_q_values[i] == best_action_value {
-                n_max_action += 1;
-            }
-        }
-        let mut future_q_value: f64 = 0.0;
-        for i in 0..COUNT {
-            if next_q_values[i] == best_action_value {
-                future_q_value += (policy_probs[i] + (1.0-self.epsilon) / n_max_action as f64) * next_q_values[i]
-            } else {
-                future_q_value += policy_probs[i] * next_q_values[i]
-            }
-        }
-        
+        let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
         let curr_q_values: &mut [f64; COUNT] = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
         curr_q_values[curr_action] = curr_q_values[curr_action] + self.learning_rate * temporal_difference;

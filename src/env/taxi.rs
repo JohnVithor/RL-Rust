@@ -27,7 +27,7 @@ impl TaxiEnv {
     pub const LOCS: [(usize, usize); 4] = [(0, 0), (0, 4), (4, 0), (4, 3)];
     pub const ACTIONS: [&str;6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
 
-    fn encode(taxi_row: usize, taxi_col: usize, pass_loc: usize, dest_loc: usize) -> usize{
+    fn encode(taxi_row: usize, taxi_col: usize, pass_loc: usize, dest_loc: usize) -> usize {
         let mut i: usize = taxi_row;
         i *= 5;
         i += taxi_col;

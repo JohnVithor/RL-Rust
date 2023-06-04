@@ -1,12 +1,11 @@
-use std::f32::consts::E;
 use std::time::Instant;
 
 use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
-use reinforcement_learning::agent::Agent;
+use reinforcement_learning::agent::{sarsa, expected_sarsa, qlearning};
+use reinforcement_learning::agent::{Agent, OneStepTabularEGreedyAgent, ElegibilityTracesTabularEGreedyAgent};
 use reinforcement_learning::env::BlackJackEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
-use reinforcement_learning::agent::{OneStepTabularEGreedySarsa, OneStepTabularEGreedyQLearning, OneStepTabularEGreedyExpectedSarsa};
 
 extern crate structopt;
 
@@ -25,21 +24,9 @@ struct Cli {
     #[structopt(long = "n_episodes", default_value = "100000")]
     n_episodes: u128,
 
-    /// Maximum number of steps per episode
-    #[structopt(long = "max_steps", default_value = "100")]
-    max_steps: u128,
-
     /// Learning rate of the RL agent
     #[structopt(long = "learning_rate", default_value = "0.05")]
     learning_rate: f64,
-
-    /// Action selection strategy: 0 - uniform epsilon greed, 1 - upper confidence bound
-    #[structopt(long = "action_selection", default_value = "0")]
-    action_selection: u8,
-
-    /// Policy type: 0 - basic policy, 1 - double policy
-    #[structopt(long = "policy_type", default_value = "0")]
-    policy_type: u8,
 
     /// Initial value for the exploration ratio
     #[structopt(long = "initial_epsilon", default_value = "1.0")]
@@ -75,7 +62,6 @@ fn main() {
     let cli: Cli = Cli::from_args();
 
     let n_episodes: u128 = cli.n_episodes;
-    let max_steps: u128 = cli.max_steps;
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
@@ -93,53 +79,96 @@ fn main() {
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors : Vec<Vec<f64>> = vec![];
 
+    const SIZE: usize = 2;
+
     let legends: Vec<&str> = [
         "One-Step Sarsa",
         "One-Step Qlearning",
         "One-Step Expected Sarsa",
-        // "Sarsa Lambda",
-        // "Qlearning Lambda",
+        "Trace Sarsa",
+        "Trace Qlearning",
+        "Trace Expected Sarsa",
     ].to_vec();
 
     let colors: Vec<&plotters::style::RGBColor> = [
         &BLUE,
         &GREEN,
         &CYAN,
-        // &RED,
-        // &YELLOW
+        &RED,
+        &YELLOW,
+        &MAGENTA
     ].to_vec();
 
-    let mut sarsa: OneStepTabularEGreedySarsa<usize, 2> = OneStepTabularEGreedySarsa::new(
+    let mut step_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
         0.0,
         learning_rate,
         discount_factor,
         initial_epsilon,
         epsilon_decay,
-        final_epsilon
+        final_epsilon,
+        sarsa
     );
 
-    let mut qlearning: OneStepTabularEGreedyQLearning<usize, 2> = OneStepTabularEGreedyQLearning::new(
+    let mut step_qlearning: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
         0.0,
         learning_rate,
         discount_factor,
         initial_epsilon,
         epsilon_decay,
-        final_epsilon
+        final_epsilon,
+        qlearning
     );
 
-    let mut expected_sarsa: OneStepTabularEGreedyExpectedSarsa<usize, 2> = OneStepTabularEGreedyExpectedSarsa::new(
+    let mut step_expected_sarsa: OneStepTabularEGreedyAgent<usize, SIZE> = OneStepTabularEGreedyAgent::new(
         0.0,
         learning_rate,
         discount_factor,
         initial_epsilon,
         epsilon_decay,
-        final_epsilon
+        final_epsilon,
+        expected_sarsa
     );
 
-    let mut agents: Vec<&mut dyn Agent<usize, 2>> = vec![];
-    agents.push(&mut sarsa);
-    agents.push(&mut qlearning);
-    agents.push(&mut expected_sarsa);
+    let mut trace_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        initial_epsilon,
+        epsilon_decay,
+        final_epsilon,
+        lambda_factor,
+        sarsa
+    );
+
+    let mut trace_qlearning: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        initial_epsilon,
+        epsilon_decay,
+        final_epsilon,
+        lambda_factor,
+        qlearning,
+    );
+
+    let mut trace_expected_sarsa: ElegibilityTracesTabularEGreedyAgent<usize, SIZE> = ElegibilityTracesTabularEGreedyAgent::new(
+        0.0,
+        learning_rate,
+        discount_factor,
+        initial_epsilon,
+        epsilon_decay,
+        final_epsilon,
+        lambda_factor,
+        expected_sarsa
+    );
+
+    let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
+    agents.push(&mut step_sarsa);
+    agents.push(&mut step_qlearning);
+    agents.push(&mut step_expected_sarsa);
+    agents.push(&mut trace_sarsa);
+    agents.push(&mut trace_qlearning);
+    agents.push(&mut trace_expected_sarsa);
 
     for (i,agent) in agents.into_iter().enumerate() {
         let now: Instant = Instant::now();

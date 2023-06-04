@@ -4,7 +4,7 @@ use plotters::style::{BLUE, GREEN, RED, YELLOW, CYAN, MAGENTA};
 
 use reinforcement_learning::agent::{sarsa, expected_sarsa, qlearning};
 use reinforcement_learning::agent::{Agent, OneStepTabularEGreedyAgent, ElegibilityTracesTabularEGreedyAgent};
-use reinforcement_learning::env::FrozenLakeEnv;
+use reinforcement_learning::env::TaxiEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -13,7 +13,7 @@ use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "RLRust - FrozenLake")]
+#[structopt(name = "RLRust - Taxi")]
 struct Cli {
 
     /// Should the env be stochastic
@@ -86,17 +86,13 @@ fn main() {
     
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = FrozenLakeEnv::new(
-        if cli.map == "4x4" {&FrozenLakeEnv::MAP_4X4} else {&FrozenLakeEnv::MAP_8X8},
-        cli.stochastic_env,
-        max_steps
-    );
+    let mut env = TaxiEnv::new(max_steps);
     
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors : Vec<Vec<f64>> = vec![];
 
-    const SIZE: usize = 4;
+    const SIZE: usize = 6;
 
     let legends: Vec<&str> = [
         "One-Step Sarsa",
