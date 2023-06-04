@@ -86,9 +86,9 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for O
         next_obs: &T,
         _next_action: usize
     ) {
-        let next_q_values = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
+        let next_q_values: &[f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
         let future_q_value: f64 = max(next_q_values);
-        let curr_q_values = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
+        let curr_q_values: &mut [f64; COUNT] = self.policy.entry(curr_obs.clone()).or_insert(self.default.clone());
         let temporal_difference: f64 = reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
         curr_q_values[curr_action] = curr_q_values[curr_action] + self.learning_rate * temporal_difference;
         self.training_error.push(temporal_difference);

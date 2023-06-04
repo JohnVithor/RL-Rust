@@ -1,6 +1,5 @@
 use std::cmp::{min, max};
 
-use ndarray::arr1;
 use rand::{distributions::Uniform, prelude::Distribution};
 
 use crate::{env::{Env, EnvNotReady}, utils::{categorical_sample, to_s}};

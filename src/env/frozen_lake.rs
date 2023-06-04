@@ -1,7 +1,6 @@
 use crate::env::{Env, EnvNotReady};
 use crate::utils::{categorical_sample, inc, to_s};
 
-use ndarray::arr1;
 use rand::prelude::Distribution;
 use rand::distributions::Uniform;
 

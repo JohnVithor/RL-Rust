@@ -86,7 +86,7 @@ impl<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize> Agent<T, COUNT> for O
         next_obs: &T,
         _next_action: usize
     ) {
-        let next_q_values: &mut [f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
+        let next_q_values: &[f64; COUNT] = self.policy.entry(next_obs.clone()).or_insert(self.default.clone());
         
         let policy_probs: [f64; COUNT] = [self.epsilon/COUNT as f64; COUNT];
         let best_action_value: f64 = max(next_q_values);
