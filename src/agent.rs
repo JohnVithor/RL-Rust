@@ -3,13 +3,14 @@ use std::hash::Hash;
 
 use crate::env::Env;
 use crate::utils::max;
+use kdam::tqdm;
 
-pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, f64) -> f64;
+pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, &[f64; COUNT]) -> f64;
 
 pub fn sarsa<const COUNT: usize>(
     next_q_values: &[f64; COUNT],
     next_action: usize,
-    _epsilon: f64,
+    _policy_probs: &[f64; COUNT],
 ) -> f64 {
     return next_q_values[next_action];
 }
@@ -17,7 +18,7 @@ pub fn sarsa<const COUNT: usize>(
 pub fn qlearning<const COUNT: usize>(
     next_q_values: &[f64; COUNT],
     _next_action: usize,
-    _epsilon: f64,
+    _policy_probs: &[f64; COUNT],
 ) -> f64 {
     return max(next_q_values);
 }
@@ -25,25 +26,11 @@ pub fn qlearning<const COUNT: usize>(
 pub fn expected_sarsa<const COUNT: usize>(
     next_q_values: &[f64; COUNT],
     _next_action: usize,
-    epsilon: f64,
+    policy_probs: &[f64; COUNT],
 ) -> f64 {
-    let policy_probs: [f64; COUNT] = [epsilon / COUNT as f64; COUNT];
-    let best_action_value: f64 = max(next_q_values);
-
-    let mut n_max_action: i32 = 0;
-    for i in 0..COUNT {
-        if next_q_values[i] == best_action_value {
-            n_max_action += 1;
-        }
-    }
     let mut future_q_value: f64 = 0.0;
     for i in 0..COUNT {
-        if next_q_values[i] == best_action_value {
-            future_q_value +=
-                (policy_probs[i] + (1.0 - epsilon) / n_max_action as f64) * next_q_values[i]
-        } else {
-            future_q_value += policy_probs[i] * next_q_values[i]
-        }
+        future_q_value += policy_probs[i] * next_q_values[i]
     }
     return future_q_value;
 }
@@ -68,7 +55,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     fn train(&mut self, env: &mut dyn Env<T, COUNT>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
-        for _episode in 0..n_episodes {
+        for _episode in tqdm!(0..n_episodes) {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
             let mut curr_obs: T = env.reset();
@@ -121,12 +108,14 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     }
 }
 
-mod elegibility_traces_tabular_egreedy_agent;
-mod one_step_tabular_egreedy_agent;
-mod one_step_tabular_egreedy_double_agent;
-mod one_step_tabular_ucb_agent;
+// mod elegibility_traces_tabular_egreedy_agent;
+// mod one_step_tabular_egreedy_agent;
+// mod one_step_tabular_egreedy_double_agent;
+// mod one_step_tabular_ucb_agent;
+mod one_step_tabular_agent;
 
-pub use elegibility_traces_tabular_egreedy_agent::ElegibilityTracesTabularEGreedyAgent;
-pub use one_step_tabular_egreedy_agent::OneStepTabularEGreedyAgent;
-pub use one_step_tabular_egreedy_double_agent::OneStepTabularEGreedyDoubleAgent;
-pub use one_step_tabular_ucb_agent::OneStepTabularUCBAgent;
+pub use one_step_tabular_agent::OneStepTabularAgent;
+// pub use elegibility_traces_tabular_egreedy_agent::ElegibilityTracesTabularEGreedyAgent;
+// pub use one_step_tabular_egreedy_agent::OneStepTabularEGreedyAgent;
+// pub use one_step_tabular_egreedy_double_agent::OneStepTabularEGreedyDoubleAgent;
+// pub use one_step_tabular_ucb_agent::OneStepTabularUCBAgent;
