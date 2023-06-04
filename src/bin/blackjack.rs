@@ -13,23 +13,12 @@ use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "RLRust")]
+#[structopt(name = "RLRust - BlackJack")]
 struct Cli {
 
-    /// Name of the environment to be used: 0: blackjack, 1: frozenlake, 2: cliffwalk, 3: taxi
-    env: u8,
-
-    /// Should the env be stochastic
-    #[structopt(long = "stochastic_env")]
-    stochastic_env: bool,
-
-    /// Should the env be stochastic
+    /// Show example of episode
     #[structopt(long = "show_example")]
     show_example: bool,
-
-    /// Change the env's map, if possible
-    #[structopt(long = "map", default_value = "4x4")]
-    map: String,
 
     /// Number of episodes for the training
     #[structopt(long = "n_episodes", default_value = "100000")]
@@ -86,7 +75,6 @@ fn main() {
 
     let n_episodes: u128 = cli.n_episodes;
     let max_steps: u128 = cli.max_steps;
-    let map: String = cli.map;
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
@@ -98,31 +86,8 @@ fn main() {
     
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut blackjack = BlackJackEnv::new();
-    let mut frozen_lake;
-    if cli.env == 1 && map == "8X8" {
-        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_8X8, cli.stochastic_env, max_steps);
-    } else if cli.env == 1 && map == "4x4" {
-        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, cli.stochastic_env, max_steps);
-    } else if cli.env != 1 {
-        frozen_lake = FrozenLakeEnv::new(&FrozenLakeEnv::MAP_4X4, cli.stochastic_env, max_steps);
-    } else {
-        panic!("Map option of {:?} is not supported!", map);
-    }
-    let mut cliffwalking = CliffWalkingEnv::new(max_steps);
-    let mut taxi = TaxiEnv::new(max_steps);
-
+    let mut env = BlackJackEnv::new();
     
-    let env: &mut dyn Env<usize> = match cli.env {
-        0 =>  {println!("Selected env blackjack"); &mut blackjack},
-        1 =>  {println!("Selected env frozen_lake{}", &map); &mut frozen_lake},
-        2 =>  {println!("Selected env cliffwalking"); &mut cliffwalking},
-        3 =>  {println!("Selected env taxi"); &mut taxi},
-        _ =>  panic!("Not a valid env selected")
-    };
-    // println!("Play!");
-    // env.play();
-
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors : Vec<Vec<f64>> = vec![];
@@ -143,7 +108,7 @@ fn main() {
         // &YELLOW
     ].to_vec();
 
-    let mut agent: OneStepTabularEGreedySarsa<usize, 4> = OneStepTabularEGreedySarsa::new(
+    let mut agent: OneStepTabularEGreedySarsa<usize, 2> = OneStepTabularEGreedySarsa::new(
         0.0,
         learning_rate,
         discount_factor,
@@ -154,7 +119,7 @@ fn main() {
 
 
     let now: Instant = Instant::now();
-    let (reward_history, episode_length)  = train(&mut agent, env, n_episodes);
+    let (reward_history, episode_length)  = train(&mut agent, &mut env, n_episodes);
     let elapsed: std::time::Duration = now.elapsed();
     println!("{} {:.2?}", "sarsa", elapsed);
 
@@ -164,6 +129,7 @@ fn main() {
     rewards.push(ma_reward);
     let ma_episode = moving_average(n_episodes as usize / moving_average_window, &episode_length.iter().map(|x| *x as f64).collect());
     episodes_length.push(ma_episode);
+
     // if cli.show_example {
     //     agent.example(env);
     // }

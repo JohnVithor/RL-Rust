@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-pub fn argmax<T: PartialOrd>(vec: &Vec<T>) -> usize {
+pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
     let mut max: &T = &vec[0];
     let mut result: usize = 0;
     let mut i: usize = 0;

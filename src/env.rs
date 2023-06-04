@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::io;
 
 mod action_space;
 mod blackjack;
@@ -20,7 +21,6 @@ pub trait Env<T: Debug> {
     fn step(&mut self, action: usize) -> Result<(T, f64, bool), EnvNotReady>;
     fn action_space(&self) -> ActionSpace;
     fn play(&mut self) {
-        use std::io;
         let mut curr_obs: T = self.reset();
         let mut final_reward: f64 = 0.0;
         loop {

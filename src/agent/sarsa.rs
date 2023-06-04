@@ -3,16 +3,16 @@ use rand::{distributions::Uniform, prelude::Distribution};
 use std::hash::Hash;
 use crate::{env::ActionSpace, utils::argmax};
 
-pub struct OneStepTabularEGreedySarsa<T: Hash+PartialEq+Eq+Clone> {
+pub struct OneStepTabularEGreedySarsa<T, const COUNT: usize> {
     // policy
-    default: Vec<f64>,
-    policy: FxHashMap<T, Vec<f64>>,
-    action_space: ActionSpace,
+    default: [f64; COUNT],
+    policy: FxHashMap<T, [f64; COUNT]>,
     // policy update
     learning_rate: f64,
     discount_factor: f64,
     // action selection
-    dist: Uniform<f64>,
+    exploration_decider: Uniform<f64>,
+    rand_action_selecter: Uniform<usize>,
     initial_epsilon: f64,
     epsilon: f64,
     epsilon_decay: f64,
@@ -20,11 +20,10 @@ pub struct OneStepTabularEGreedySarsa<T: Hash+PartialEq+Eq+Clone> {
     training_error: Vec<f64>,
 }
 
-impl<T: Hash+PartialEq+Eq+Clone> OneStepTabularEGreedySarsa<T> {
+impl<T: Hash+PartialEq+Eq+Clone, const COUNT: usize> OneStepTabularEGreedySarsa<T, COUNT> {
     pub fn new(
         // policy
         default_value: f64,
-        action_space: ActionSpace,
         // policy update
         learning_rate: f64,
         discount_factor: f64,
@@ -34,12 +33,12 @@ impl<T: Hash+PartialEq+Eq+Clone> OneStepTabularEGreedySarsa<T> {
         final_epsilon: f64,
     ) -> Self {
         return Self {
-            default: vec![default_value; action_space.size],
+            default: [default_value; COUNT],
             policy: FxHashMap::default(),
-            action_space,
             learning_rate,
             discount_factor,
-            dist: Uniform::from(0.0..1.0),
+            exploration_decider: Uniform::from(0.0..1.0),
+            rand_action_selecter: Uniform::from(0..COUNT),
             initial_epsilon,
             epsilon: initial_epsilon,
             epsilon_decay,
@@ -54,16 +53,21 @@ impl<T: Hash+PartialEq+Eq+Clone> OneStepTabularEGreedySarsa<T> {
     }
 
     fn should_explore(&self) -> bool {
-        return self.dist.sample(&mut rand::thread_rng()) < self.epsilon;
+        return self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
+    }
+
+    pub fn reset(&mut self) {
+        self.epsilon = self.initial_epsilon;
+        self.policy = FxHashMap::default();
     }
 
     pub fn get_action(&self, obs: &T) -> usize {
         if self.should_explore() {
-            return self.action_space.sample();
+            return self.rand_action_selecter.sample(&mut rand::thread_rng());
         } else {
             match self.policy.get(obs) {
                 Some(value) => argmax(value),
-                None => self.action_space.sample(),
+                None => self.rand_action_selecter.sample(&mut rand::thread_rng()),
             }
         }
     }

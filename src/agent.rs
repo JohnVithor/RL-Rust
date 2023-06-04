@@ -8,7 +8,7 @@ pub use sarsa::OneStepTabularEGreedySarsa;
 use crate::env::Env;
 
 
-pub fn train<T: Hash+PartialEq+Eq+Clone+Debug>(agent: &mut OneStepTabularEGreedySarsa<T>, env: &mut dyn Env<T>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
+pub fn train<T: Hash+PartialEq+Eq+Clone+Debug, const COUNT: usize>(agent: &mut OneStepTabularEGreedySarsa<T, COUNT>, env: &mut dyn Env<T>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
     let mut reward_history: Vec<f64> = vec![];
     let mut episode_length: Vec<u128> = vec![];
     for _episode in 0..n_episodes {
