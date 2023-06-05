@@ -175,6 +175,7 @@ fn main() {
                     agent.example(&mut env);
                 }
                 i += 1;
+                agent.reset();
             }
         }
     }

@@ -173,6 +173,7 @@ fn main() {
                 }
                 i += 1;
             }
+            agent.reset();
         }
     }
 

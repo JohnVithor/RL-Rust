@@ -102,9 +102,9 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             .or_insert(self.default.clone());
         curr_trace[curr_action] += 1.0;
 
-        for (obs, values) in &mut self.policy {
-            let trace_values: &mut [f64; COUNT] = self
-                .trace
+        for (obs, trace_values) in &mut self.trace {
+            let values: &mut [f64; COUNT] = self
+                .policy
                 .entry(obs.clone())
                 .or_insert(self.default.clone());
             for i in 0..values.len() {
@@ -114,6 +114,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         }
         self.training_error.push(temporal_difference);
         if terminated {
+            self.trace = FxHashMap::default();
             self.action_selection.update();
         }
     }
