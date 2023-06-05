@@ -5,9 +5,11 @@ use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 use reinforcement_learning::action_selection::{
     EnumActionSelection, UniformEpsilonGreed, UpperConfidenceBound,
 };
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
-use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent, OneStepTabularAgent};
-use reinforcement_learning::env::BlackJackEnv;
+use reinforcement_learning::agent::Agent;
+use reinforcement_learning::agent::{
+    expected_sarsa, qlearning, sarsa, ElegibilityTracesTabularAgent, OneStepTabularAgent,
+};
+use reinforcement_learning::env::TaxiEnv;
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -16,7 +18,7 @@ use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "RLRust - BlackJack")]
+#[structopt(name = "RLRust - Taxi")]
 struct Cli {
     /// Show example of episode
     #[structopt(long = "show_example")]
@@ -25,6 +27,10 @@ struct Cli {
     /// Number of episodes for the training
     #[structopt(long = "n_episodes", short = "n", default_value = "100000")]
     n_episodes: u128,
+
+    /// Maximum number of steps per episode
+    #[structopt(long = "max_steps", default_value = "100")]
+    max_steps: u128,
 
     /// Learning rate of the RL agent
     #[structopt(long = "learning_rate", default_value = "0.05")]
@@ -63,6 +69,7 @@ fn main() {
     let cli: Cli = Cli::from_args();
 
     let n_episodes: u128 = cli.n_episodes;
+    let max_steps: u128 = cli.max_steps;
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
@@ -74,13 +81,13 @@ fn main() {
 
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = BlackJackEnv::new();
+    let mut env = TaxiEnv::new(max_steps);
 
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors: Vec<Vec<f64>> = vec![];
 
-    const SIZE: usize = 2;
+    const SIZE: usize = 6;
 
     let legends: Vec<&str> = [
         "ε-Greedy One-Step Sarsa",

@@ -1,14 +1,10 @@
 use super::{Agent, GetNextQValue};
-use crate::utils::argmax;
+use crate::action_selection::{ActionSelection, EnumActionSelection};
 use fxhash::FxHashMap;
-use rand::{distributions::Uniform, prelude::Distribution};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct OneStepTabularEGreedyDoubleAgent<
-    T: Hash + PartialEq + Eq + Clone + Debug,
-    const COUNT: usize,
-> {
+pub struct OneStepTabularDoubleAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     // policy
     default: [f64; COUNT],
     alpha_policy: FxHashMap<T, [f64; COUNT]>,
@@ -17,19 +13,13 @@ pub struct OneStepTabularEGreedyDoubleAgent<
     // policy update
     learning_rate: f64,
     discount_factor: f64,
-    // action selection
-    exploration_decider: Uniform<f64>,
-    rand_action_selecter: Uniform<usize>,
-    initial_epsilon: f64,
-    epsilon: f64,
-    epsilon_decay: f64,
-    final_epsilon: f64,
+    action_selection: EnumActionSelection<T, COUNT>,
     training_error: Vec<f64>,
     get_next_q_value: GetNextQValue<COUNT>,
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    OneStepTabularEGreedyDoubleAgent<T, COUNT>
+    OneStepTabularDoubleAgent<T, COUNT>
 {
     pub fn new(
         // policy
@@ -37,10 +27,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
         // policy update
         learning_rate: f64,
         discount_factor: f64,
-        // action selection
-        initial_epsilon: f64,
-        epsilon_decay: f64,
-        final_epsilon: f64,
+        action_selection: EnumActionSelection<T, COUNT>,
         get_next_q_value: GetNextQValue<COUNT>,
     ) -> Self {
         return Self {
@@ -50,66 +37,51 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
             policy_flag: true,
             learning_rate,
             discount_factor,
-            exploration_decider: Uniform::from(0.0..1.0),
-            rand_action_selecter: Uniform::from(0..COUNT),
-            initial_epsilon,
-            epsilon: initial_epsilon,
-            epsilon_decay,
-            final_epsilon,
+            action_selection,
             training_error: vec![],
             get_next_q_value,
         };
     }
-
-    fn decay_epsilon(&mut self) {
-        let new_epsilon: f64 = self.epsilon - self.epsilon_decay;
-        self.epsilon = if self.final_epsilon > new_epsilon {
-            self.epsilon
-        } else {
-            new_epsilon
-        };
-    }
-
-    fn should_explore(&self) -> bool {
-        return self.epsilon != 0.0 && self.exploration_decider.sample(&mut rand::thread_rng()) < self.epsilon;
-    }
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for OneStepTabularEGreedyDoubleAgent<T, COUNT>
+    for OneStepTabularDoubleAgent<T, COUNT>
 {
+    fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
+        self.get_next_q_value = func;
+    }
+
+    fn set_action_selector(&mut self, action_selecter: EnumActionSelection<T, COUNT>) {
+        self.action_selection = action_selecter;
+    }
+    
     fn reset(&mut self) {
-        self.epsilon = self.initial_epsilon;
+        self.action_selection.reset();
         self.alpha_policy = FxHashMap::default();
         self.beta_policy = FxHashMap::default();
     }
 
     fn get_action(&mut self, obs: &T) -> usize {
-        if self.should_explore() {
-            return self.rand_action_selecter.sample(&mut rand::thread_rng());
-        } else {
-            let a_values = self.alpha_policy.get(&obs);
-            let b_values = self.beta_policy.get(&obs);
-            if a_values.is_none() && b_values.is_none() {
-                return self.rand_action_selecter.sample(&mut rand::thread_rng());
-            }
-            let mut temp;
-            if a_values.is_some() {
-                temp = a_values.unwrap().clone();
-                for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
-                    temp[i] += v;
-                    temp[i] /= 2.0;
-                }
-            } else {
-                temp = b_values.unwrap().clone();
-                for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
-                    temp[i] += v;
-                    temp[i] /= 2.0;
-                }
-            }
-
-            return argmax(&temp);
+        let mut values;
+        let a_values = self.alpha_policy.get(&obs);
+        let b_values = self.beta_policy.get(&obs);
+        if a_values.is_none() && b_values.is_none() {
+            return self.action_selection.get_action(obs, &self.default);
         }
+        if a_values.is_some() {
+            values = a_values.unwrap().clone();
+            for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
+                values[i] += v;
+                values[i] /= 2.0;
+            }
+        } else {
+            values = b_values.unwrap().clone();
+            for (i, v) in b_values.unwrap_or(&self.default).iter().enumerate() {
+                values[i] += v;
+                values[i] /= 2.0;
+            }
+        }
+        return self.action_selection.get_action(obs, &values);
     }
 
     fn update(
@@ -126,7 +98,13 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             false => &self.beta_policy,
         };
         let next_q_values: &[f64; COUNT] = query_policy.get(next_obs).unwrap_or(&self.default);
-        let future_q_value: f64 = (self.get_next_q_value)(next_q_values, next_action, self.epsilon);
+        let future_q_value: f64 = (self.get_next_q_value)(
+            next_q_values,
+            next_action,
+            &self
+                .action_selection
+                .get_exploration_probs(next_obs, next_q_values),
+        );
         let target_policy = match self.policy_flag {
             true => &mut self.beta_policy,
             false => &mut self.alpha_policy,
@@ -140,7 +118,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             curr_q_values[curr_action] + self.learning_rate * temporal_difference;
         self.training_error.push(temporal_difference);
         if terminated {
-            self.decay_epsilon();
+            self.action_selection.update();
         }
         self.policy_flag = !self.policy_flag;
     }
