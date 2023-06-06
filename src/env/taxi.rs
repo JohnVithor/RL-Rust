@@ -117,7 +117,7 @@ impl TaxiEnv {
         }
 
         for value in &mut initial_state_distrib {
-            *value = *value / sum;
+            *value /= sum;
         }
 
         Self {
@@ -135,7 +135,7 @@ impl Env<usize, 6> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
-        self.curr_obs = categorical_sample(&self.initial_state_distrib.to_vec(), random);
+        self.curr_obs = categorical_sample(self.initial_state_distrib.as_ref(), random);
         self.ready = true;
         self.curr_step = 0;
         self.curr_obs

@@ -13,7 +13,7 @@ pub fn sarsa<const COUNT: usize>(
     next_action: usize,
     _policy_probs: &[f64; COUNT],
 ) -> f64 {
-    return next_q_values[next_action];
+    next_q_values[next_action]
 }
 
 pub fn qlearning<const COUNT: usize>(
@@ -21,7 +21,7 @@ pub fn qlearning<const COUNT: usize>(
     _next_action: usize,
     _policy_probs: &[f64; COUNT],
 ) -> f64 {
-    return max(next_q_values);
+    max(next_q_values)
 }
 
 pub fn expected_sarsa<const COUNT: usize>(

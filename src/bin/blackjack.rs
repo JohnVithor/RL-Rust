@@ -158,8 +158,8 @@ fn main() {
                 println!("{} {:.2?}", legends[i], elapsed);
 
                 let ma_error = moving_average(
-                    agent.get_training_error().len() as usize / moving_average_window,
-                    &agent.get_training_error(),
+                    agent.get_training_error().len() / moving_average_window,
+                    agent.get_training_error(),
                 );
                 errors.push(ma_error);
                 let ma_reward =

@@ -158,7 +158,7 @@ impl Env<usize, 2> for BlackJackEnv {
                 Ordering::Equal => 0.0
             };
 
-            return Ok((obs.get_id(), reward, true));
+            Ok((obs.get_id(), reward, true))
         }
     }
 
@@ -177,7 +177,7 @@ impl Env<usize, 2> for BlackJackEnv {
         let mut player_cards = "".to_string();
         for i in &self.player[0..self.player_i] {
             player_cards.push_str(i.to_string().as_str());
-            player_cards.push_str(" ");
+            player_cards.push(' ');
         }
         result.push_str(&player_cards);
         result

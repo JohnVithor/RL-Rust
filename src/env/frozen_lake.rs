@@ -122,7 +122,7 @@ impl Env<usize, 4> for FrozenLakeEnv {
         let transitions = self.probs[self.player_pos][action];
         let t_probs = transitions.map(|a| a.0);
         let random: f64 = self.dist.sample(&mut rand::thread_rng());
-        let i = categorical_sample(&t_probs.to_vec(), random);
+        let i = categorical_sample(t_probs.as_ref(), random);
         let (_p, s, r, t) = transitions[i];
         self.player_pos = s;
         if t {
