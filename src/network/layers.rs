@@ -23,18 +23,18 @@ impl DenseLayer {
         let input = ndarray::Array2::zeros((input_size, output_size));
         let weights = ndarray::Array::random((input_size, output_size), Uniform::new(0., 1.));
         let bias = ndarray::Array::random((1, output_size), Uniform::new(0., 1.));
-        return Self {
+        Self {
             input,
             weights,
             bias,
-        };
+        }
     }
 }
 
 impl Layer for DenseLayer {
     fn forward_propagation(&mut self, input: ndarray::Array2<f64>) -> ndarray::Array2<f64> {
         self.input = input;
-        return self.input.dot(&self.weights) + &self.bias;
+        self.input.dot(&self.weights) + &self.bias
     }
 
     fn backward_propagation(
@@ -46,7 +46,7 @@ impl Layer for DenseLayer {
         let weights_error = self.input.t().dot(&output_error);
         self.weights = &self.weights - learning_rate * weights_error;
         self.bias = &self.bias - learning_rate * output_error;
-        return input_error;
+        input_error
     }
 }
 
@@ -62,18 +62,18 @@ impl ActivationLayer {
         activation_prime: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
     ) -> Self {
         let input = ndarray::Array2::zeros((0, 0));
-        return Self {
+        Self {
             input,
             activation,
             activation_prime,
-        };
+        }
     }
 }
 
 impl Layer for ActivationLayer {
     fn forward_propagation(&mut self, input: ndarray::Array2<f64>) -> ndarray::Array2<f64> {
         self.input = input;
-        return (self.activation)(&self.input);
+        (self.activation)(&self.input)
     }
 
     fn backward_propagation(
@@ -81,6 +81,6 @@ impl Layer for ActivationLayer {
         output_error: ndarray::Array2<f64>,
         _learning_rate: f64,
     ) -> ndarray::Array2<f64> {
-        return (self.activation_prime)(&self.input) * output_error;
+        (self.activation_prime)(&self.input) * output_error
     }
 }

@@ -25,7 +25,7 @@ impl CliffWalkingEnv {
         let win: bool = newstate == Self::GOAL_POSITION;
         let lose: bool = Self::CLIFF_POSITIONS.contains(&newstate);
         let reward: f64 = if lose { -100.0 } else { -1.0 };
-        return (newstate, reward, lose || win);
+        (newstate, reward, lose || win)
     }
 
     pub fn new(max_steps: u128) -> Self {
@@ -59,7 +59,7 @@ impl CliffWalkingEnv {
             max_steps,
             curr_step: 0,
         };
-        return env;
+        env
     }
 }
 
@@ -68,7 +68,7 @@ impl Env<usize, 4> for CliffWalkingEnv {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
         self.curr_step = 0;
-        return self.player_pos;
+        self.player_pos
     }
 
     fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
@@ -85,11 +85,11 @@ impl Env<usize, 4> for CliffWalkingEnv {
         if obs.2 {
             self.ready = false;
         }
-        return Ok(obs);
+        Ok(obs)
     }
 
     fn render(&self) -> String {
-        let mut new_map: String = Self::MAP.clone().to_string();
+        let mut new_map: String = <&str>::clone(&Self::MAP).to_string();
         new_map.replace_range(39..40, "_");
         let mut pos: usize = self.player_pos;
         for (i, _) in new_map.match_indices('\n') {
@@ -98,10 +98,10 @@ impl Env<usize, 4> for CliffWalkingEnv {
             }
         }
         new_map.replace_range(pos..pos + 1, "@");
-        return new_map;
+        new_map
     }
 
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action];
+        Self::ACTIONS[action]
     }
 }

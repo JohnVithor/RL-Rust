@@ -40,14 +40,14 @@ impl FrozenLakeEnv {
         let newletter: &str = map[newrow].get(newcol..newcol + 1).unwrap();
         let terminated: bool = "GH".contains(newletter);
         let reward: f64 = (newletter == "G").into();
-        return (newstate, reward, terminated);
+        (newstate, reward, terminated)
     }
 
     pub fn new(map: &[&str], is_slippery: bool, max_steps: u128) -> Self {
         let nrow: usize = map.len();
         let ncol: usize = map[0].len();
         // calculating start positions probabilities
-        let flat_map: String = map.join(&"");
+        let flat_map: String = map.join("");
         let mut initial_state_distrib: ndarray::Array1<f64> =
             ndarray::Array1::zeros(flat_map.len());
         let mut counter = 0;
@@ -72,24 +72,22 @@ impl FrozenLakeEnv {
                     let letter = map[row].get(col..col + 1).unwrap();
                     if "GH".contains(letter) {
                         li[0] = (1.0, s, 0.0, true)
-                    } else {
-                        if is_slippery {
-                            for (i, b) in [(a - 1) % 4, a, (a + 1) % 4].iter().enumerate() {
-                                let (s, r, t) =
-                                    Self::update_probability_matrix(map, nrow, ncol, row, col, *b);
-                                li[i] = (1.0 / 3.0, s, r, t);
-                            }
-                        } else {
+                    } else if is_slippery {
+                        for (i, b) in [(a - 1) % 4, a, (a + 1) % 4].iter().enumerate() {
                             let (s, r, t) =
-                                Self::update_probability_matrix(map, nrow, ncol, row, col, a);
-                            li[0] = (1.0, s, r, t);
+                                Self::update_probability_matrix(map, nrow, ncol, row, col, *b);
+                            li[i] = (1.0 / 3.0, s, r, t);
                         }
+                    } else {
+                        let (s, r, t) =
+                            Self::update_probability_matrix(map, nrow, ncol, row, col, a);
+                        li[0] = (1.0, s, r, t);
                     }
                 }
             }
         }
 
-        let env: FrozenLakeEnv = Self {
+        Self {
             ready: false,
             initial_state_distrib,
             probs,
@@ -97,9 +95,8 @@ impl FrozenLakeEnv {
             dist: Uniform::from(0.0..1.0),
             max_steps,
             curr_step: 0,
-            map: map.join(&"\n").to_string(),
-        };
-        return env;
+            map: map.join("\n")
+        }
     }
 }
 
@@ -110,7 +107,7 @@ impl Env<usize, 4> for FrozenLakeEnv {
         self.player_pos = categorical_sample(&self.initial_state_distrib.to_vec(), random);
         self.ready = true;
         self.curr_step = 0;
-        return self.player_pos;
+        self.player_pos
     }
 
     fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
@@ -131,11 +128,11 @@ impl Env<usize, 4> for FrozenLakeEnv {
         if t {
             self.ready = false;
         }
-        return Ok((s, r, t));
+        Ok((s, r, t))
     }
 
     fn render(&self) -> String {
-        let mut new_map: String = self.map.clone().to_string();
+        let mut new_map: String = self.map.clone();
         for (i, _) in new_map.clone().match_indices('S') {
             new_map.replace_range(i..i + 1, "F");
         }
@@ -146,10 +143,10 @@ impl Env<usize, 4> for FrozenLakeEnv {
             }
         }
         new_map.replace_range(pos..pos + 1, "@");
-        return new_map;
+        new_map
     }
 
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action];
+        Self::ACTIONS[action]
     }
 }

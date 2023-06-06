@@ -1,28 +1,26 @@
 pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
     let mut max: &T = &vec[0];
     let mut result: usize = 0;
-    let mut i: usize = 0;
-    for v in vec {
-        if v > &max {
+    for (i, v) in vec.iter().enumerate() {
+        if v > max {
             max = v;
             result = i;
         }
-        i += 1;
     }
-    return result;
+    result
 }
 
 pub fn max<T: PartialOrd + Clone>(vec: &[T]) -> T {
     let mut max: &T = &vec[0];
     for v in vec {
-        if v > &max {
+        if v > max {
             max = v;
         }
     }
-    return max.clone();
+    max.clone()
 }
 
-pub fn categorical_sample(probs: &Vec<f64>, random: f64) -> usize {
+pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
     let mut b: f64 = 0.0;
     let r: Vec<bool> = probs
         .iter()
@@ -31,11 +29,11 @@ pub fn categorical_sample(probs: &Vec<f64>, random: f64) -> usize {
             b > random
         })
         .collect();
-    return argmax(&r);
+    argmax(&r)
 }
 
 pub fn to_s(ncol: usize, row: usize, col: usize) -> usize {
-    return row * ncol + col;
+    row * ncol + col
 }
 
 pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize, usize) {
@@ -60,7 +58,7 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
     } else {
         return (row, col);
     }
-    return (new_row, new_col);
+    (new_row, new_col)
 }
 
 pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
@@ -77,15 +75,15 @@ pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
         result.push(r / window as f64);
         aux = end;
     }
-    return result;
+    result
 }
 
 use plotters::prelude::*;
 
 pub fn plot_moving_average(
-    values: &Vec<Vec<f64>>,
-    colors: &Vec<&RGBColor>,
-    legends: &Vec<&str>,
+    values: &[Vec<f64>],
+    colors: &[&RGBColor],
+    legends: &[&str],
     title: &str,
 ) {
     let filename = format!("{}.png", title);
@@ -126,12 +124,12 @@ pub fn plot_moving_average(
         ))
         .unwrap()
         .label(legends[i])
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], c.clone()));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], *c));
     }
 
     ctx.configure_series_labels()
-        .border_style(&BLACK)
-        .background_style(&WHITE.mix(0.8))
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.8))
         .draw()
         .unwrap();
 }

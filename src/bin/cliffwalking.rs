@@ -2,10 +2,13 @@ use std::time::Instant;
 
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
-use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound, EnumActionSelection};
-use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent};
+use reinforcement_learning::action_selection::{
+    EnumActionSelection, UniformEpsilonGreed, UpperConfidenceBound,
+};
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularAgent};
+use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent};
 use reinforcement_learning::env::CliffWalkingEnv;
+use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -115,6 +118,8 @@ fn main() {
     ]
     .to_vec();
 
+    let policy = TabularPolicy::new(0.0);
+
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
             initial_epsilon,
@@ -125,7 +130,7 @@ fn main() {
     ];
 
     let mut one_step_agent: OneStepTabularAgent<usize, SIZE> = OneStepTabularAgent::new(
-        0.0,
+        EnumPolicy::from(policy.clone()),
         learning_rate,
         discount_factor,
         action_selection[0].clone(),
@@ -134,7 +139,7 @@ fn main() {
 
     let mut trace_agent: ElegibilityTracesTabularAgent<usize, SIZE> =
         ElegibilityTracesTabularAgent::new(
-            0.0,
+            EnumPolicy::from(policy),
             learning_rate,
             discount_factor,
             action_selection[0].clone(),

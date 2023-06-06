@@ -38,7 +38,7 @@ impl TaxiEnv {
         i += pass_loc;
         i *= 4;
         i += dest_loc;
-        return i;
+        i
     }
 
     pub fn decode(i: usize) -> (usize, usize, usize, usize) {
@@ -51,7 +51,7 @@ impl TaxiEnv {
         out.1 = state % 5;
         state /= 5;
         out.0 = state;
-        return out;
+        out
     }
 
     pub fn new(max_steps: u128) -> Self {
@@ -116,19 +116,18 @@ impl TaxiEnv {
             }
         }
 
-        for i in 0..500 {
-            initial_state_distrib[i] = initial_state_distrib[i] / sum;
+        for value in &mut initial_state_distrib {
+            *value = *value / sum;
         }
 
-        let env: TaxiEnv = Self {
+        Self {
             ready: false,
             initial_state_distrib,
             obs,
             curr_obs: 0,
             max_steps,
             curr_step: 0,
-        };
-        return env;
+        }
     }
 }
 
@@ -139,7 +138,7 @@ impl Env<usize, 6> for TaxiEnv {
         self.curr_obs = categorical_sample(&self.initial_state_distrib.to_vec(), random);
         self.ready = true;
         self.curr_step = 0;
-        return self.curr_obs;
+        self.curr_obs
     }
 
     fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
@@ -156,11 +155,11 @@ impl Env<usize, 6> for TaxiEnv {
         if obs.2 {
             self.ready = false;
         }
-        return Ok(obs);
+        Ok(obs)
     }
 
     fn render(&self) -> String {
-        let mut new_map = Self::MAP.clone().join(&"\n").to_string();
+        let mut new_map = Self::MAP.clone().join("\n");
         let (row, col, _, _) = Self::decode(self.curr_obs);
         let mut pos = to_s(11, row + 1, 2 * col + 1);
         for (i, _) in new_map.match_indices('\n') {
@@ -169,10 +168,10 @@ impl Env<usize, 6> for TaxiEnv {
             }
         }
         new_map.replace_range(pos..pos + 1, "T");
-        return new_map;
+        new_map
     }
 
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action];
+        Self::ACTIONS[action]
     }
 }

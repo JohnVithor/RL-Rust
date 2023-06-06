@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::hash::Hash;
 
 use crate::env::{Env, EnvNotReady};
@@ -15,14 +16,14 @@ pub struct BlackJackObservation {
 
 impl BlackJackObservation {
     pub fn new(p_score: u8, d_score: u8, p_ace: bool) -> Self {
-        return Self {
+        Self {
             p_score,
             d_score,
             p_ace,
-        };
+        }
     }
     pub fn get_id(&self) -> usize {
-        return fxhash::hash(self);
+        fxhash::hash(self)
     }
 }
 
@@ -54,7 +55,7 @@ impl BlackJackEnv {
             dist: Uniform::from(1..11),
         };
         env.initialize_hands();
-        return env;
+        env
     }
     fn initialize_hands(&mut self) {
         self.player[0] = self.get_new_card();
@@ -68,29 +69,35 @@ impl BlackJackEnv {
     }
 
     fn get_dealer_card(&self) -> u8 {
-        return self.dealer[0];
+        self.dealer[0]
     }
 
     fn get_new_card(&mut self) -> u8 {
-        return self.dist.sample(&mut self.rng);
+        self.dist.sample(&mut self.rng)
     }
 
     fn compute_player_score(&self) -> u8 {
         let score: u8 = self.player.iter().sum();
         if self.player_has_ace && score + 10 <= 21 {
-            return score + 10;
+            score + 10
         } else {
-            return score;
+            score
         }
     }
 
     fn compute_dealer_score(&self) -> u8 {
         let score: u8 = self.dealer.iter().sum();
         if self.dealer_has_ace && score + 10 <= 21 {
-            return score + 10;
+            score + 10
         } else {
-            return score;
+            score
         }
+    }
+}
+
+impl Default for BlackJackEnv {
+   fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -105,7 +112,7 @@ impl Env<usize, 2> for BlackJackEnv {
             self.player_has_ace,
         );
         self.ready = true;
-        return obs.get_id();
+        obs.get_id()
     }
 
     fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
@@ -123,11 +130,11 @@ impl Env<usize, 2> for BlackJackEnv {
                     self.compute_dealer_score(),
                     self.player_has_ace,
                 );
-                return Ok((obs.get_id(), -1.0, true));
+                return Ok((obs.get_id(), -1.0, true))
             }
             let obs: BlackJackObservation =
                 BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
-            return Ok((obs.get_id(), 0.0, false));
+            Ok((obs.get_id(), 0.0, false))
         } else {
             self.ready = false;
             let mut d_score: u8 = self.compute_dealer_score();
@@ -144,13 +151,13 @@ impl Env<usize, 2> for BlackJackEnv {
             if d_score > 21 {
                 return Ok((obs.get_id(), 1.0, true));
             }
-            let reward: f64 = if obs.p_score > d_score {
-                1.0
-            } else if d_score > obs.p_score {
-                -1.0
-            } else {
-                0.0
+
+            let reward = match obs.p_score.cmp(&d_score) {
+                Ordering::Greater => 1.0,
+                Ordering::Less => -1.0,
+                Ordering::Equal => 0.0
             };
+
             return Ok((obs.get_id(), reward, true));
         }
     }
@@ -163,7 +170,7 @@ impl Env<usize, 2> for BlackJackEnv {
             let mut dealer_cards = "".to_string();
             for i in &self.dealer[0..self.dealer_i] {
                 dealer_cards.push_str(i.to_string().as_str());
-                dealer_cards.push_str(" ");
+                dealer_cards.push(' ');
             }
             result = format!("Dealer: {} \nPlayer: ", dealer_cards);
         }
@@ -173,10 +180,10 @@ impl Env<usize, 2> for BlackJackEnv {
             player_cards.push_str(" ");
         }
         result.push_str(&player_cards);
-        return result;
+        result
     }
 
     fn get_action_label(&self, action: usize) -> &str {
-        return Self::ACTIONS[action];
+        Self::ACTIONS[action]
     }
 }

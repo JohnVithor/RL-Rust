@@ -15,11 +15,11 @@ pub struct UpperConfidenceBound<T: Hash + PartialEq + Eq + Clone, const COUNT: u
 
 impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> UpperConfidenceBound<T, COUNT> {
     pub fn new(confidence_level: f64) -> Self {
-        return Self {
+        Self {
             action_counter: FxHashMap::default(),
             t: 1,
             confidence_level,
-        };
+        }
     }
 }
 
@@ -38,11 +38,11 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, CO
         let action = argmax(&ucbs);
         obs_actions[action] += 1;
         self.t += 1;
-        return action;
+        action
     }
 
     fn update(&mut self) {
-        return;
+        
     }
 
     fn get_exploration_probs(&mut self, obs: &T, values: &[f64; COUNT]) -> [f64; COUNT] {
@@ -56,10 +56,10 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, CO
                     * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt();
             sum += ucbs[i];
         }
-        for i in 0..COUNT {
-            ucbs[i] /= sum;
+        for v in &mut ucbs {
+            *v /= sum;
         }
-        return ucbs;
+        ucbs
     }
 
     fn reset(&mut self) {

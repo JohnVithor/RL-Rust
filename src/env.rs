@@ -16,7 +16,7 @@ pub struct EnvNotReady;
 
 pub trait Env<T: Debug, const COUNT: usize> {
     fn action_size(&self) -> usize {
-        return COUNT;
+        COUNT
     }
     fn reset(&mut self) -> T;
     fn step(&mut self, action: usize) -> Result<(T, f64, bool), EnvNotReady>;

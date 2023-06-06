@@ -33,7 +33,7 @@ pub fn expected_sarsa<const COUNT: usize>(
     for i in 0..COUNT {
         future_q_value += policy_probs[i] * next_q_values[i]
     }
-    return future_q_value;
+    future_q_value
 }
 
 pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
@@ -88,7 +88,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
             }
             episode_length.push(action_counter);
         }
-        return (reward_history, episode_length);
+        (reward_history, episode_length)
     }
 
     fn example(&mut self, env: &mut dyn Env<T, COUNT>) {
@@ -114,10 +114,8 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     }
 }
 
-mod elegibility_traces_tabular_agent;
-mod one_step_tabular_agent;
-mod one_step_tabular_double_agent;
+mod elegibility_traces_agent;
+mod one_step_agent;
 
-pub use elegibility_traces_tabular_agent::ElegibilityTracesTabularAgent;
-pub use one_step_tabular_agent::OneStepTabularAgent;
-pub use one_step_tabular_double_agent::OneStepTabularDoubleAgent;
+pub use elegibility_traces_agent::ElegibilityTracesTabularAgent;
+pub use one_step_agent::OneStepTabularAgent;
