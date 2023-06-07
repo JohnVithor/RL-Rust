@@ -4,13 +4,13 @@ use std::time::Instant;
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
 use reinforcement_learning::action_selection::{
-    EnumActionSelection, UniformEpsilonGreed, UpperConfidenceBound,
+    EnumActionSelection, UniformEpsilonGreed,
 };
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularAgent};
-use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent, InternalModelAgent};
+use reinforcement_learning::agent::{qlearning, OneStepTabularAgent};
+use reinforcement_learning::agent::{Agent, InternalModelAgent};
 use reinforcement_learning::env::CliffWalkingEnv;
 use reinforcement_learning::model::{EnumModel, RandomModel};
-use reinforcement_learning::policy::{DoubleTabularPolicy, EnumPolicy, TabularPolicy};
+use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -76,9 +76,9 @@ fn main() {
     let initial_epsilon: f64 = cli.initial_epsilon;
     let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
     let final_epsilon: f64 = cli.final_epsilon;
-    let confidence_level: f64 = cli.confidence_level;
+    let _confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
-    let lambda_factor: f64 = cli.lambda_factor;
+    let _lambda_factor: f64 = cli.lambda_factor;
 
     let moving_average_window: usize = cli.moving_average_window;
 
@@ -142,7 +142,7 @@ fn main() {
     );
 
     let mut other: OneStepTabularAgent<usize, SIZE> = OneStepTabularAgent::new(
-        EnumPolicy::from(policy.clone()),
+        EnumPolicy::from(policy),
         learning_rate,
         discount_factor,
         action_selection[0].clone(),

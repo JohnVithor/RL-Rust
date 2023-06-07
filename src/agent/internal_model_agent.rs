@@ -9,7 +9,7 @@ use std::hash::Hash;
 pub struct InternalModelAgent<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     agent: Box<RefCell<&'a mut dyn Agent<T, COUNT>>>,
     model: EnumModel<T, COUNT>,
-    planing_length: usize,
+    planning_steps: usize,
 }
 
 impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
@@ -23,7 +23,7 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
         Self {
             agent,
             model,
-            planing_length,
+            planning_steps: planing_length,
         }
     }
 }
@@ -63,7 +63,7 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, 
         self.model
             .add_info(curr_obs.clone(), curr_action, reward, next_obs.clone());
 
-        for _i in 0..self.planing_length {
+        for _i in 0..self.planning_steps {
             let (curr_obs, curr_action, next_obs, reward) = self.model.get_info();
             let next_action = self.agent.borrow_mut().get_action(&next_obs);
             self.agent.borrow_mut().update(
@@ -75,7 +75,7 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, 
                 next_action,
             );
         }
-        return td;
+        td
     }
 
     fn reset(&mut self) {

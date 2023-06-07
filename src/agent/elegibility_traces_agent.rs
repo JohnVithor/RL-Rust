@@ -104,6 +104,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             self.trace = FxHashMap::default();
             self.action_selection.update();
         }
-        return temporal_difference;
+        temporal_difference
     }
 }

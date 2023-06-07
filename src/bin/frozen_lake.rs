@@ -8,7 +8,7 @@ use reinforcement_learning::action_selection::{
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent, OneStepTabularAgent};
 use reinforcement_learning::env::FrozenLakeEnv;
-use reinforcement_learning::policy::{DoubleTabularPolicy, EnumPolicy, TabularPolicy};
+use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;

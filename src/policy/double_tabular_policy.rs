@@ -51,7 +51,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
             false => &mut self.alpha_policy,
         }
         .entry(obs.clone())
-        .or_insert(self.default.clone())[action] += value;
+        .or_insert(self.default)[action] += value;
     }
 
     fn reset(&mut self) {
