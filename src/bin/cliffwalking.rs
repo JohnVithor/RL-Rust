@@ -8,7 +8,7 @@ use reinforcement_learning::action_selection::{
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularAgent};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent};
 use reinforcement_learning::env::CliffWalkingEnv;
-use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
+use reinforcement_learning::policy::{EnumPolicy, TabularPolicy, DoubleTabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -119,6 +119,7 @@ fn main() {
     .to_vec();
 
     let policy = TabularPolicy::new(0.0);
+    // let policy = DoubleTabularPolicy::new(0.0);
 
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(

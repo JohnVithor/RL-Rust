@@ -82,6 +82,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         );
 
         self.training_error.push(temporal_difference);
+        self.policy.after_update();
         if terminated {
             self.action_selection.update();
         }

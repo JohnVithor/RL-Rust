@@ -7,8 +7,8 @@ use reinforcement_learning::action_selection::{
 };
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent, OneStepTabularAgent};
-use reinforcement_learning::env::BlackJackEnv;
-use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
+use reinforcement_learning::env::{BlackJackEnv, Env};
+use reinforcement_learning::policy::{DoubleTabularPolicy, EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -114,6 +114,7 @@ fn main() {
     .to_vec();
 
     let policy = TabularPolicy::new(0.0);
+    // let policy = DoubleTabularPolicy::new(0.0);
 
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
@@ -174,9 +175,38 @@ fn main() {
                 if cli.show_example {
                     agent.example(&mut env);
                 }
+                let mut wins: u32 = 0;
+                let mut losses: u32 = 0;
+                let mut draws: u32 = 0;
+                const LOOP_LEN: usize = 1000000;
+                for _u in 0..LOOP_LEN {
+                    let mut curr_action: usize = agent.get_action(&env.reset());
+                    loop {
+                        let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+                        let next_action: usize = agent.get_action(&next_obs);
+                        curr_action = next_action;
+                        if terminated {
+                            if reward == 1.0 {
+                                wins += 1;
+                            } else if reward == -1.0 {
+                                losses += 1;
+                            } else {
+                                draws += 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+                println!(
+                    "{} has win-rate of {}%, loss-rate of {}% and draw-rate {}%",
+                    legends[i],
+                    wins as f64 / LOOP_LEN as f64,
+                    losses as f64 / LOOP_LEN as f64,
+                    draws as f64 / LOOP_LEN as f64
+                );
                 i += 1;
+                agent.reset();
             }
-            agent.reset();
         }
     }
 

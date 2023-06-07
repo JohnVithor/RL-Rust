@@ -12,6 +12,17 @@ pub struct DoubleTabularPolicy<T: Hash + PartialEq + Eq + Clone, const COUNT: us
     policy_flag: bool,
 }
 
+impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> DoubleTabularPolicy<T, COUNT> {
+    pub fn new(default_value: f64) -> Self {
+        Self {
+            default: [default_value; COUNT],
+            alpha_policy: FxHashMap::default(),
+            beta_policy: FxHashMap::default(),
+            policy_flag: true
+        }
+    }
+}
+
 impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
     for DoubleTabularPolicy<T, COUNT>
 {
@@ -20,7 +31,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
         let a_values: &[f64; COUNT] = self.alpha_policy.get(obs).unwrap_or(&self.default);
         let b_values: &[f64; COUNT] = self.beta_policy.get(obs).unwrap_or(&self.default);
         for i in 0..COUNT {
-            values[i] = a_values[i] + b_values[i];
+            values[i] = (a_values[i] + b_values[i]) / 2.0;
         }
         values
     }
@@ -40,7 +51,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
             false => &mut self.alpha_policy,
         }
         .entry(obs.clone())
-        .or_insert(self.default)[action] += value;
+        .or_insert(self.default.clone())[action] += value;
     }
 
     fn reset(&mut self) {
