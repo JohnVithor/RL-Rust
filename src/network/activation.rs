@@ -1,7 +1,7 @@
 pub fn tanh(x: &ndarray::Array2<f64>) -> ndarray::Array2<f64> {
-    return x.map(|v| v.tanh());
+    x.map(|v| v.tanh())
 }
 
 pub fn tanh_prime(x: &ndarray::Array2<f64>) -> ndarray::Array2<f64> {
-    return x.map(|v| 1.0-v.tanh().powf(2.0));
+    x.map(|v| 1.0 - v.tanh().powf(2.0))
 }

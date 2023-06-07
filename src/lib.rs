@@ -1,12 +1,8 @@
 pub mod env;
-pub mod algorithms;
+pub mod network;
 pub mod utils;
 pub mod policy;
-pub mod network;
+pub mod model;
 
-mod agent;
-
-pub use agent::Agent;
-
-
-
+pub mod action_selection;
+pub mod agent;

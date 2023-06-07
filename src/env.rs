@@ -1,26 +1,26 @@
 use std::fmt::Debug;
+use std::io;
 
-mod action_space;
 mod blackjack;
-mod frozen_lake;
 mod cliff_walking;
+mod frozen_lake;
 mod taxi;
 
-pub use action_space::ActionSpace;
 pub use blackjack::BlackJackEnv;
-pub use frozen_lake::FrozenLakeEnv;
 pub use cliff_walking::CliffWalkingEnv;
+pub use frozen_lake::FrozenLakeEnv;
 pub use taxi::TaxiEnv;
 
 #[derive(Debug, Clone)]
 pub struct EnvNotReady;
 
-pub trait Env<T: Debug> {
+pub trait Env<T: Debug, const COUNT: usize> {
+    fn action_size(&self) -> usize {
+        COUNT
+    }
     fn reset(&mut self) -> T;
     fn step(&mut self, action: usize) -> Result<(T, f64, bool), EnvNotReady>;
-    fn action_space(&self) -> ActionSpace;
     fn play(&mut self) {
-        use std::io;
         let mut curr_obs: T = self.reset();
         let mut final_reward: f64 = 0.0;
         loop {

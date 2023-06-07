@@ -10,8 +10,11 @@ include = ["src/**/*"]
 
 [dependencies]
 fxhash = "0.2.1"
+indexmap = "1.9.3"
 structopt = "0.3.26"
 rand = "0.8.5"
 plotters = "0.3"
 ndarray = "0.15.6"
 ndarray-rand = "0.14.0"
+enum_dispatch = "0.3.11"
+kdam = "0.3.0"
