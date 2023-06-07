@@ -4,11 +4,13 @@ use crate::utils::{categorical_sample, inc, to_s};
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 
+type Transition = (f64, usize, f64, bool);
+
 #[derive(Debug, Clone)]
 pub struct FrozenLakeEnv {
     ready: bool,
     initial_state_distrib: ndarray::Array1<f64>,
-    probs: Vec<[[(f64, usize, f64, bool); 3]; 4]>,
+    probs: Vec<[[Transition; 3]; 4]>,
     player_pos: usize,
     dist: Uniform<f64>,
     max_steps: u128,
@@ -62,7 +64,7 @@ impl FrozenLakeEnv {
             initial_state_distrib[i] = 1.0 / counter as f64;
         }
         // calculating transitions probabilities
-        let mut probs: Vec<[[(f64, usize, f64, bool); 3]; 4]> =
+        let mut probs: Vec<[[Transition; 3]; 4]> =
             vec![[[(0.0, 0, 0.0, false); 3]; 4]; nrow * ncol];
         for row in 0..nrow {
             for col in 0..ncol {

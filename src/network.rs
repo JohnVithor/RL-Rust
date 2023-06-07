@@ -8,15 +8,15 @@ pub mod loss;
 pub struct Network {
     learning_rate: f64,
     layers: Vec<Box<dyn Layer>>,
-    loss: Box<fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>>,
-    loss_prime: Box<fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
+    loss: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>,
+    loss_prime: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>,
 }
 
 impl Network {
     pub fn new(
         learning_rate: f64,
-        loss: Box<fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>>,
-        loss_prime: Box<fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
+        loss: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>,
+        loss_prime: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>,
     ) -> Self {
         Self {
             learning_rate,

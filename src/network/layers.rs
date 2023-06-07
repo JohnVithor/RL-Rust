@@ -52,14 +52,14 @@ impl Layer for DenseLayer {
 
 pub struct ActivationLayer {
     input: ndarray::Array2<f64>,
-    activation: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
-    activation_prime: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
+    activation: fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>,
+    activation_prime: fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>,
 }
 
 impl ActivationLayer {
     pub fn new(
-        activation: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
-        activation_prime: Box<dyn Fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>>,
+        activation: fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>,
+        activation_prime: fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>,
     ) -> Self {
         let input = ndarray::Array2::zeros((0, 0));
         Self {
