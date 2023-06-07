@@ -8,7 +8,7 @@ use reinforcement_learning::action_selection::{
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularAgent};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent};
 use reinforcement_learning::env::CliffWalkingEnv;
-use reinforcement_learning::policy::{EnumPolicy, TabularPolicy, DoubleTabularPolicy};
+use reinforcement_learning::policy::{DoubleTabularPolicy, EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -159,14 +159,13 @@ fn main() {
             for func in [sarsa, qlearning, expected_sarsa] {
                 agent.set_future_q_value_func(func);
                 let now: Instant = Instant::now();
-                let (reward_history, episode_length) = agent.train(&mut env, n_episodes);
+                let (reward_history, episode_length, training_error) =
+                    agent.train(&mut env, n_episodes);
                 let elapsed: std::time::Duration = now.elapsed();
                 println!("{} {:.2?}", legends[i], elapsed);
 
-                let ma_error = moving_average(
-                    agent.get_training_error().len() / moving_average_window,
-                    agent.get_training_error(),
-                );
+                let ma_error =
+                    moving_average(training_error.len() / moving_average_window, &training_error);
                 errors.push(ma_error);
                 let ma_reward =
                     moving_average(n_episodes as usize / moving_average_window, &reward_history);

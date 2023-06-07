@@ -16,7 +16,6 @@ pub struct ElegibilityTracesTabularAgent<
     action_selection: EnumActionSelection<T, COUNT>,
     lambda_factor: f64,
     trace: FxHashMap<T, [f64; COUNT]>,
-    training_error: Vec<f64>,
     get_next_q_value: GetNextQValue<COUNT>,
 }
 
@@ -39,7 +38,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
             discount_factor,
             action_selection,
             lambda_factor,
-            training_error: vec![],
             get_next_q_value,
         }
     }
@@ -73,7 +71,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         terminated: bool,
         next_obs: &T,
         next_action: usize,
-    ) {
+    ) -> f64 {
         let next_q_values: &[f64; COUNT] = self.policy.get_values(next_obs);
         let future_q_value: f64 = (self.get_next_q_value)(
             next_q_values,
@@ -101,15 +99,11 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             }
         }
 
-        self.training_error.push(temporal_difference);
         self.policy.after_update();
         if terminated {
             self.trace = FxHashMap::default();
             self.action_selection.update();
         }
-    }
-
-    fn get_training_error(&self) -> &Vec<f64> {
-        &self.training_error
+        return temporal_difference;
     }
 }

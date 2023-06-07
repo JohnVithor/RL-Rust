@@ -9,7 +9,6 @@ pub struct OneStepTabularAgent<T: Hash + PartialEq + Eq + Clone + Debug, const C
     // policy update
     learning_rate: f64,
     discount_factor: f64,
-    training_error: Vec<f64>,
     action_selection: EnumActionSelection<T, COUNT>,
     get_next_q_value: GetNextQValue<COUNT>,
 }
@@ -28,7 +27,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepTabula
             learning_rate,
             discount_factor,
             action_selection,
-            training_error: vec![],
             get_next_q_value,
         }
     }
@@ -62,7 +60,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         terminated: bool,
         next_obs: &T,
         next_action: usize,
-    ) {
+    ) -> f64 {
         let next_q_values: &[f64; COUNT] = self.policy.get_values(next_obs);
         let future_q_value: f64 = (self.get_next_q_value)(
             next_q_values,
@@ -81,14 +79,10 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
             self.learning_rate * temporal_difference,
         );
 
-        self.training_error.push(temporal_difference);
         self.policy.after_update();
         if terminated {
             self.action_selection.update();
         }
-    }
-
-    fn get_training_error(&self) -> &Vec<f64> {
-        &self.training_error
+        return temporal_difference;
     }
 }

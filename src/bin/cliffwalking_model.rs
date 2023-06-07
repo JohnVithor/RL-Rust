@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::time::Instant;
 
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
@@ -5,11 +6,10 @@ use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 use reinforcement_learning::action_selection::{
     EnumActionSelection, UniformEpsilonGreed, UpperConfidenceBound,
 };
-use reinforcement_learning::agent::Agent;
-use reinforcement_learning::agent::{
-    expected_sarsa, qlearning, sarsa, ElegibilityTracesTabularAgent, OneStepTabularAgent,
-};
-use reinforcement_learning::env::TaxiEnv;
+use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, OneStepTabularAgent};
+use reinforcement_learning::agent::{Agent, ElegibilityTracesTabularAgent, InternalModelAgent};
+use reinforcement_learning::env::CliffWalkingEnv;
+use reinforcement_learning::model::{EnumModel, RandomModel};
 use reinforcement_learning::policy::{DoubleTabularPolicy, EnumPolicy, TabularPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
@@ -19,7 +19,7 @@ use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "RLRust - Taxi")]
+#[structopt(name = "RLRust - CliffWalking - model")]
 struct Cli {
     /// Show example of episode
     #[structopt(long = "show_example")]
@@ -82,27 +82,28 @@ fn main() {
 
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = TaxiEnv::new(max_steps);
+    let mut env = CliffWalkingEnv::new(max_steps);
 
     let mut rewards: Vec<Vec<f64>> = vec![];
     let mut episodes_length: Vec<Vec<f64>> = vec![];
     let mut errors: Vec<Vec<f64>> = vec![];
 
-    const SIZE: usize = 6;
+    const SIZE: usize = 4;
 
     let legends: Vec<&str> = [
-        "ε-Greedy One-Step Sarsa",
+        // "ε-Greedy One-Step Sarsa",
         "ε-Greedy One-Step Qlearning",
-        "ε-Greedy One-Step Expected Sarsa",
-        "UCB One-Step Sarsa",
-        "UCB One-Step Qlearning",
-        "UCB One-Step Expected Sarsa",
-        "ε-Greedy Trace Sarsa",
-        "ε-Greedy Trace Qlearning",
-        "ε-Greedy Trace Expected Sarsa",
-        "UCB Trace Sarsa",
-        "UCB Trace Qlearning",
-        "UCB Trace Expected Sarsa",
+        "ε-Greedy One-Step Dyna-Qlearning",
+        // "ε-Greedy One-Step Expected Sarsa",
+        // "UCB One-Step Sarsa",
+        // "UCB One-Step Qlearning",
+        // "UCB One-Step Expected Sarsa",
+        // "ε-Greedy Trace Sarsa",
+        // "ε-Greedy Trace Qlearning",
+        // "ε-Greedy Trace Expected Sarsa",
+        // "UCB Trace Sarsa",
+        // "UCB Trace Qlearning",
+        // "UCB Trace Expected Sarsa",
     ]
     .to_vec();
 
@@ -129,7 +130,7 @@ fn main() {
             epsilon_decay,
             final_epsilon,
         )),
-        EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
+        // EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
     ];
 
     let mut one_step_agent: OneStepTabularAgent<usize, SIZE> = OneStepTabularAgent::new(
@@ -137,55 +138,58 @@ fn main() {
         learning_rate,
         discount_factor,
         action_selection[0].clone(),
-        sarsa,
+        qlearning,
     );
 
-    let mut trace_agent: ElegibilityTracesTabularAgent<usize, SIZE> =
-        ElegibilityTracesTabularAgent::new(
-            EnumPolicy::from(policy),
-            learning_rate,
-            discount_factor,
-            action_selection[0].clone(),
-            lambda_factor,
-            sarsa,
-        );
+    let mut other: OneStepTabularAgent<usize, SIZE> = OneStepTabularAgent::new(
+        EnumPolicy::from(policy.clone()),
+        learning_rate,
+        discount_factor,
+        action_selection[0].clone(),
+        qlearning,
+    );
+
+    let model = RandomModel::default();
+
+    let mut model_agent: InternalModelAgent<usize, SIZE> = InternalModelAgent::new(
+        Box::new(RefCell::new(&mut other)),
+        EnumModel::from(model),
+        10,
+    );
 
     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
     agents.push(&mut one_step_agent);
-    agents.push(&mut trace_agent);
+    agents.push(&mut model_agent);
 
     let mut i = 0;
     for agent in agents {
         for acs in &action_selection {
             agent.set_action_selector(acs.clone());
-            for func in [sarsa, qlearning, expected_sarsa] {
-                agent.set_future_q_value_func(func);
-                let now: Instant = Instant::now();
-                let (reward_history, episode_length, training_error) =
-                    agent.train(&mut env, n_episodes);
-                let elapsed: std::time::Duration = now.elapsed();
-                println!("{} {:.2?}", legends[i], elapsed);
+            let now: Instant = Instant::now();
+            let (reward_history, episode_length, training_error) =
+                agent.train(&mut env, n_episodes);
+            let elapsed: std::time::Duration = now.elapsed();
+            println!("{} {:.2?}", legends[i], elapsed);
 
-                let ma_error = moving_average(
-                    training_error.len() / moving_average_window,
-                    &training_error,
-                );
-                errors.push(ma_error);
-                let ma_reward =
-                    moving_average(n_episodes as usize / moving_average_window, &reward_history);
-                rewards.push(ma_reward);
-                let ma_episode = moving_average(
-                    n_episodes as usize / moving_average_window,
-                    &episode_length.iter().map(|x| *x as f64).collect(),
-                );
-                episodes_length.push(ma_episode);
+            let ma_error = moving_average(
+                training_error.len() / moving_average_window,
+                &training_error,
+            );
+            errors.push(ma_error);
+            let ma_reward =
+                moving_average(n_episodes as usize / moving_average_window, &reward_history);
+            rewards.push(ma_reward);
+            let ma_episode = moving_average(
+                n_episodes as usize / moving_average_window,
+                &episode_length.iter().map(|x| *x as f64).collect(),
+            );
+            episodes_length.push(ma_episode);
 
-                if cli.show_example {
-                    agent.example(&mut env);
-                }
-                i += 1;
-                agent.reset();
+            if cli.show_example {
+                agent.example(&mut env);
             }
+            i += 1;
+            agent.reset();
         }
     }
 

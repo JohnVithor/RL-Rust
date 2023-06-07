@@ -1,3 +1,11 @@
+mod elegibility_traces_agent;
+mod one_step_agent;
+mod internal_model_agent;
+
+pub use elegibility_traces_agent::ElegibilityTracesTabularAgent;
+pub use one_step_agent::OneStepTabularAgent;
+pub use internal_model_agent::InternalModelAgent;
+
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -5,6 +13,7 @@ use crate::action_selection::EnumActionSelection;
 use crate::env::Env;
 use crate::utils::max;
 use kdam::tqdm;
+
 
 pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, &[f64; COUNT]) -> f64;
 
@@ -52,15 +61,14 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
         terminated: bool,
         next_obs: &T,
         next_action: usize,
-    );
-
-    fn get_training_error(&self) -> &Vec<f64>;
+    ) -> f64;
 
     fn reset(&mut self);
 
-    fn train(&mut self, env: &mut dyn Env<T, COUNT>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
+    fn train(&mut self, env: &mut dyn Env<T, COUNT>, n_episodes: u128) -> (Vec<f64>, Vec<u128>, Vec<f64>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
+        let mut training_error: Vec<f64> = vec![];
         for _episode in tqdm!(0..n_episodes) {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
@@ -70,7 +78,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
                 action_counter += 1;
                 let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
                 let next_action: usize = self.get_action(&next_obs);
-                self.update(
+                let td = self.update(
                     &curr_obs,
                     curr_action,
                     reward,
@@ -78,6 +86,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
                     &next_obs,
                     next_action,
                 );
+                training_error.push(td);
                 curr_obs = next_obs;
                 curr_action = next_action;
                 epi_reward += reward;
@@ -88,7 +97,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
             }
             episode_length.push(action_counter);
         }
-        (reward_history, episode_length)
+        (reward_history, episode_length, training_error)
     }
 
     fn example(&mut self, env: &mut dyn Env<T, COUNT>) {
@@ -113,9 +122,3 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
         }
     }
 }
-
-mod elegibility_traces_agent;
-mod one_step_agent;
-
-pub use elegibility_traces_agent::ElegibilityTracesTabularAgent;
-pub use one_step_agent::OneStepTabularAgent;

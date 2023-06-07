@@ -154,14 +154,13 @@ fn main() {
             for func in [sarsa, qlearning, expected_sarsa] {
                 agent.set_future_q_value_func(func);
                 let now: Instant = Instant::now();
-                let (reward_history, episode_length) = agent.train(&mut env, n_episodes);
+                let (reward_history, episode_length, training_error) =
+                    agent.train(&mut env, n_episodes);
                 let elapsed: std::time::Duration = now.elapsed();
                 println!("{} {:.2?}", legends[i], elapsed);
 
-                let ma_error = moving_average(
-                    agent.get_training_error().len() / moving_average_window,
-                    agent.get_training_error(),
-                );
+                let ma_error =
+                    moving_average(training_error.len() / moving_average_window, &training_error);
                 errors.push(ma_error);
                 let ma_reward =
                     moving_average(n_episodes as usize / moving_average_window, &reward_history);
