@@ -1,22 +1,34 @@
 use rand::{distributions::Uniform, prelude::Distribution};
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash, rc::Rc};
 
 use crate::utils::argmax;
 
 use super::ActionSelection;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UniformEpsilonGreed<const COUNT: usize> {
     exploration_decider: Uniform<f64>,
     rand_action_selecter: Uniform<usize>,
     pub initial_epsilon: f64,
     pub epsilon: f64,
-    epsilon_decay: f64,
+    epsilon_decay: Rc<dyn Fn(f64) -> f64>,
     final_epsilon: f64,
 }
 
+impl<const COUNT: usize> Debug for UniformEpsilonGreed<COUNT> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UniformEpsilonGreed")
+            .field("exploration_decider", &self.exploration_decider)
+            .field("rand_action_selecter", &self.rand_action_selecter)
+            .field("initial_epsilon", &self.initial_epsilon)
+            .field("epsilon", &self.epsilon)
+            .field("final_epsilon", &self.final_epsilon)
+            .finish()
+    }
+}
+
 impl<const COUNT: usize> UniformEpsilonGreed<COUNT> {
-    pub fn new(epsilon: f64, epsilon_decay: f64, final_epsilon: f64) -> Self {
+    pub fn new(epsilon: f64, epsilon_decay: Rc<dyn Fn(f64) -> f64>, final_epsilon: f64) -> Self {
         Self {
             exploration_decider: Uniform::from(0.0..1.0),
             rand_action_selecter: Uniform::from(0..COUNT),
@@ -28,7 +40,7 @@ impl<const COUNT: usize> UniformEpsilonGreed<COUNT> {
     }
 
     fn decay_epsilon(&mut self) {
-        let new_epsilon: f64 = self.epsilon - self.epsilon_decay;
+        let new_epsilon: f64 = (self.epsilon_decay)(self.epsilon);
         self.epsilon = if self.final_epsilon > new_epsilon {
             self.epsilon
         } else {

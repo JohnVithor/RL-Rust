@@ -1,17 +1,20 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
+use std::vec;
 
+use ndarray::arr2;
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
-use reinforcement_learning::action_selection::{
-    EnumActionSelection, UniformEpsilonGreed,
-};
+use reinforcement_learning::action_selection::{EnumActionSelection, UniformEpsilonGreed};
+use reinforcement_learning::agent::Agent;
 use reinforcement_learning::agent::{qlearning, OneStepAgent};
-use reinforcement_learning::agent::{Agent, InternalModelAgent};
-use reinforcement_learning::env::CliffWalkingEnv;
-use reinforcement_learning::model::{EnumModel, RandomModel};
-use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
+use reinforcement_learning::env::FrozenLakeEditedEnv;
+use reinforcement_learning::env::frozen_lake_edited::FrozenLakeObs;
+use reinforcement_learning::network::activation::{tanh, tanh_prime};
+use reinforcement_learning::network::layers::{ActivationLayer, DenseLayer};
+use reinforcement_learning::network::loss::{mse, mse_prime};
+use reinforcement_learning::network::Network;
+use reinforcement_learning::policy::{EnumPolicy, NeuralPolicy};
 use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 extern crate structopt;
@@ -20,10 +23,10 @@ use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
 #[derive(StructOpt, Debug)]
-#[structopt(name = "RLRust - CliffWalking - model")]
+#[structopt(name = "RLRust - Frozen lake - neural")]
 struct Cli {
     /// Show example of episode
-    #[structopt(long = "show_example")]
+    #[structopt(long = "show_example", short = "s")]
     show_example: bool,
 
     /// Number of episodes for the training
@@ -75,7 +78,7 @@ fn main() {
 
     let learning_rate: f64 = cli.learning_rate;
     let initial_epsilon: f64 = cli.initial_epsilon;
-    let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
+    let epsilon_decay: f64 = cli.exploration_time;
     let final_epsilon: f64 = cli.final_epsilon;
     let _confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
@@ -83,7 +86,7 @@ fn main() {
 
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = CliffWalkingEnv::new(max_steps);
+    let mut env = FrozenLakeEditedEnv::new(&FrozenLakeEditedEnv::MAP_4X4, false, max_steps);
 
     let mut train_rewards: Vec<Vec<f64>> = vec![];
     let mut train_episodes_length: Vec<Vec<f64>> = vec![];
@@ -124,27 +127,56 @@ fn main() {
     ]
     .to_vec();
 
-    let policy = TabularPolicy::new(0.0);
+    let mut network = Network::new(learning_rate, mse, mse_prime);
+    network.add(Box::new(DenseLayer::new(6, 20)));
+    network.add(Box::new(ActivationLayer::new(tanh, tanh_prime)));
+    network.add(Box::new(DenseLayer::new(20, 20)));
+    network.add(Box::new(ActivationLayer::new(tanh, tanh_prime)));
+    network.add(Box::new(DenseLayer::new(20, 4)));
+    network.add(Box::new(ActivationLayer::new(tanh, tanh_prime)));
+
+    fn input_adapter(obs: FrozenLakeObs) -> ndarray::Array2<f64> {
+        arr2(&[[
+            obs.left.value(),
+            obs.down.value(),
+            obs.right.value(),
+            obs.up.value(),
+            obs.x as f64,
+            obs.y as f64,
+        ]])
+    }
+
+    fn output_adapter(values: ndarray::Array2<f64>) -> [f64; 4] {
+        [
+            *values.get((0, 0)).unwrap(),
+            *values.get((0, 1)).unwrap(),
+            *values.get((0, 2)).unwrap(),
+            *values.get((0, 3)).unwrap(),
+        ]
+    }
+
+    fn inv_output_adapter(values: [f64; 4]) -> ndarray::Array2<f64> {
+        arr2(&[[
+            *values.get(0).unwrap(),
+            *values.get(1).unwrap(),
+            *values.get(2).unwrap(),
+            *values.get(3).unwrap(),
+        ]])
+    }
+
+    let policy = NeuralPolicy::new(input_adapter, network, output_adapter, inv_output_adapter);
     // let policy = DoubleTabularPolicy::new(0.0);
 
-    let action_selection = vec![
+    let action_selection: Vec<EnumActionSelection<_, 4>> = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
             initial_epsilon,
-            Rc::new(move |a| {a - epsilon_decay}),
+            Rc::new(move |a| {a * epsilon_decay}),
             final_epsilon,
         )),
         // EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
     ];
 
-    let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
-        EnumPolicy::from(policy.clone()),
-        learning_rate,
-        discount_factor,
-        action_selection[0].clone(),
-        qlearning,
-    );
-
-    let mut other: OneStepAgent<usize, SIZE> = OneStepAgent::new(
+    let mut one_step_agent: OneStepAgent<_, SIZE> = OneStepAgent::new(
         EnumPolicy::from(policy),
         learning_rate,
         discount_factor,
@@ -152,17 +184,8 @@ fn main() {
         qlearning,
     );
 
-    let model = RandomModel::default();
-
-    let mut model_agent: InternalModelAgent<usize, SIZE> = InternalModelAgent::new(
-        Box::new(RefCell::new(&mut other)),
-        EnumModel::from(model),
-        10,
-    );
-
-    let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
+    let mut agents: Vec<&mut dyn Agent<_, SIZE>> = vec![];
     agents.push(&mut one_step_agent);
-    agents.push(&mut model_agent);
 
     let mut i = 0;
     for agent in agents {

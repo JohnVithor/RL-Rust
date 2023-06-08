@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 /// Based on https://towardsdatascience.com/math-neural-network-from-scratch-in-python-d6da9f29ce65
 use self::layers::Layer;
 
@@ -10,6 +12,26 @@ pub struct Network {
     layers: Vec<Box<dyn Layer>>,
     loss: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>,
     loss_prime: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>,
+}
+
+impl Clone for Network {
+    fn clone(&self) -> Self {
+        Self {
+            learning_rate: self.learning_rate.clone(),
+            layers: self.layers.clone(),
+            loss: self.loss.clone(),
+            loss_prime: self.loss_prime.clone(),
+        }
+    }
+}
+
+impl Debug for Network {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Network")
+            .field("learning_rate", &self.learning_rate)
+            .field("layers", &self.layers)
+            .finish()
+    }
 }
 
 impl Network {
@@ -56,6 +78,13 @@ impl Network {
         }
 
         (self.loss)(&y_train, &output).unwrap_or(0.0)
+    }
+
+    pub fn copy_weights_and_bias(&mut self, other: &Network) {
+        assert!(self.layers.len() == other.layers.len());
+        for (my_layer, other_layer) in self.layers.iter_mut().zip(&other.layers) {
+            my_layer.copy_weights_and_bias(other_layer.as_ref())
+        }
     }
 
     pub fn reset(&mut self) {

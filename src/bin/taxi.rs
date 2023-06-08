@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use std::time::Instant;
 
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
@@ -7,7 +8,7 @@ use reinforcement_learning::action_selection::{
 };
 use reinforcement_learning::agent::Agent;
 use reinforcement_learning::agent::{
-    expected_sarsa, qlearning, sarsa, ElegibilityTracesTabularAgent, OneStepTabularAgent,
+    expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, OneStepAgent,
 };
 use reinforcement_learning::env::TaxiEnv;
 use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
@@ -84,9 +85,11 @@ fn main() {
 
     let mut env = TaxiEnv::new(max_steps);
 
-    let mut rewards: Vec<Vec<f64>> = vec![];
-    let mut episodes_length: Vec<Vec<f64>> = vec![];
-    let mut errors: Vec<Vec<f64>> = vec![];
+    let mut train_rewards: Vec<Vec<f64>> = vec![];
+    let mut train_episodes_length: Vec<Vec<f64>> = vec![];
+    let mut train_errors: Vec<Vec<f64>> = vec![];
+    let mut test_rewards: Vec<Vec<f64>> = vec![];
+    let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
     const SIZE: usize = 6;
 
@@ -126,13 +129,13 @@ fn main() {
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
             initial_epsilon,
-            epsilon_decay,
+            Rc::new(move |a| a - epsilon_decay),
             final_epsilon,
         )),
         EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
     ];
 
-    let mut one_step_agent: OneStepTabularAgent<usize, SIZE> = OneStepTabularAgent::new(
+    let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
         EnumPolicy::from(policy.clone()),
         learning_rate,
         discount_factor,
@@ -140,8 +143,8 @@ fn main() {
         sarsa,
     );
 
-    let mut trace_agent: ElegibilityTracesTabularAgent<usize, SIZE> =
-        ElegibilityTracesTabularAgent::new(
+    let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> =
+        ElegibilityTracesAgent::new(
             EnumPolicy::from(policy),
             learning_rate,
             discount_factor,
@@ -162,7 +165,7 @@ fn main() {
                 agent.set_future_q_value_func(func);
                 let now: Instant = Instant::now();
                 let (reward_history, episode_length, training_error) =
-                    agent.train(&mut env, n_episodes);
+                    agent.train(&mut env, n_episodes, n_episodes / 10);
                 let elapsed: std::time::Duration = now.elapsed();
                 println!("{} {:.2?}", legends[i], elapsed);
 
@@ -170,28 +173,54 @@ fn main() {
                     training_error.len() / moving_average_window,
                     &training_error,
                 );
-                errors.push(ma_error);
+                train_errors.push(ma_error);
                 let ma_reward =
                     moving_average(n_episodes as usize / moving_average_window, &reward_history);
-                rewards.push(ma_reward);
+                train_rewards.push(ma_reward);
                 let ma_episode = moving_average(
                     n_episodes as usize / moving_average_window,
                     &episode_length.iter().map(|x| *x as f64).collect(),
                 );
-                episodes_length.push(ma_episode);
+                train_episodes_length.push(ma_episode);
 
                 if cli.show_example {
                     agent.example(&mut env);
                 }
+
+                let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
+
+                let ma_reward =
+                    moving_average(n_episodes as usize / moving_average_window, &reward_history);
+                test_rewards.push(ma_reward);
+                let ma_episode = moving_average(
+                    n_episodes as usize / moving_average_window,
+                    &episode_length.iter().map(|x| *x as f64).collect(),
+                );
+                test_episodes_length.push(ma_episode);
+
                 i += 1;
                 agent.reset();
             }
         }
     }
 
-    plot_moving_average(&rewards, &colors, &legends, "Rewards");
+    plot_moving_average(&train_rewards, &colors, &legends, "Train Rewards");
 
-    plot_moving_average(&episodes_length, &colors, &legends, "Episodes Length");
+    plot_moving_average(
+        &train_episodes_length,
+        &colors,
+        &legends,
+        "Train Episodes Length",
+    );
 
-    plot_moving_average(&errors, &colors, &legends, "Training Error");
+    plot_moving_average(&train_errors, &colors, &legends, "Training Error");
+
+    plot_moving_average(&test_rewards, &colors, &legends, "Test Rewards");
+
+    plot_moving_average(
+        &test_episodes_length,
+        &colors,
+        &legends,
+        "Test Episodes Length",
+    );
 }

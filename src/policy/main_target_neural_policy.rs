@@ -12,9 +12,11 @@ pub type InvOutputAdapter<const COUNT: usize> = fn([f64; COUNT]) -> ndarray::Arr
 #[derive(Debug)]
 pub struct NeuralPolicy<T, const COUNT: usize> {
     input_adapter: InputAdapter<T>,
-    network: Network,
+    target_network: Network,
+    main_network: Network,
     output_adapter: OutputAdapter<COUNT>,
     inv_output_adapter: InvOutputAdapter<COUNT>,
+    counter: u8,
 }
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> NeuralPolicy<T, COUNT> {
     pub fn new(
@@ -25,9 +27,11 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> NeuralPolicy<
     ) -> Self {
         Self {
             input_adapter,
-            network,
+            target_network: network.clone(),
+            main_network: network,
             output_adapter,
             inv_output_adapter,
+            counter: 0,
         }
     }
 }
@@ -37,27 +41,35 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COU
 {
     fn predict(&mut self, curr_obs: &T) -> [f64; COUNT] {
         let input = (self.input_adapter)(curr_obs.clone());
-        let output = self.network.predict(input);
+        let output = self.target_network.predict(input);
         (self.output_adapter)(output)
     }
 
     fn get_values(&mut self, curr_obs: &T) -> [f64; COUNT] {
         let input = (self.input_adapter)(curr_obs.clone());
-        let output = self.network.predict(input);
+        let output = self.main_network.predict(input);
         (self.output_adapter)(output)
     }
 
-    fn update(&mut self, obs: &T, action: usize, temporal_difference: f64) {
-        let mut curr_values: [f64; COUNT] = self.get_values(obs);
-        curr_values[action] = curr_values[action] + temporal_difference;
+    fn update(&mut self, obs: &T, action: usize, next_obs: &T, temporal_difference: f64) {
+        let mut main_values: [f64; COUNT] = self.get_values(obs);
+        let target_values: [f64; COUNT] = self.predict(next_obs);
+        main_values[action] = target_values[action] + temporal_difference;
         let x = (self.input_adapter)(obs.clone());
-        let y = (self.inv_output_adapter)(curr_values);
-        self.network.fit(x, y);
+        let y = (self.inv_output_adapter)(main_values);
+        self.main_network.fit(x, y);
+        self.counter += 1;
     }
 
     fn reset(&mut self) {
-        self.network.reset();
+        self.main_network.reset();
+        self.target_network.reset();
     }
 
-    fn after_update(&mut self) {}
+    fn after_update(&mut self) {
+        if self.counter >= 100 {
+            self.target_network = self.main_network.clone();
+            self.counter = 0;
+        }
+    }
 }

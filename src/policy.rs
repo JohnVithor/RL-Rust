@@ -1,6 +1,6 @@
 use std::hash::Hash;
 use enum_dispatch::enum_dispatch;
-
+use std::fmt::Debug;
 mod tabular_policy;
 mod double_tabular_policy;
 mod neural_policy;
@@ -22,8 +22,9 @@ pub trait Policy<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
 }
 
 #[enum_dispatch(Policy<T, COUNT>)]
-#[derive(Debug, Clone)]
-pub enum EnumPolicy<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
+#[derive(Debug)]
+pub enum EnumPolicy<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     TabularPolicy(TabularPolicy<T, COUNT>),
     DoubleTabularPolicy(DoubleTabularPolicy<T, COUNT>),
+    NeuralPolicy(NeuralPolicy<T, COUNT>)
 }

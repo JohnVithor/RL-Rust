@@ -1,6 +1,6 @@
 use crate::{
     env::{Env, EnvNotReady},
-    utils::{inc, to_s},
+    utils::{inc, from_2d_to_1d},
 };
 
 #[derive(Debug, Clone)]
@@ -21,7 +21,7 @@ impl CliffWalkingEnv {
 
     fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
         let (newrow, newcol) = inc(4, 12, row, col, action);
-        let newstate: usize = to_s(12, newrow, newcol);
+        let newstate: usize = from_2d_to_1d(12, newrow, newcol);
         let win: bool = newstate == Self::GOAL_POSITION;
         let lose: bool = Self::CLIFF_POSITIONS.contains(&newstate);
         let reward: f64 = if lose { -100.0 } else { -1.0 };
@@ -39,7 +39,7 @@ impl CliffWalkingEnv {
         for row in 0..nrow {
             for col in 0..ncol {
                 for a in 0..4 {
-                    let i = to_s(ncol, row, col);
+                    let i = from_2d_to_1d(ncol, row, col);
                     let li = &mut obs[i][a];
                     let (s, r, t) = Self::update_probability_matrix(row, col, a);
 

@@ -32,8 +32,12 @@ pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
     argmax(&r)
 }
 
-pub fn to_s(ncol: usize, row: usize, col: usize) -> usize {
+pub fn from_2d_to_1d(ncol: usize, row: usize, col: usize) -> usize {
     row * ncol + col
+}
+
+pub fn from_1d_to_2d(ncol: usize, pos: usize) -> (usize, usize) {
+    (pos / ncol, pos % ncol)
 }
 
 pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize, usize) {
@@ -97,11 +101,11 @@ pub fn plot_moving_average(
         if values[i].len() > max_len {
             max_len = values[i].len();
         }
-        let min_value_i = values[0].iter().copied().reduce(f64::min).unwrap();
+        let min_value_i = values[i].iter().copied().reduce(f64::min).unwrap();
         if min_value_i < min_value {
             min_value = min_value_i;
         }
-        let max_value_i = values[0].iter().copied().reduce(f64::max).unwrap();
+        let max_value_i = values[i].iter().copied().reduce(f64::max).unwrap();
         if max_value_i > max_value {
             max_value = max_value_i;
         }

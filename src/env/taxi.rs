@@ -4,7 +4,7 @@ use rand::{distributions::Uniform, prelude::Distribution};
 
 use crate::{
     env::{Env, EnvNotReady},
-    utils::{categorical_sample, to_s},
+    utils::{categorical_sample, from_2d_to_1d},
 };
 
 #[derive(Debug, Clone)]
@@ -161,7 +161,7 @@ impl Env<usize, 6> for TaxiEnv {
     fn render(&self) -> String {
         let mut new_map = Self::MAP.clone().join("\n");
         let (row, col, _, _) = Self::decode(self.curr_obs);
-        let mut pos = to_s(11, row + 1, 2 * col + 1);
+        let mut pos = from_2d_to_1d(11, row + 1, 2 * col + 1);
         for (i, _) in new_map.match_indices('\n') {
             if pos >= i {
                 pos += 1;

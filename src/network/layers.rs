@@ -1,9 +1,13 @@
+use std::fmt::Debug;
+
+use ndarray::arr2;
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
 
-pub trait Layer {
+pub trait Layer: LayerClone {
     // computes the output Y of a layer for a given input X
     fn forward_propagation(&mut self, input: ndarray::Array2<f64>) -> ndarray::Array2<f64>;
+
     // computes dE/dX for a given dE/dY (and update parameters if any)
     fn backward_propagation(
         &mut self,
@@ -11,9 +15,46 @@ pub trait Layer {
         learning_rate: f64,
     ) -> ndarray::Array2<f64>;
 
+    fn get_weights(&self) -> ndarray::Array2<f64>;
+    fn get_bias(&self) -> ndarray::Array2<f64>;
+
+    fn set_weights(&mut self, weights: ndarray::Array2<f64>);
+    fn set_bias(&mut self, bias: ndarray::Array2<f64>);
+
+    fn copy_weights_and_bias(&mut self, other: &dyn Layer) {
+        self.set_weights(other.get_weights());
+        self.set_bias(other.get_bias());
+    }
+
     fn reset(&mut self);
 }
 
+pub trait LayerClone {
+    fn clone_box(&self) -> Box<dyn Layer>;
+}
+
+impl<T> LayerClone for T
+where
+    T: 'static + Layer + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Layer> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Layer> {
+    fn clone(&self) -> Box<dyn Layer> {
+        self.clone_box()
+    }
+}
+
+impl Debug for dyn Layer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Layer").finish()
+    }
+}
+
+#[derive(Clone)]
 pub struct DenseLayer {
     input: ndarray::Array2<f64>,
     weights: ndarray::Array2<f64>,
@@ -56,8 +97,24 @@ impl Layer for DenseLayer {
         self.bias = ndarray::Array::random(self.bias.raw_dim(), Uniform::new(0., 1.));
     }
 
+    fn get_weights(&self) -> ndarray::Array2<f64> {
+        self.weights.clone()
+    }
+
+    fn get_bias(&self) -> ndarray::Array2<f64> {
+        self.bias.clone()
+    }
+
+    fn set_weights(&mut self, weights: ndarray::Array2<f64>) {
+        self.weights = weights
+    }
+
+    fn set_bias(&mut self, bias: ndarray::Array2<f64>) {
+        self.bias = bias;
+    }
 }
 
+#[derive(Clone)]
 pub struct ActivationLayer {
     input: ndarray::Array2<f64>,
     activation: fn(&ndarray::Array2<f64>) -> ndarray::Array2<f64>,
@@ -92,7 +149,17 @@ impl Layer for ActivationLayer {
         (self.activation_prime)(&self.input) * output_error
     }
 
-    fn reset(&mut self) {
-        
+    fn reset(&mut self) {}
+
+    fn get_weights(&self) -> ndarray::Array2<f64> {
+        arr2(&[[0.0]])
     }
+
+    fn get_bias(&self) -> ndarray::Array2<f64> {
+        arr2(&[[0.0]])
+    }
+
+    fn set_weights(&mut self, _weights: ndarray::Array2<f64>) {}
+
+    fn set_bias(&mut self, _bias: ndarray::Array2<f64>) {}
 }

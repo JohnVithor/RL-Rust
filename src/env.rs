@@ -1,14 +1,16 @@
 use std::fmt::Debug;
 use std::io;
 
-mod blackjack;
-mod cliff_walking;
-mod frozen_lake;
-mod taxi;
+pub mod blackjack;
+pub mod cliff_walking;
+pub mod frozen_lake;
+pub mod frozen_lake_edited;
+pub mod taxi;
 
 pub use blackjack::BlackJackEnv;
 pub use cliff_walking::CliffWalkingEnv;
 pub use frozen_lake::FrozenLakeEnv;
+pub use frozen_lake_edited::FrozenLakeEditedEnv;
 pub use taxi::TaxiEnv;
 
 #[derive(Debug, Clone)]
@@ -25,6 +27,7 @@ pub trait Env<T: Debug, const COUNT: usize> {
         let mut final_reward: f64 = 0.0;
         loop {
             println!("curr_obs {:?}", curr_obs);
+            println!("{}", self.render());
             let mut user_input: String = String::new();
             io::stdin().read_line(&mut user_input).unwrap();
             user_input = user_input.trim().to_string();

@@ -4,7 +4,7 @@ use crate::policy::{EnumPolicy, Policy};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct OneStepTabularAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
+pub struct OneStepAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     policy: EnumPolicy<T, COUNT>,
     // policy update
     learning_rate: f64,
@@ -13,7 +13,7 @@ pub struct OneStepTabularAgent<T: Hash + PartialEq + Eq + Clone + Debug, const C
     get_next_q_value: GetNextQValue<COUNT>,
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepTabularAgent<T, COUNT> {
+impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepAgent<T, COUNT> {
     pub fn new(
         policy: EnumPolicy<T, COUNT>,
         // policy update
@@ -33,7 +33,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepTabula
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for OneStepTabularAgent<T, COUNT>
+    for OneStepAgent<T, COUNT>
 {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
         self.get_next_q_value = func;

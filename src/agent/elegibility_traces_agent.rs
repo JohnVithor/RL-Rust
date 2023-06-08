@@ -5,7 +5,7 @@ use fxhash::FxHashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct ElegibilityTracesTabularAgent<
+pub struct ElegibilityTracesAgent<
     T: Hash + PartialEq + Eq + Clone + Debug,
     const COUNT: usize,
 > {
@@ -20,7 +20,7 @@ pub struct ElegibilityTracesTabularAgent<
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    ElegibilityTracesTabularAgent<T, COUNT>
+    ElegibilityTracesAgent<T, COUNT>
 {
     pub fn new(
         policy: EnumPolicy<T, COUNT>,
@@ -44,7 +44,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for ElegibilityTracesTabularAgent<T, COUNT>
+    for ElegibilityTracesAgent<T, COUNT>
 {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
         self.get_next_q_value = func;

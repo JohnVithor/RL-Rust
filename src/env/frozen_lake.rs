@@ -1,5 +1,5 @@
 use crate::env::{Env, EnvNotReady};
-use crate::utils::{categorical_sample, inc, to_s};
+use crate::utils::{categorical_sample, inc, from_2d_to_1d};
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
@@ -38,7 +38,7 @@ impl FrozenLakeEnv {
         action: usize,
     ) -> (usize, f64, bool) {
         let (newrow, newcol) = inc(nrow, ncol, row, col, action);
-        let newstate: usize = to_s(ncol, newrow, newcol);
+        let newstate: usize = from_2d_to_1d(ncol, newrow, newcol);
         let newletter: &str = map[newrow].get(newcol..newcol + 1).unwrap();
         let terminated: bool = "GH".contains(newletter);
         let reward: f64 = (newletter == "G").into();
@@ -68,7 +68,7 @@ impl FrozenLakeEnv {
             vec![[[(0.0, 0, 0.0, false); 3]; 4]; nrow * ncol];
         for row in 0..nrow {
             for col in 0..ncol {
-                let s = to_s(ncol, row, col);
+                let s = from_2d_to_1d(ncol, row, col);
                 for a in 0..4 {
                     let li = &mut probs[s][a];
                     let letter = map[row].get(col..col + 1).unwrap();

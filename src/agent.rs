@@ -1,10 +1,10 @@
 mod elegibility_traces_agent;
-mod one_step_agent;
 mod internal_model_agent;
+mod one_step_agent;
 
-pub use elegibility_traces_agent::ElegibilityTracesTabularAgent;
-pub use one_step_agent::OneStepTabularAgent;
+pub use elegibility_traces_agent::ElegibilityTracesAgent;
 pub use internal_model_agent::InternalModelAgent;
+pub use one_step_agent::OneStepAgent;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -12,8 +12,7 @@ use std::hash::Hash;
 use crate::action_selection::EnumActionSelection;
 use crate::env::Env;
 use crate::utils::max;
-use kdam::tqdm;
-
+use kdam::{tqdm, BarExt};
 
 pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, &[f64; COUNT]) -> f64;
 
@@ -46,7 +45,6 @@ pub fn expected_sarsa<const COUNT: usize>(
 }
 
 pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>);
 
     fn set_action_selector(&mut self, action_selector: EnumActionSelection<T, COUNT>);
@@ -65,11 +63,22 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
 
     fn reset(&mut self);
 
-    fn train(&mut self, env: &mut dyn Env<T, COUNT>, n_episodes: u128) -> (Vec<f64>, Vec<u128>, Vec<f64>) {
+    fn train(
+        &mut self,
+        env: &mut dyn Env<T, COUNT>,
+        n_episodes: u128,
+        eval_at: u128,
+    ) -> (Vec<f64>, Vec<u128>, Vec<f64>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
         let mut training_error: Vec<f64> = vec![];
-        for _episode in tqdm!(0..n_episodes) {
+
+        let mut pb = tqdm!(total = n_episodes as usize);
+        pb.set_description(format!("GEN {}", 1));
+        pb.refresh();
+
+
+        for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
             let mut curr_obs: T = env.reset();
@@ -95,9 +104,40 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
                     break;
                 }
             }
+            if episode % eval_at == 0 {
+                let (r, l) = self.evaluate(env, 100);
+                let mr: f64 = r.iter().sum::<f64>() / r.len() as f64;
+                let ml: f64 = l.iter().sum::<u128>() as f64 / l.len() as f64;
+                pb.set_postfix(format!("eval reward={}, eval ep len={}", mr, ml));
+                pb.set_description(format!("GEN {}", (episode/eval_at)+1));
+            }
+            pb.update(1);
             episode_length.push(action_counter);
         }
         (reward_history, episode_length, training_error)
+    }
+
+    fn evaluate(&mut self, env: &mut dyn Env<T, COUNT>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
+        let mut reward_history: Vec<f64> = vec![];
+        let mut episode_length: Vec<u128> = vec![];
+        for _episode in tqdm!(0..n_episodes) {
+            let mut action_counter: u128 = 0;
+            let mut epi_reward: f64 = 0.0;
+            let mut curr_action: usize = self.get_action(&env.reset());
+            loop {
+                action_counter += 1;
+                let (obs, reward, terminated) = env.step(curr_action).unwrap();
+                let next_action: usize = self.get_action(&obs);
+                curr_action = next_action;
+                epi_reward += reward;
+                if terminated {
+                    reward_history.push(epi_reward);
+                    break;
+                }
+            }
+            episode_length.push(action_counter);
+        }
+        (reward_history, episode_length)
     }
 
     fn example(&mut self, env: &mut dyn Env<T, COUNT>) {
