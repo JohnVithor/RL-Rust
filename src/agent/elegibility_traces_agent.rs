@@ -72,15 +72,15 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         next_obs: &T,
         next_action: usize,
     ) -> f64 {
-        let next_q_values: &[f64; COUNT] = self.policy.get_values(next_obs);
+        let next_q_values: [f64; COUNT] = self.policy.get_values(next_obs);
         let future_q_value: f64 = (self.get_next_q_value)(
-            next_q_values,
+            &next_q_values,
             next_action,
             &self
                 .action_selection
-                .get_exploration_probs(next_obs, next_q_values),
+                .get_exploration_probs(next_obs, &next_q_values),
         );
-        let curr_q_values: &[f64; COUNT] = self.policy.get_values(curr_obs);
+        let curr_q_values: [f64; COUNT] = self.policy.get_values(curr_obs);
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 

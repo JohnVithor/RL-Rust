@@ -57,4 +57,10 @@ impl Network {
 
         (self.loss)(&y_train, &output).unwrap_or(0.0)
     }
+
+    pub fn reset(&mut self) {
+        for l in &mut self.layers {
+            l.reset()
+        }
+    }
 }

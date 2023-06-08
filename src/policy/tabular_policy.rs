@@ -26,8 +26,8 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
         *self.policy.get(obs).unwrap_or(&self.default)
     }
 
-    fn get_values(&mut self, obs: &T) -> &[f64; COUNT] {
-        self.policy.get(obs).unwrap_or(&self.default)
+    fn get_values(&mut self, obs: &T) -> [f64; COUNT] {
+        *self.policy.get(obs).unwrap_or(&self.default)
     }
 
     fn update(&mut self, obs: &T, action: usize, value: f64) {

@@ -10,6 +10,8 @@ pub trait Layer {
         output_error: ndarray::Array2<f64>,
         learning_rate: f64,
     ) -> ndarray::Array2<f64>;
+
+    fn reset(&mut self);
 }
 
 pub struct DenseLayer {
@@ -48,6 +50,12 @@ impl Layer for DenseLayer {
         self.bias = &self.bias - learning_rate * output_error;
         input_error
     }
+    fn reset(&mut self) {
+        self.input = ndarray::Array2::zeros(self.input.raw_dim());
+        self.weights = ndarray::Array::random(self.weights.raw_dim(), Uniform::new(0., 1.));
+        self.bias = ndarray::Array::random(self.bias.raw_dim(), Uniform::new(0., 1.));
+    }
+
 }
 
 pub struct ActivationLayer {
@@ -82,5 +90,9 @@ impl Layer for ActivationLayer {
         _learning_rate: f64,
     ) -> ndarray::Array2<f64> {
         (self.activation_prime)(&self.input) * output_error
+    }
+
+    fn reset(&mut self) {
+        
     }
 }

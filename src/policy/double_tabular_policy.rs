@@ -18,7 +18,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> DoubleTabularPolicy<T
             default: [default_value; COUNT],
             alpha_policy: FxHashMap::default(),
             beta_policy: FxHashMap::default(),
-            policy_flag: true
+            policy_flag: true,
         }
     }
 }
@@ -36,8 +36,8 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
         values
     }
 
-    fn get_values(&mut self, obs: &T) -> &[f64; COUNT] {
-        match self.policy_flag {
+    fn get_values(&mut self, obs: &T) -> [f64; COUNT] {
+        *match self.policy_flag {
             true => &self.alpha_policy,
             false => &self.beta_policy,
         }
