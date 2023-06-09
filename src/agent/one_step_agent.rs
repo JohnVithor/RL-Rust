@@ -49,7 +49,8 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
     }
 
     fn get_action(&mut self, obs: &T) -> usize {
-        self.action_selection.get_action(obs, &self.policy.predict(obs))
+        self.action_selection
+            .get_action(obs, &self.policy.predict(obs))
     }
 
     fn update(
@@ -76,6 +77,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         self.policy.update(
             curr_obs,
             curr_action,
+            next_obs,
             self.learning_rate * temporal_difference,
         );
 

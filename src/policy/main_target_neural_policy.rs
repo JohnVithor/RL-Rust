@@ -10,7 +10,7 @@ pub type OutputAdapter<const COUNT: usize> = fn(ndarray::Array2<f64>) -> [f64; C
 pub type InvOutputAdapter<const COUNT: usize> = fn([f64; COUNT]) -> ndarray::Array2<f64>;
 
 #[derive(Debug)]
-pub struct NeuralPolicy<T, const COUNT: usize> {
+pub struct MainTargetNeuralPolicy<T, const COUNT: usize> {
     input_adapter: InputAdapter<T>,
     target_network: Network,
     main_network: Network,
@@ -18,7 +18,9 @@ pub struct NeuralPolicy<T, const COUNT: usize> {
     inv_output_adapter: InvOutputAdapter<COUNT>,
     counter: u8,
 }
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> NeuralPolicy<T, COUNT> {
+impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
+    MainTargetNeuralPolicy<T, COUNT>
+{
     pub fn new(
         input_adapter: InputAdapter<T>,
         network: Network,
@@ -37,7 +39,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> NeuralPolicy<
 }
 
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COUNT>
-    for NeuralPolicy<T, COUNT>
+    for MainTargetNeuralPolicy<T, COUNT>
 {
     fn predict(&mut self, curr_obs: &T) -> [f64; COUNT] {
         let input = (self.input_adapter)(curr_obs.clone());
@@ -51,14 +53,14 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COU
         (self.output_adapter)(output)
     }
 
-    fn update(&mut self, obs: &T, action: usize, next_obs: &T, temporal_difference: f64) {
+    fn update(&mut self, obs: &T, action: usize, next_obs: &T, temporal_difference: f64) -> f64 {
         let mut main_values: [f64; COUNT] = self.get_values(obs);
         let target_values: [f64; COUNT] = self.predict(next_obs);
         main_values[action] = target_values[action] + temporal_difference;
         let x = (self.input_adapter)(obs.clone());
         let y = (self.inv_output_adapter)(main_values);
-        self.main_network.fit(x, y);
         self.counter += 1;
+        self.main_network.fit(x, y)
     }
 
     fn reset(&mut self) {

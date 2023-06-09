@@ -30,10 +30,9 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
         *self.policy.get(obs).unwrap_or(&self.default)
     }
 
-    fn update(&mut self, obs: &T, action: usize, value: f64) {
-        self.policy
-            .entry(obs.clone())
-            .or_insert(self.default)[action] += value;
+    fn update(&mut self, obs: &T, action: usize, _next_obs: &T, temporal_difference: f64) -> f64 {
+        self.policy.entry(obs.clone()).or_insert(self.default)[action] += temporal_difference;
+        temporal_difference
     }
 
     fn reset(&mut self) {

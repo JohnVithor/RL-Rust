@@ -47,12 +47,12 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COU
         (self.output_adapter)(output)
     }
 
-    fn update(&mut self, obs: &T, action: usize, temporal_difference: f64) {
+    fn update(&mut self, obs: &T, action: usize, _next_obs: &T, temporal_difference: f64) -> f64 {
         let mut curr_values: [f64; COUNT] = self.get_values(obs);
         curr_values[action] = curr_values[action] + temporal_difference;
         let x = (self.input_adapter)(obs.clone());
         let y = (self.inv_output_adapter)(curr_values);
-        self.network.fit(x, y);
+        self.network.fit(x, y)
     }
 
     fn reset(&mut self) {
