@@ -8,7 +8,6 @@ use std::hash::Hash;
 pub struct ElegibilityTracesAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     policy: EnumPolicy<T, COUNT>,
     // policy update
-    learning_rate: f64,
     discount_factor: f64,
     action_selection: EnumActionSelection<T, COUNT>,
     lambda_factor: f64,
@@ -22,7 +21,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     pub fn new(
         policy: EnumPolicy<T, COUNT>,
         // policy update
-        learning_rate: f64,
         discount_factor: f64,
         action_selection: EnumActionSelection<T, COUNT>,
         lambda_factor: f64,
@@ -31,7 +29,6 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
         Self {
             policy,
             trace: FxHashMap::default(),
-            learning_rate,
             discount_factor,
             action_selection,
             lambda_factor,
@@ -92,7 +89,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
                     obs,
                     action,
                     next_obs,
-                    self.learning_rate * temporal_difference * *value,
+                    temporal_difference * *value,
                 );
                 *value *= self.discount_factor * self.lambda_factor
             }

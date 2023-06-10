@@ -6,6 +6,7 @@ use super::Policy;
 
 #[derive(Debug, Clone)]
 pub struct DoubleTabularPolicy<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
+    learning_rate: f64,
     default: [f64; COUNT],
     alpha_policy: FxHashMap<T, [f64; COUNT]>,
     beta_policy: FxHashMap<T, [f64; COUNT]>,
@@ -13,8 +14,9 @@ pub struct DoubleTabularPolicy<T: Hash + PartialEq + Eq + Clone, const COUNT: us
 }
 
 impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> DoubleTabularPolicy<T, COUNT> {
-    pub fn new(default_value: f64) -> Self {
+    pub fn new(learning_rate: f64, default_value: f64) -> Self {
         Self {
+            learning_rate,
             default: [default_value; COUNT],
             alpha_policy: FxHashMap::default(),
             beta_policy: FxHashMap::default(),
@@ -51,8 +53,8 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
             false => &mut self.alpha_policy,
         }
         .entry(obs.clone())
-        .or_insert(self.default)[action] += temporal_difference;
-        temporal_difference
+        .or_insert(self.default)[action] += self.learning_rate * temporal_difference;
+        self.learning_rate * temporal_difference
     }
 
     fn reset(&mut self) {

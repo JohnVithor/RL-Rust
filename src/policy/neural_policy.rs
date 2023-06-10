@@ -11,6 +11,7 @@ pub type InvOutputAdapter<const COUNT: usize> = fn([f64; COUNT]) -> ndarray::Arr
 
 #[derive(Debug)]
 pub struct NeuralPolicy<T, const COUNT: usize> {
+    learning_rate: f64,
     input_adapter: InputAdapter<T>,
     network: Network,
     output_adapter: OutputAdapter<COUNT>,
@@ -18,12 +19,14 @@ pub struct NeuralPolicy<T, const COUNT: usize> {
 }
 impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> NeuralPolicy<T, COUNT> {
     pub fn new(
+        learning_rate: f64,
         input_adapter: InputAdapter<T>,
         network: Network,
         output_adapter: OutputAdapter<COUNT>,
         inv_output_adapter: InvOutputAdapter<COUNT>,
     ) -> Self {
         Self {
+            learning_rate,
             input_adapter,
             network,
             output_adapter,
@@ -52,7 +55,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COU
         curr_values[action] = curr_values[action] + temporal_difference;
         let x = (self.input_adapter)(obs.clone());
         let y = (self.inv_output_adapter)(curr_values);
-        self.network.fit(x, y)
+        self.network.fit(x, y, self.learning_rate)
     }
 
     fn reset(&mut self) {

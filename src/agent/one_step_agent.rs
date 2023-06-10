@@ -7,7 +7,6 @@ use std::hash::Hash;
 pub struct OneStepAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     policy: EnumPolicy<T, COUNT>,
     // policy update
-    learning_rate: f64,
     discount_factor: f64,
     action_selection: EnumActionSelection<T, COUNT>,
     get_next_q_value: GetNextQValue<COUNT>,
@@ -17,14 +16,12 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepAgent<
     pub fn new(
         policy: EnumPolicy<T, COUNT>,
         // policy update
-        learning_rate: f64,
         discount_factor: f64,
         action_selection: EnumActionSelection<T, COUNT>,
         get_next_q_value: GetNextQValue<COUNT>,
     ) -> Self {
         Self {
             policy,
-            learning_rate,
             discount_factor,
             action_selection,
             get_next_q_value,
@@ -74,11 +71,11 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        self.policy.update(
+        let _error = self.policy.update(
             curr_obs,
             curr_action,
             next_obs,
-            self.learning_rate * temporal_difference,
+            temporal_difference,
         );
 
         self.policy.after_update();

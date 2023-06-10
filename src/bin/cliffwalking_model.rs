@@ -4,9 +4,7 @@ use std::time::Instant;
 
 use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
-use reinforcement_learning::action_selection::{
-    EnumActionSelection, UniformEpsilonGreed,
-};
+use reinforcement_learning::action_selection::{EnumActionSelection, UniformEpsilonGreed};
 use reinforcement_learning::agent::{qlearning, OneStepAgent};
 use reinforcement_learning::agent::{Agent, InternalModelAgent};
 use reinforcement_learning::env::CliffWalkingEnv;
@@ -124,13 +122,13 @@ fn main() {
     ]
     .to_vec();
 
-    let policy = TabularPolicy::new(0.0);
+    let policy = TabularPolicy::new(learning_rate, 0.0);
     // let policy = DoubleTabularPolicy::new(0.0);
 
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
             initial_epsilon,
-            Rc::new(move |a| {a - epsilon_decay}),
+            Rc::new(move |a| a - epsilon_decay),
             final_epsilon,
         )),
         // EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
@@ -138,7 +136,6 @@ fn main() {
 
     let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
         EnumPolicy::from(policy.clone()),
-        learning_rate,
         discount_factor,
         action_selection[0].clone(),
         qlearning,
@@ -146,7 +143,6 @@ fn main() {
 
     let mut other: OneStepAgent<usize, SIZE> = OneStepAgent::new(
         EnumPolicy::from(policy),
-        learning_rate,
         discount_factor,
         action_selection[0].clone(),
         qlearning,
@@ -170,7 +166,7 @@ fn main() {
             agent.set_action_selector(acs.clone());
             let now: Instant = Instant::now();
             let (reward_history, episode_length, training_error) =
-                agent.train(&mut env, n_episodes, n_episodes/10);
+                agent.train(&mut env, n_episodes, n_episodes / 10);
             let elapsed: std::time::Duration = now.elapsed();
             println!("{} {:.2?}", legends[i], elapsed);
 

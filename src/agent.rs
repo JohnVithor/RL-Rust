@@ -77,12 +77,12 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
         pb.set_description(format!("GEN {}", 1));
         pb.refresh();
 
-
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
             let mut curr_obs: T = env.reset();
             let mut curr_action: usize = self.get_action(&curr_obs);
+
             loop {
                 action_counter += 1;
                 let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
@@ -109,7 +109,7 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
                 let mr: f64 = r.iter().sum::<f64>() / r.len() as f64;
                 let ml: f64 = l.iter().sum::<u128>() as f64 / l.len() as f64;
                 pb.set_postfix(format!("eval reward={}, eval ep len={}", mr, ml));
-                pb.set_description(format!("GEN {}", (episode/eval_at)+1));
+                pb.set_description(format!("GEN {}", (episode / eval_at) + 1));
             }
             pb.update(1);
             episode_length.push(action_counter);

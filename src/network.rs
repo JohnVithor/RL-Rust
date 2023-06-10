@@ -8,7 +8,6 @@ pub mod layers;
 pub mod loss;
 
 pub struct Network {
-    learning_rate: f64,
     layers: Vec<Box<dyn Layer>>,
     loss: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>,
     loss_prime: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>,
@@ -17,7 +16,6 @@ pub struct Network {
 impl Clone for Network {
     fn clone(&self) -> Self {
         Self {
-            learning_rate: self.learning_rate.clone(),
             layers: self.layers.clone(),
             loss: self.loss.clone(),
             loss_prime: self.loss_prime.clone(),
@@ -28,7 +26,6 @@ impl Clone for Network {
 impl Debug for Network {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Network")
-            .field("learning_rate", &self.learning_rate)
             .field("layers", &self.layers)
             .finish()
     }
@@ -36,12 +33,10 @@ impl Debug for Network {
 
 impl Network {
     pub fn new(
-        learning_rate: f64,
         loss: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> Option<f64>,
         loss_prime: fn(&ndarray::Array2<f64>, &ndarray::Array2<f64>) -> ndarray::Array2<f64>,
     ) -> Self {
         Self {
-            learning_rate,
             layers: vec![],
             loss,
             loss_prime,
@@ -64,7 +59,12 @@ impl Network {
     }
 
     // train the network
-    pub fn fit(&mut self, x_train: ndarray::Array2<f64>, y_train: ndarray::Array2<f64>) -> f64 {
+    pub fn fit(
+        &mut self,
+        x_train: ndarray::Array2<f64>,
+        y_train: ndarray::Array2<f64>,
+        learning_rate: f64,
+    ) -> f64 {
         // forward propagation
         let mut output = x_train;
         for layer in &mut self.layers {
@@ -74,7 +74,7 @@ impl Network {
         // backward propagation
         let mut error = (self.loss_prime)(&y_train, &output);
         for layer in self.layers.iter_mut().rev() {
-            error = layer.backward_propagation(error, self.learning_rate)
+            error = layer.backward_propagation(error, learning_rate)
         }
 
         (self.loss)(&y_train, &output).unwrap_or(0.0)

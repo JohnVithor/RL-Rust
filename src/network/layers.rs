@@ -64,8 +64,12 @@ pub struct DenseLayer {
 impl DenseLayer {
     pub fn new(input_size: usize, output_size: usize) -> Self {
         let input = ndarray::Array2::zeros((input_size, output_size));
-        let weights = ndarray::Array::random((input_size, output_size), Uniform::new(0., 1.));
-        let bias = ndarray::Array::random((1, output_size), Uniform::new(0., 1.));
+        // let weights = ndarray::Array::random((input_size, output_size), Uniform::new(0., 1.));
+        // let bias = ndarray::Array::random((1, output_size), Uniform::new(0., 1.));
+        let weights = ndarray::Array2::ones((input_size, output_size)) * 0.5;
+        let bias = ndarray::Array2::ones((1, output_size));
+        println!("w {:?}", weights);
+        println!("b {:?}", bias);
         Self {
             input,
             weights,

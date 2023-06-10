@@ -121,7 +121,7 @@ fn main() {
     ]
     .to_vec();
 
-    let policy = TabularPolicy::new(0.0);
+    let policy = TabularPolicy::new(learning_rate, 0.0);
     // let policy = DoubleTabularPolicy::new(0.0);
 
     let action_selection = vec![
@@ -135,7 +135,6 @@ fn main() {
 
     let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
         EnumPolicy::from(policy.clone()),
-        learning_rate,
         discount_factor,
         action_selection[0].clone(),
         sarsa,
@@ -144,7 +143,6 @@ fn main() {
     let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> =
         ElegibilityTracesAgent::new(
             EnumPolicy::from(policy),
-            learning_rate,
             discount_factor,
             action_selection[0].clone(),
             lambda_factor,
