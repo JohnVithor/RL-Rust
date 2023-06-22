@@ -10,7 +10,7 @@ use reinforcement_learning::agent::Agent;
 use reinforcement_learning::agent::{qlearning, OneStepAgent};
 // use reinforcement_learning::env::frozen_lake_edited::FrozenLakeObs;
 use reinforcement_learning::env::FrozenLakeEnv;
-use reinforcement_learning::network::activation::{tanh, tanh_prime};
+use reinforcement_learning::network::activation::{relu, relu_prime, tanh, tanh_prime, linear, linear_prime, sigmoid_prime, sigmoid, hard_swish_prime, hard_swish, leaky_relu6, leaky_relu6_prime};
 use reinforcement_learning::network::layers::{ActivationLayer, DenseLayer};
 use reinforcement_learning::network::loss::{mse, mse_prime};
 use reinforcement_learning::network::Network;
@@ -128,10 +128,10 @@ fn main() {
     .to_vec();
 
     let mut network = Network::new(mse, mse_prime);
-    network.add(Box::new(DenseLayer::new(1, 20)));
-    network.add(Box::new(ActivationLayer::new(tanh, tanh_prime)));
-    network.add(Box::new(DenseLayer::new(20, 4)));
-    network.add(Box::new(ActivationLayer::new(tanh, tanh_prime)));
+    network.add(Box::new(DenseLayer::new(1, 32)));
+    network.add(Box::new(ActivationLayer::new(leaky_relu6, leaky_relu6_prime)));
+    network.add(Box::new(DenseLayer::new(32, 4)));
+    network.add(Box::new(ActivationLayer::new(linear, linear_prime)));
 
     // fn input_adapter(obs: FrozenLakeObs) -> ndarray::Array2<f64> {
     //     arr2(&[[
@@ -145,7 +145,7 @@ fn main() {
     // }
 
     fn input_adapter(obs: usize) -> ndarray::Array2<f64> {
-        arr2(&[[obs as f64 / 15.0]])
+        arr2(&[[obs as f64]])
     }
 
     fn output_adapter(values: ndarray::Array2<f64>) -> [f64; 4] {
@@ -166,7 +166,13 @@ fn main() {
         ]])
     }
 
-    let policy = NeuralPolicy::new(learning_rate, input_adapter, network, output_adapter, inv_output_adapter);
+    let policy = NeuralPolicy::new(
+        learning_rate,
+        input_adapter,
+        network,
+        output_adapter,
+        inv_output_adapter,
+    );
     // let policy = DoubleTabularPolicy::new(0.0);
 
     let action_selection: Vec<EnumActionSelection<_, 4>> = vec![
@@ -216,7 +222,7 @@ fn main() {
                 agent.example(&mut env);
             }
 
-            let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
+            let (reward_history, episode_length) = agent.evaluate(&mut env, 1000);
 
             let ma_reward =
                 moving_average(n_episodes as usize / moving_average_window, &reward_history);
