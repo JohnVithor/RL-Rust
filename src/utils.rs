@@ -121,6 +121,14 @@ pub fn plot_moving_average(
         }
     }
 
+    println!("max len {}", max_len);
+    println!("{} | {}\n", min_value, max_value);
+
+    if min_value == max_value || min_value.is_nan() || max_value.is_nan() {
+        min_value = -1.0;
+        max_value = 1.0;
+    }
+
     let mut ctx = ChartBuilder::on(&root_area)
         .set_label_area_size(LabelAreaPosition::Left, 40)
         .set_label_area_size(LabelAreaPosition::Bottom, 40)
