@@ -1,8 +1,11 @@
+// https://machinelearningmastery.com/adam-optimization-from-scratch/
+
 use std::fmt::Debug;
 
-use ndarray::arr2;
+use ndarray::{arr2, Dim};
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
+use ndarray::Dimension;
 
 pub trait Layer: LayerClone {
     // computes the output Y of a layer for a given input X
@@ -59,17 +62,22 @@ pub struct DenseLayer {
     input: ndarray::Array2<f64>,
     weights: ndarray::Array2<f64>,
     bias: ndarray::Array2<f64>,
+
 }
 
 impl DenseLayer {
     pub fn new(input_size: usize, output_size: usize) -> Self {
         let input = ndarray::Array2::zeros((input_size, output_size));
-        // let weights = ndarray::Array::random((input_size, output_size), Uniform::new(0., 1.));
-        // let bias = ndarray::Array::random((1, output_size), Uniform::new(0., 1.));
-        let weights = ndarray::Array2::ones((input_size, output_size)) * 0.5;
-        let bias = ndarray::Array2::ones((1, output_size));
-        println!("w {:?}", weights);
-        println!("b {:?}", bias);
+
+        let l = (6.0 / (input_size + output_size) as f64).sqrt();
+        let weights = ndarray::Array::random((input_size, output_size), Uniform::new(-l, l));
+        let bias = ndarray::Array2::zeros((1, output_size));
+
+        // let bias = ndarray::Array::random((1, output_size), Uniform::new(0.0, 0.1));
+        // let weights = ndarray::Array2::ones((input_size, output_size)) * 0.5;
+        // let bias = ndarray::Array2::ones((1, output_size));
+        // println!("w {:?}", weights);
+        // println!("b {:?}", bias);
         Self {
             input,
             weights,
@@ -97,8 +105,9 @@ impl Layer for DenseLayer {
     }
     fn reset(&mut self) {
         self.input = ndarray::Array2::zeros(self.input.raw_dim());
-        self.weights = ndarray::Array::random(self.weights.raw_dim(), Uniform::new(0., 1.));
-        self.bias = ndarray::Array::random(self.bias.raw_dim(), Uniform::new(0., 1.));
+        let l: f64 = (6.0 / self.weights.raw_dim().as_array_view().sum() as f64).sqrt();
+        self.weights = ndarray::Array::random(self.weights.raw_dim(), Uniform::new(-l, l));
+        self.bias = ndarray::Array2::ones(self.bias.raw_dim()) * 0.1;
     }
 
     fn get_weights(&self) -> ndarray::Array2<f64> {
