@@ -118,7 +118,7 @@ impl Env<usize, 4> for FrozenLakeEnv {
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, -1.0, true));
+            return Ok((0, 0.0, true));
         }
         self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action];
