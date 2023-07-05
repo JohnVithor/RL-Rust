@@ -10,7 +10,10 @@ use reinforcement_learning::agent::Agent;
 use reinforcement_learning::agent::{qlearning, OneStepAgent};
 // use reinforcement_learning::env::frozen_lake_edited::FrozenLakeObs;
 use reinforcement_learning::env::FrozenLakeEnv;
-use reinforcement_learning::network::activation::{relu, relu_prime, tanh, tanh_prime, linear, linear_prime, sigmoid_prime, sigmoid, hard_swish_prime, hard_swish, leaky_relu6, leaky_relu6_prime};
+use reinforcement_learning::network::activation::{
+    hard_swish, hard_swish_prime, leaky_relu6, leaky_relu6_prime, linear, linear_prime, relu,
+    relu_prime, sigmoid, sigmoid_prime, tanh, tanh_prime,
+};
 use reinforcement_learning::network::layers::{ActivationLayer, DenseLayer};
 use reinforcement_learning::network::loss::{mse, mse_prime};
 use reinforcement_learning::network::Network;
@@ -129,7 +132,10 @@ fn main() {
 
     let mut network = Network::new(mse, mse_prime);
     network.add(Box::new(DenseLayer::new(1, 32)));
-    network.add(Box::new(ActivationLayer::new(leaky_relu6, leaky_relu6_prime)));
+    network.add(Box::new(ActivationLayer::new(
+        leaky_relu6,
+        leaky_relu6_prime,
+    )));
     network.add(Box::new(DenseLayer::new(32, 4)));
     network.add(Box::new(ActivationLayer::new(linear, linear_prime)));
 
@@ -159,7 +165,7 @@ fn main() {
 
     fn inv_output_adapter(values: [f64; 4]) -> ndarray::Array2<f64> {
         arr2(&[[
-            *values.get(0).unwrap(),
+            *values.first().unwrap(),
             *values.get(1).unwrap(),
             *values.get(2).unwrap(),
             *values.get(3).unwrap(),

@@ -17,8 +17,8 @@ impl Clone for Network {
     fn clone(&self) -> Self {
         Self {
             layers: self.layers.clone(),
-            loss: self.loss.clone(),
-            loss_prime: self.loss_prime.clone(),
+            loss: self.loss,
+            loss_prime: self.loss_prime,
         }
     }
 }

@@ -60,11 +60,16 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, 
             next_obs,
             next_action,
         );
-        self.model
-            .add_info(curr_obs.clone(), curr_action, reward, next_obs.clone());
+        self.model.add_info(
+            curr_obs.clone(),
+            curr_action,
+            reward,
+            next_obs.clone(),
+            next_action,
+        );
 
         for _i in 0..self.planning_steps {
-            let (curr_obs, curr_action, next_obs, reward) = self.model.get_info();
+            let (curr_obs, curr_action, reward, next_obs, _next_action) = self.model.get_info();
             let next_action = self.agent.borrow_mut().get_action(&next_obs);
             self.agent.borrow_mut().update(
                 &curr_obs,

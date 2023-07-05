@@ -24,7 +24,7 @@ pub fn ndarray_max<T: PartialOrd + Clone>(vec: &ndarray::Array2<T>) -> T {
     let mut max: &T = &vec[(0, 0)];
     for v in vec.iter() {
         if v > max {
-            max = &v;
+            max = v;
         }
     }
     max.clone()
@@ -107,15 +107,15 @@ pub fn plot_moving_average(
     let mut max_len = values[0].len();
     let mut min_value = values[0].iter().copied().reduce(f64::min).unwrap();
     let mut max_value = values[0].iter().copied().reduce(f64::max).unwrap();
-    for i in 1..values.len() {
-        if values[i].len() > max_len {
-            max_len = values[i].len();
+    for vals in values.iter().skip(1) {
+        if vals.len() > max_len {
+            max_len = vals.len();
         }
-        let min_value_i = values[i].iter().copied().reduce(f64::min).unwrap();
+        let min_value_i = vals.iter().copied().reduce(f64::min).unwrap();
         if min_value_i < min_value {
             min_value = min_value_i;
         }
-        let max_value_i = values[i].iter().copied().reduce(f64::max).unwrap();
+        let max_value_i = vals.iter().copied().reduce(f64::max).unwrap();
         if max_value_i > max_value {
             max_value = max_value_i;
         }

@@ -122,7 +122,7 @@ fn main() {
     let action_selection = vec![
         EnumActionSelection::from(UniformEpsilonGreed::new(
             initial_epsilon,
-            Rc::new(move |a| a - &epsilon_decay),
+            Rc::new(move |a| a - epsilon_decay),
             final_epsilon,
         )),
         EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),

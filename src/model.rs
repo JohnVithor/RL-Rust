@@ -8,8 +8,8 @@ use enum_dispatch::enum_dispatch;
 
 #[enum_dispatch]
 pub trait Model<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    fn get_info(&self) -> (T, usize, T, f64);
-    fn add_info(&mut self, obs: T, action: usize, reward: f64, next_obs: T);
+    fn get_info(&self) -> (T, usize, f64, T, usize);
+    fn add_info(&mut self, obs: T, action: usize, reward: f64, next_obs: T, next_action: usize);
     fn reset(&mut self);
 }
 

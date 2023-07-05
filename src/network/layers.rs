@@ -2,10 +2,10 @@
 
 use std::fmt::Debug;
 
-use ndarray::{arr2, Dim};
+use ndarray::arr2;
+use ndarray::Dimension;
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
-use ndarray::Dimension;
 
 pub trait Layer: LayerClone {
     // computes the output Y of a layer for a given input X
@@ -62,7 +62,6 @@ pub struct DenseLayer {
     input: ndarray::Array2<f64>,
     weights: ndarray::Array2<f64>,
     bias: ndarray::Array2<f64>,
-
 }
 
 impl DenseLayer {
