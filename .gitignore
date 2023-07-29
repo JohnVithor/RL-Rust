@@ -17,3 +17,9 @@ Cargo.lock
 
 # images
 *.png
+
+# json
+*.json
+
+# compressed files
+*.bz2

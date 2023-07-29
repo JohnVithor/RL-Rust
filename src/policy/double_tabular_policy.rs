@@ -1,6 +1,6 @@
-use std::hash::Hash;
-
 use fxhash::FxHashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
 
 use super::Policy;
 
@@ -25,7 +25,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> DoubleTabularPolicy<T
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
+impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COUNT>
     for DoubleTabularPolicy<T, COUNT>
 {
     fn predict(&mut self, obs: &T) -> [f64; COUNT] {

@@ -1,24 +1,22 @@
 use super::{Agent, GetNextQValue};
-use crate::action_selection::{ActionSelection, EnumActionSelection};
-use crate::policy::{EnumPolicy, Policy};
+use crate::action_selection::ActionSelection;
+use crate::policy::Policy;
 use std::fmt::Debug;
-use std::hash::Hash;
 
-pub struct OneStepAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    policy: EnumPolicy<T, COUNT>,
+pub struct OneStepAgent<'a, T: Clone + Debug, const COUNT: usize> {
     // policy update
     discount_factor: f64,
-    action_selection: EnumActionSelection<T, COUNT>,
     get_next_q_value: GetNextQValue<COUNT>,
+    policy: &'a mut dyn Policy<T, COUNT>,
+    action_selection: &'a mut dyn ActionSelection<T, COUNT>,
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepAgent<T, COUNT> {
+impl<'a, T: Clone + Debug, const COUNT: usize> OneStepAgent<'a, T, COUNT> {
     pub fn new(
-        policy: EnumPolicy<T, COUNT>,
-        // policy update
         discount_factor: f64,
-        action_selection: EnumActionSelection<T, COUNT>,
         get_next_q_value: GetNextQValue<COUNT>,
+        policy: &'a mut dyn Policy<T, COUNT>,
+        action_selection: &'a mut dyn ActionSelection<T, COUNT>,
     ) -> Self {
         Self {
             policy,
@@ -29,14 +27,12 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> OneStepAgent<
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for OneStepAgent<T, COUNT>
-{
+impl<'a, T: Clone + Debug, const COUNT: usize> Agent<'a, T, COUNT> for OneStepAgent<'a, T, COUNT> {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
         self.get_next_q_value = func;
     }
 
-    fn set_action_selector(&mut self, action_selecter: EnumActionSelection<T, COUNT>) {
+    fn set_action_selector(&mut self, action_selecter: &'a mut dyn ActionSelection<T, COUNT>) {
         self.action_selection = action_selecter;
     }
 
@@ -60,23 +56,17 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         next_action: usize,
     ) -> f64 {
         let next_q_values: [f64; COUNT] = self.policy.get_values(next_obs);
-        let future_q_value: f64 = (self.get_next_q_value)(
-            &next_q_values,
-            next_action,
-            &self
-                .action_selection
-                .get_exploration_probs(next_obs, &next_q_values),
-        );
+        let probs = &self
+            .action_selection
+            .get_exploration_probs(next_obs, &next_q_values);
+        let future_q_value: f64 = (self.get_next_q_value)(&next_q_values, next_action, probs);
         let curr_q_values: [f64; COUNT] = self.policy.get_values(curr_obs);
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        let _error = self.policy.update(
-            curr_obs,
-            curr_action,
-            next_obs,
-            temporal_difference,
-        );
+        let _error = self
+            .policy
+            .update(curr_obs, curr_action, next_obs, temporal_difference);
 
         self.policy.after_update();
         if terminated {

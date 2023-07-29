@@ -7,18 +7,15 @@ edition = "2021"
 license = "MIT"
 include = ["src/**/*"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 # [profile.release]
 # lto = true
 # codegen-units = 1
 
 [dependencies]
+serde_json = "1.0.104"
 fxhash = "0.2.1"
-indexmap = "2.0.0"
 structopt = "0.3.26"
 rand = "0.8.5"
-plotters = "0.3"
 ndarray = "0.15.6"
 ndarray-rand = "0.14.0"
-enum_dispatch = "0.3.11"
-kdam = "0.3.0"
+kdam = "0.4.0"

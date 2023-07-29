@@ -41,25 +41,21 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, CO
         action
     }
 
-    fn update(&mut self) {
-        
-    }
+    fn update(&mut self) {}
 
     fn get_exploration_probs(&mut self, obs: &T, values: &[f64; COUNT]) -> [f64; COUNT] {
         let obs_actions: &mut [u128; COUNT] =
             self.action_counter.entry(obs.clone()).or_insert([0; COUNT]);
         let mut ucbs: [f64; COUNT] = [0.0; COUNT];
-        let mut sum = 0.0;
         for i in 0..COUNT {
             ucbs[i] = values[i]
                 + self.confidence_level
-                    * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt();
-            sum += ucbs[i];
+                    * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt()
         }
-        for v in &mut ucbs {
-            *v /= sum;
-        }
-        ucbs
+        let action = argmax(&ucbs);
+        let mut probs: [f64; COUNT] = [0.0; COUNT];
+        probs[action] = 1.0;
+        probs
     }
 
     fn reset(&mut self) {

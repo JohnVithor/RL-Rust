@@ -1,23 +1,20 @@
-use crate::action_selection::EnumActionSelection;
-use crate::model::{EnumModel, Model};
+use crate::action_selection::ActionSelection;
+use crate::model::Model;
 
 use super::{Agent, GetNextQValue};
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::hash::Hash;
 
-pub struct InternalModelAgent<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    agent: Box<RefCell<&'a mut dyn Agent<T, COUNT>>>,
-    model: EnumModel<T, COUNT>,
+pub struct InternalModelAgent<'a, T: Clone + Debug, const COUNT: usize> {
+    agent: Box<RefCell<&'a mut dyn Agent<'a, T, COUNT>>>,
     planning_steps: usize,
+    model: &'a mut dyn Model<T, COUNT>,
 }
 
-impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    InternalModelAgent<'a, T, COUNT>
-{
+impl<'a, T: Clone + Debug, const COUNT: usize> InternalModelAgent<'a, T, COUNT> {
     pub fn new(
-        agent: Box<RefCell<&'a mut dyn Agent<T, COUNT>>>,
-        model: EnumModel<T, COUNT>,
+        agent: Box<RefCell<&'a mut dyn Agent<'a, T, COUNT>>>,
+        model: &'a mut dyn Model<T, COUNT>,
         planing_length: usize,
     ) -> Self {
         Self {
@@ -28,14 +25,14 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     }
 }
 
-impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
+impl<'a, T: Clone + Debug, const COUNT: usize> Agent<'a, T, COUNT>
     for InternalModelAgent<'a, T, COUNT>
 {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
         self.agent.borrow_mut().set_future_q_value_func(func);
     }
 
-    fn set_action_selector(&mut self, action_selector: EnumActionSelection<T, COUNT>) {
+    fn set_action_selector(&mut self, action_selector: &'a mut dyn ActionSelection<T, COUNT>) {
         self.agent.borrow_mut().set_action_selector(action_selector);
     }
 

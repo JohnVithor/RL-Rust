@@ -1,15 +1,23 @@
-// use std::cell::RefCell;
 // use std::rc::Rc;
 // use std::time::Instant;
+// use std::vec;
 
+// use ndarray::arr2;
 // use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
 
-// use reinforcement_learning::action_selection::UniformEpsilonGreed;
+// use reinforcement_learning::action_selection::{EnumActionSelection, UniformEpsilonGreed};
+// use reinforcement_learning::agent::Agent;
 // use reinforcement_learning::agent::{qlearning, OneStepAgent};
-// use reinforcement_learning::agent::{Agent, InternalModelAgent};
-// use reinforcement_learning::env::CliffWalkingEnv;
-// use reinforcement_learning::model::RandomExperienceReplay;
-// use reinforcement_learning::policy::TabularPolicy;
+// // use reinforcement_learning::env::frozen_lake_edited::FrozenLakeObs;
+// use reinforcement_learning::env::cart_pole::CartPoleObservation;
+// use reinforcement_learning::env::CartPoleEnv;
+// use reinforcement_learning::network::activation::{
+//     leaky_relu6, leaky_relu6_prime, linear, linear_prime,
+// };
+// use reinforcement_learning::network::layers::{ActivationLayer, DenseLayer};
+// use reinforcement_learning::network::loss::{mse, mse_prime};
+// use reinforcement_learning::network::Network;
+// use reinforcement_learning::policy::{EnumPolicy, NeuralPolicy};
 // use reinforcement_learning::utils::{moving_average, plot_moving_average};
 
 // extern crate structopt;
@@ -18,10 +26,10 @@
 
 // /// Train four RL agents using some parameters and generate some graphics of their results
 // #[derive(StructOpt, Debug)]
-// #[structopt(name = "RLRust - CliffWalking - model")]
+// #[structopt(name = "RLRust - Frozen lake - neural")]
 // struct Cli {
 //     /// Show example of episode
-//     #[structopt(long = "show_example")]
+//     #[structopt(long = "show_example", short = "s")]
 //     show_example: bool,
 
 //     /// Number of episodes for the training
@@ -73,7 +81,7 @@
 
 //     let learning_rate: f64 = cli.learning_rate;
 //     let initial_epsilon: f64 = cli.initial_epsilon;
-//     let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
+//     let epsilon_decay: f64 = cli.exploration_time;
 //     let final_epsilon: f64 = cli.final_epsilon;
 //     let _confidence_level: f64 = cli.confidence_level;
 //     let discount_factor: f64 = cli.discount_factor;
@@ -81,7 +89,7 @@
 
 //     let moving_average_window: usize = cli.moving_average_window;
 
-//     let mut env = CliffWalkingEnv::new(max_steps);
+//     let mut env = CartPoleEnv::new(max_steps);
 
 //     let mut train_rewards: Vec<Vec<f64>> = vec![];
 //     let mut train_episodes_length: Vec<Vec<f64>> = vec![];
@@ -89,7 +97,7 @@
 //     let mut test_rewards: Vec<Vec<f64>> = vec![];
 //     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-//     const SIZE: usize = 4;
+//     const SIZE: usize = 3;
 
 //     let legends: Vec<&str> = [
 //         // "ε-Greedy One-Step Sarsa",
@@ -122,43 +130,73 @@
 //     ]
 //     .to_vec();
 
-//     let policy = TabularPolicy::new(learning_rate, 0.0);
+//     let mut network = Network::new(mse, mse_prime);
+//     network.add(Box::new(DenseLayer::new(1, 32)));
+//     network.add(Box::new(ActivationLayer::new(
+//         leaky_relu6,
+//         leaky_relu6_prime,
+//     )));
+//     network.add(Box::new(DenseLayer::new(32, SIZE)));
+//     network.add(Box::new(ActivationLayer::new(linear, linear_prime)));
+
+//     // fn input_adapter(obs: FrozenLakeObs) -> ndarray::Array2<f64> {
+//     //     arr2(&[[
+//     //         obs.left.value(),
+//     //         obs.down.value(),
+//     //         obs.right.value(),
+//     //         obs.up.value(),
+//     //         obs.x as f64,
+//     //         obs.y as f64,
+//     //     ]])
+//     // }
+
+//     fn input_adapter(obs: usize) -> ndarray::Array2<f64> {
+//         arr2(&[[obs as f64]])
+//     }
+
+//     fn output_adapter(values: ndarray::Array2<f64>) -> [f64; SIZE] {
+//         [
+//             *values.get((0, 0)).unwrap(),
+//             *values.get((0, 1)).unwrap(),
+//             *values.get((0, 2)).unwrap(),
+//         ]
+//     }
+
+//     fn inv_output_adapter(values: [f64; SIZE]) -> ndarray::Array2<f64> {
+//         arr2(&[[
+//             *values.first().unwrap(),
+//             *values.get(1).unwrap(),
+//             *values.get(2).unwrap(),
+//         ]])
+//     }
+
+//     let policy: NeuralPolicy<usize, SIZE> = NeuralPolicy::new(
+//         learning_rate,
+//         input_adapter,
+//         network,
+//         output_adapter,
+//         inv_output_adapter,
+//     );
 //     // let policy = DoubleTabularPolicy::new(0.0);
 
-//     let action_selection = vec![
+//     let action_selection: Vec<EnumActionSelection<_, SIZE>> = vec![
 //         EnumActionSelection::from(UniformEpsilonGreed::new(
 //             initial_epsilon,
-//             Rc::new(move |a| a - epsilon_decay),
+//             Rc::new(move |a| a * epsilon_decay),
 //             final_epsilon,
 //         )),
 //         // EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
 //     ];
 
-//     let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
-//         EnumPolicy::from(policy.clone()),
-//         discount_factor,
-//         action_selection[0].clone(),
-//         qlearning,
-//     );
-
-//     let mut other: OneStepAgent<usize, SIZE> = OneStepAgent::new(
+//     let mut one_step_agent: OneStepAgent<CartPoleObservation, SIZE> = OneStepAgent::new(
 //         EnumPolicy::from(policy),
 //         discount_factor,
 //         action_selection[0].clone(),
 //         qlearning,
 //     );
 
-//     let model = RandomExperienceReplay::default();
-
-//     let mut model_agent: InternalModelAgent<usize, SIZE> = InternalModelAgent::new(
-//         Box::new(RefCell::new(&mut other)),
-//         EnumModel::from(model),
-//         10,
-//     );
-
-//     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
+//     let mut agents: Vec<&mut dyn Agent<_, SIZE>> = vec![];
 //     agents.push(&mut one_step_agent);
-//     agents.push(&mut model_agent);
 
 //     let mut i = 0;
 //     for agent in agents {
@@ -188,7 +226,7 @@
 //                 agent.example(&mut env);
 //             }
 
-//             let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
+//             let (reward_history, episode_length) = agent.evaluate(&mut env, 1000);
 
 //             let ma_reward =
 //                 moving_average(n_episodes as usize / moving_average_window, &reward_history);

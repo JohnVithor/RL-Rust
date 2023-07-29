@@ -1,45 +1,48 @@
-use fxhash::FxBuildHasher;
-use indexmap::IndexMap;
 use rand::Rng;
 use std::fmt::Debug;
-use std::hash::Hash;
 
 use super::Model;
 
 #[derive(Debug, Clone)]
-pub struct RandomModel<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    values: IndexMap<(T, usize), (T, f64, usize), FxBuildHasher>,
+pub struct RandomExperienceReplay<
+    T: Default + Copy + Clone + Debug,
+    const COUNT: usize,
+    const SIZE: usize,
+> {
+    values: [(T, usize, f64, T, usize); SIZE],
+    curr_size: usize,
+    curr_pos: usize,
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Default
-    for RandomModel<T, COUNT>
+impl<T: Default + Copy + Clone + Debug, const COUNT: usize, const SIZE: usize> Default
+    for RandomExperienceReplay<T, COUNT, SIZE>
 {
     fn default() -> Self {
         Self {
-            values: IndexMap::default(),
+            values: [(T::default(), 0, 0.0, T::default(), 0); SIZE],
+            curr_size: 0,
+            curr_pos: 0,
         }
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Model<T, COUNT>
-    for RandomModel<T, COUNT>
+impl<T: Default + Copy + Clone + Debug, const COUNT: usize, const SIZE: usize> Model<T, COUNT>
+    for RandomExperienceReplay<T, COUNT, SIZE>
 {
     fn get_info(&self) -> (T, usize, f64, T, usize) {
-        let rand = self
-            .values
-            .get_index(rand::thread_rng().gen_range(0..self.values.len()));
-        let (state, action) = rand.unwrap().0.clone();
-        let (next_state, reward, next_action) = rand.unwrap().1.clone();
-        (state, action, reward, next_state, next_action)
+        let pos: usize = rand::thread_rng().gen_range(0..self.curr_size);
+        self.values[pos]
     }
 
     fn add_info(&mut self, obs: T, action: usize, reward: f64, next_obs: T, next_action: usize) {
-        self.values
-            .entry((obs, action))
-            .or_insert((next_obs, reward, next_action));
+        self.values[self.curr_pos] = (obs, action, reward, next_obs, next_action);
+        self.curr_pos = (self.curr_pos + 1) % SIZE;
+        self.curr_size = (self.curr_size + 1).min(SIZE - 1);
     }
 
     fn reset(&mut self) {
-        self.values = IndexMap::default();
+        self.values = [(T::default(), 0, 0.0, T::default(), 0); SIZE];
+        self.curr_pos = 0;
+        self.curr_size = 0;
     }
 }

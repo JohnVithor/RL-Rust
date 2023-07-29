@@ -1,50 +1,51 @@
 use super::{Agent, GetNextQValue};
-use crate::action_selection::{ActionSelection, EnumActionSelection};
-use crate::policy::{EnumPolicy, Policy};
+use crate::action_selection::ActionSelection;
+use crate::policy::Policy;
 use fxhash::FxHashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub struct ElegibilityTracesAgent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
-    policy: EnumPolicy<T, COUNT>,
+pub struct ElegibilityTracesAgent<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
+{
     // policy update
     discount_factor: f64,
-    action_selection: EnumActionSelection<T, COUNT>,
     lambda_factor: f64,
     trace: FxHashMap<T, [f64; COUNT]>,
     get_next_q_value: GetNextQValue<COUNT>,
+    policy: &'a mut dyn Policy<T, COUNT>,
+    action_selection: &'a mut dyn ActionSelection<T, COUNT>,
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
-    ElegibilityTracesAgent<T, COUNT>
+impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
+    ElegibilityTracesAgent<'a, T, COUNT>
 {
     pub fn new(
-        policy: EnumPolicy<T, COUNT>,
         // policy update
         discount_factor: f64,
-        action_selection: EnumActionSelection<T, COUNT>,
         lambda_factor: f64,
         get_next_q_value: GetNextQValue<COUNT>,
+        policy: &'a mut dyn Policy<T, COUNT>,
+        action_selection: &'a mut dyn ActionSelection<T, COUNT>,
     ) -> Self {
         Self {
             policy,
             trace: FxHashMap::default(),
             discount_factor,
-            action_selection,
             lambda_factor,
             get_next_q_value,
+            action_selection,
         }
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUNT>
-    for ElegibilityTracesAgent<T, COUNT>
+impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<'a, T, COUNT>
+    for ElegibilityTracesAgent<'a, T, COUNT>
 {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>) {
         self.get_next_q_value = func;
     }
 
-    fn set_action_selector(&mut self, action_selecter: EnumActionSelection<T, COUNT>) {
+    fn set_action_selector(&mut self, action_selecter: &'a mut dyn ActionSelection<T, COUNT>) {
         self.action_selection = action_selecter;
     }
 
@@ -85,12 +86,8 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
 
         for (obs, trace_values) in &mut self.trace {
             for (action, value) in trace_values.iter_mut().enumerate() {
-                self.policy.update(
-                    obs,
-                    action,
-                    next_obs,
-                    temporal_difference * *value,
-                );
+                self.policy
+                    .update(obs, action, next_obs, temporal_difference * *value);
                 *value *= self.discount_factor * self.lambda_factor
             }
         }

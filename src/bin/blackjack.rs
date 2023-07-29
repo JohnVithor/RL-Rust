@@ -1,19 +1,16 @@
 use std::rc::Rc;
 use std::time::Instant;
 
-use plotters::style::{RGBColor, BLUE, CYAN, GREEN, MAGENTA, RED, YELLOW};
-
-use reinforcement_learning::action_selection::{
-    EnumActionSelection, UniformEpsilonGreed, UpperConfidenceBound,
-};
+use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesAgent, OneStepAgent};
 use reinforcement_learning::env::{BlackJackEnv, Env};
-use reinforcement_learning::policy::{EnumPolicy, TabularPolicy};
-use reinforcement_learning::utils::{moving_average, plot_moving_average};
+use reinforcement_learning::policy::TabularPolicy;
+use reinforcement_learning::utils::{moving_average, save_json};
 
 extern crate structopt;
 
+use serde_json::json;
 use structopt::StructOpt;
 
 /// Train four RL agents using some parameters and generate some graphics of their results
@@ -86,7 +83,62 @@ fn main() {
 
     const SIZE: usize = 2;
 
-    let legends: Vec<&str> = [
+    let mut one_step_policy_epg = TabularPolicy::new(learning_rate, 0.0);
+    let mut one_step_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
+    let mut trace_policy_epg = TabularPolicy::new(learning_rate, 0.0);
+    let mut trace_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
+
+    let mut one_step_epg = UniformEpsilonGreed::new(
+        initial_epsilon,
+        Rc::new(move |a| a - epsilon_decay),
+        final_epsilon,
+    );
+    let mut one_step_ucb = UpperConfidenceBound::new(confidence_level);
+
+    let mut trace_epg = UniformEpsilonGreed::new(
+        initial_epsilon,
+        Rc::new(move |a| a - epsilon_decay),
+        final_epsilon,
+    );
+    let mut trace_ucb = UpperConfidenceBound::new(confidence_level);
+
+    let mut one_step_agent_epg: OneStepAgent<usize, SIZE> = OneStepAgent::new(
+        discount_factor,
+        sarsa,
+        &mut one_step_policy_epg,
+        &mut one_step_epg,
+    );
+    let mut one_step_agent_ucb: OneStepAgent<usize, SIZE> = OneStepAgent::new(
+        discount_factor,
+        sarsa,
+        &mut one_step_policy_ucb,
+        &mut one_step_ucb,
+    );
+
+    let mut trace_agent_epg: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
+        discount_factor,
+        lambda_factor,
+        sarsa,
+        &mut trace_policy_epg,
+        &mut trace_epg,
+    );
+
+    let mut trace_agent_ucb: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
+        discount_factor,
+        lambda_factor,
+        sarsa,
+        &mut trace_policy_ucb,
+        &mut trace_ucb,
+    );
+
+    let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![
+        &mut one_step_agent_epg,
+        &mut one_step_agent_ucb,
+        &mut trace_agent_epg,
+        &mut trace_agent_ucb,
+    ];
+
+    let identifiers = [
         "ε-Greedy One-Step Sarsa",
         "ε-Greedy One-Step Qlearning",
         "ε-Greedy One-Step Expected Sarsa",
@@ -99,147 +151,97 @@ fn main() {
         "UCB Trace Sarsa",
         "UCB Trace Qlearning",
         "UCB Trace Expected Sarsa",
-    ]
-    .to_vec();
-
-    const DRED: RGBColor = RGBColor(150, 0, 0);
-    const DBLUE: RGBColor = RGBColor(0, 0, 150);
-    const DGREEN: RGBColor = RGBColor(0, 150, 0);
-
-    const DDRED: RGBColor = RGBColor(50, 0, 0);
-    const DDBLUE: RGBColor = RGBColor(0, 0, 50);
-    const DDGREEN: RGBColor = RGBColor(0, 50, 0);
-
-    let colors: Vec<&plotters::style::RGBColor> = [
-        &BLUE, &GREEN, &CYAN, &RED, &YELLOW, &MAGENTA, &DRED, &DBLUE, &DGREEN, &DDRED, &DDBLUE,
-        &DDGREEN,
-    ]
-    .to_vec();
-
-    let policy = TabularPolicy::new(learning_rate, 0.0);
-    // let policy = DoubleTabularPolicy::new(0.0);
-
-    let action_selection = vec![
-        EnumActionSelection::from(UniformEpsilonGreed::new(
-            initial_epsilon,
-            Rc::new(move |a| a - epsilon_decay),
-            final_epsilon,
-        )),
-        EnumActionSelection::from(UpperConfidenceBound::new(confidence_level)),
     ];
-
-    let mut one_step_agent: OneStepAgent<usize, SIZE> = OneStepAgent::new(
-        EnumPolicy::from(policy.clone()),
-        discount_factor,
-        action_selection[0].clone(),
-        sarsa,
-    );
-
-    let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
-        EnumPolicy::from(policy),
-        discount_factor,
-        action_selection[0].clone(),
-        lambda_factor,
-        sarsa,
-    );
-
-    let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
-    agents.push(&mut one_step_agent);
-    agents.push(&mut trace_agent);
 
     let mut i = 0;
     for agent in agents.iter_mut() {
-        for acs in &action_selection {
-            agent.set_action_selector(acs.clone());
-            for func in [sarsa, qlearning, expected_sarsa] {
-                agent.set_future_q_value_func(func);
-                let now: Instant = Instant::now();
-                let (reward_history, episode_length, training_error) =
-                    agent.train(&mut env, n_episodes, n_episodes / 10);
-                let elapsed: std::time::Duration = now.elapsed();
-                println!("{} {:.2?}", legends[i], elapsed);
+        for func in [sarsa, qlearning, expected_sarsa] {
+            agent.set_future_q_value_func(func);
+            println!("{}", identifiers[i]);
+            let now: Instant = Instant::now();
+            let (reward_history, episode_length, training_error) =
+                agent.train(&mut env, n_episodes, n_episodes / 10);
+            let elapsed: std::time::Duration = now.elapsed();
+            println!("{:.2?}", elapsed);
 
-                let ma_error = moving_average(
-                    training_error.len() / moving_average_window,
-                    &training_error,
-                );
-                train_errors.push(ma_error);
-                let ma_reward =
-                    moving_average(n_episodes as usize / moving_average_window, &reward_history);
-                train_rewards.push(ma_reward);
-                let ma_episode = moving_average(
-                    n_episodes as usize / moving_average_window,
-                    &episode_length.iter().map(|x| *x as f64).collect(),
-                );
-                train_episodes_length.push(ma_episode);
+            let ma_error = moving_average(
+                training_error.len() / moving_average_window,
+                &training_error,
+            );
+            train_errors.push(ma_error);
+            let ma_reward =
+                moving_average(n_episodes as usize / moving_average_window, &reward_history);
+            train_rewards.push(ma_reward);
+            let ma_episode = moving_average(
+                n_episodes as usize / moving_average_window,
+                &episode_length.iter().map(|x| *x as f64).collect(),
+            );
+            train_episodes_length.push(ma_episode);
 
-                if cli.show_example {
-                    agent.example(&mut env);
-                }
-                let mut wins: u32 = 0;
-                let mut losses: u32 = 0;
-                let mut draws: u32 = 0;
-                const LOOP_LEN: usize = 1000000;
-                for _u in 0..LOOP_LEN {
-                    let mut curr_action: usize = agent.get_action(&env.reset());
-                    loop {
-                        let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-                        let next_action: usize = agent.get_action(&next_obs);
-                        curr_action = next_action;
-                        if terminated {
-                            if reward == 1.0 {
-                                wins += 1;
-                            } else if reward == -1.0 {
-                                losses += 1;
-                            } else {
-                                draws += 1;
-                            }
-                            break;
+            if cli.show_example {
+                agent.example(&mut env);
+            }
+            let mut wins: u32 = 0;
+            let mut losses: u32 = 0;
+            let mut draws: u32 = 0;
+            const LOOP_LEN: usize = 1000000;
+            for _u in 0..LOOP_LEN {
+                let mut curr_action: usize = agent.get_action(&env.reset());
+                loop {
+                    let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+                    let next_action: usize = agent.get_action(&next_obs);
+                    curr_action = next_action;
+                    if terminated {
+                        if reward == 1.0 {
+                            wins += 1;
+                        } else if reward == -1.0 {
+                            losses += 1;
+                        } else {
+                            draws += 1;
                         }
+                        break;
                     }
                 }
-                println!(
-                    "{} has win-rate of {}%, loss-rate of {}% and draw-rate {}%",
-                    legends[i],
-                    wins as f64 / LOOP_LEN as f64,
-                    losses as f64 / LOOP_LEN as f64,
-                    draws as f64 / LOOP_LEN as f64
-                );
-
-                let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
-
-                let ma_reward =
-                    moving_average(n_episodes as usize / moving_average_window, &reward_history);
-                test_rewards.push(ma_reward);
-                let ma_episode = moving_average(
-                    n_episodes as usize / moving_average_window,
-                    &episode_length.iter().map(|x| *x as f64).collect(),
-                );
-                test_episodes_length.push(ma_episode);
-
-                i += 1;
-                agent.reset();
             }
+            println!(
+                "{} has win-rate of {}%, loss-rate of {}% and draw-rate {}%",
+                identifiers[i],
+                wins as f64 / LOOP_LEN as f64,
+                losses as f64 / LOOP_LEN as f64,
+                draws as f64 / LOOP_LEN as f64
+            );
+
+            let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
+
+            let ma_reward =
+                moving_average(n_episodes as usize / moving_average_window, &reward_history);
+            test_rewards.push(ma_reward);
+            let ma_episode = moving_average(
+                n_episodes as usize / moving_average_window,
+                &episode_length.iter().map(|x| *x as f64).collect(),
+            );
+            test_episodes_length.push(ma_episode);
+
+            i += 1;
+            agent.reset();
         }
     }
-
-    plot_moving_average(&train_rewards, &colors, &legends, "Train Rewards");
-
-    plot_moving_average(
-        &train_episodes_length,
-        &colors,
-        &legends,
-        "Train Episodes Length",
-    );
-
-    plot_moving_average(&train_errors, &colors, &legends, "Training Error");
-
-    plot_moving_average(&test_rewards, &colors, &legends, "Test Rewards");
-
-    plot_moving_average(
-        &test_episodes_length,
-        &colors,
-        &legends,
-        "Test Episodes Length",
-    );
+    match save_json(
+        "results.json",
+        json!({
+            "train_rewards": &train_rewards,
+            "train_episodes_length": &train_episodes_length,
+            "train_errors": &train_errors,
+            "test_rewards": &test_rewards,
+            "test_episodes_length": &test_episodes_length,
+            "identifiers": &identifiers
+        }),
+    ) {
+        Ok(_) => {
+            println!("OK")
+        }
+        Err(_) => {
+            println!("ERROR")
+        }
+    };
 }

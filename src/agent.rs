@@ -6,13 +6,10 @@ pub use elegibility_traces_agent::ElegibilityTracesAgent;
 pub use internal_model_agent::InternalModelAgent;
 pub use one_step_agent::OneStepAgent;
 
-use std::fmt::Debug;
-use std::hash::Hash;
-
-use crate::action_selection::EnumActionSelection;
-use crate::env::Env;
 use crate::utils::max;
+use crate::{action_selection::ActionSelection, env::Env};
 use kdam::{tqdm, BarExt};
+use std::fmt::Debug;
 
 pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, &[f64; COUNT]) -> f64;
 
@@ -44,10 +41,10 @@ pub fn expected_sarsa<const COUNT: usize>(
     future_q_value
 }
 
-pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
+pub trait Agent<'a, T: Clone + Debug, const COUNT: usize> {
     fn set_future_q_value_func(&mut self, func: GetNextQValue<COUNT>);
 
-    fn set_action_selector(&mut self, action_selector: EnumActionSelection<T, COUNT>);
+    fn set_action_selector(&mut self, action_selector: &'a mut dyn ActionSelection<T, COUNT>);
 
     fn get_action(&mut self, obs: &T) -> usize;
 
@@ -75,7 +72,10 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
 
         let mut pb = tqdm!(total = n_episodes as usize);
         pb.set_description(format!("GEN {}", 1));
-        pb.refresh();
+        match pb.refresh() {
+            Ok(_) => (),
+            Err(e) => panic!("{}", e.to_string()),
+        };
 
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
@@ -111,7 +111,10 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
                 pb.set_postfix(format!("eval reward={}, eval ep len={}", mr, ml));
                 pb.set_description(format!("GEN {}", (episode / eval_at) + 1));
             }
-            pb.update(1);
+            match pb.update(1) {
+                Ok(_) => (),
+                Err(e) => panic!("{}", e.to_string()),
+            };
             episode_length.push(action_counter);
         }
         (reward_history, episode_length, training_error)
