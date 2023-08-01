@@ -53,7 +53,7 @@ impl FrozenLakeObs {
 type Transition = (f64, FrozenLakeObs, usize, f64, bool);
 
 #[derive(Debug, Clone)]
-pub struct FrozenLakeEditedEnv {
+pub struct FrozenLakePartialEnv {
     ready: bool,
     initial_state_distrib: Vec<f64>,
     probs: Vec<[[Transition; 3]; 4]>,
@@ -65,7 +65,7 @@ pub struct FrozenLakeEditedEnv {
     ncol: usize,
 }
 
-impl FrozenLakeEditedEnv {
+impl FrozenLakePartialEnv {
     // default 4x4 map
     pub const MAP_4X4: [&str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
 
@@ -108,22 +108,22 @@ impl FrozenLakeEditedEnv {
             left: if col == 0 {
                 FrozenLakeTerrain::WALL
             } else {
-                FrozenLakeEditedEnv::get_terrain(map, left_pos.0, left_pos.1)
+                FrozenLakePartialEnv::get_terrain(map, left_pos.0, left_pos.1)
             },
             down: if row == nrow - 1 {
                 FrozenLakeTerrain::WALL
             } else {
-                FrozenLakeEditedEnv::get_terrain(map, down_pos.0, down_pos.1)
+                FrozenLakePartialEnv::get_terrain(map, down_pos.0, down_pos.1)
             },
             right: if col == ncol - 1 {
                 FrozenLakeTerrain::WALL
             } else {
-                FrozenLakeEditedEnv::get_terrain(map, right_pos.0, right_pos.1)
+                FrozenLakePartialEnv::get_terrain(map, right_pos.0, right_pos.1)
             },
             up: if row == 0 {
                 FrozenLakeTerrain::WALL
             } else {
-                FrozenLakeEditedEnv::get_terrain(map, up_pos.0, up_pos.1)
+                FrozenLakePartialEnv::get_terrain(map, up_pos.0, up_pos.1)
             },
             x: row,
             y: col,
@@ -206,7 +206,7 @@ impl FrozenLakeEditedEnv {
     }
 }
 
-impl Env<FrozenLakeObs, 4> for FrozenLakeEditedEnv {
+impl Env<FrozenLakeObs, 4> for FrozenLakePartialEnv {
     fn reset(&mut self) -> FrozenLakeObs {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());

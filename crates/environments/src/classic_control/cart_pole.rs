@@ -3,7 +3,7 @@ use rand::prelude::Distribution;
 
 use crate::env::EnvNotReady;
 
-use super::Env;
+use crate::Env;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CartPoleObservation {
@@ -58,11 +58,11 @@ impl CartPoleEnv {
             state: CartPoleObservation::default(),
             dist: Uniform::from(-0.05..0.05),
         };
-        env.state = env.initialize_car();
+        env.state = env.initialize();
         env
     }
 
-    fn initialize_car(&self) -> CartPoleObservation {
+    fn initialize(&self) -> CartPoleObservation {
         CartPoleObservation {
             cart_position: self.dist.sample(&mut rand::thread_rng()),
             cart_velocity: self.dist.sample(&mut rand::thread_rng()),
@@ -78,9 +78,9 @@ impl Default for CartPoleEnv {
     }
 }
 
-impl Env<CartPoleObservation, 3> for CartPoleEnv {
+impl Env<CartPoleObservation, 2> for CartPoleEnv {
     fn reset(&mut self) -> CartPoleObservation {
-        self.state = self.initialize_car();
+        self.state = self.initialize();
         self.ready = true;
         self.curr_step = 0;
         self.state.clone()

@@ -1,0 +1,20 @@
+[package]
+name = "reinforcement_learning"
+description = "Reinforcement Learning in Rust"
+authors = ["JohnVithor <thejohnvithor@gmail.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+include = ["src/**/*"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# [profile.release]
+# lto = true
+# codegen-units = 1
+
+[dependencies]
+
+rand = "0.8.5"
+ndarray = "0.15.6"
+ndarray-rand = "0.14.0"
+kdam = "0.4.0"
+environments = { path = "../environments"}

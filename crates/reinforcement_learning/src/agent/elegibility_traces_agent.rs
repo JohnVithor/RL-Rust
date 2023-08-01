@@ -1,7 +1,8 @@
 use super::{Agent, GetNextQValue};
 use crate::action_selection::ActionSelection;
 use crate::policy::Policy;
-use fxhash::FxHashMap;
+
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -10,7 +11,7 @@ pub struct ElegibilityTracesAgent<'a, T: Hash + PartialEq + Eq + Clone + Debug, 
     // policy update
     discount_factor: f64,
     lambda_factor: f64,
-    trace: FxHashMap<T, [f64; COUNT]>,
+    trace: HashMap<T, [f64; COUNT]>,
     get_next_q_value: GetNextQValue<COUNT>,
     policy: &'a mut dyn Policy<T, COUNT>,
     action_selection: &'a mut dyn ActionSelection<T, COUNT>,
@@ -29,7 +30,7 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize>
     ) -> Self {
         Self {
             policy,
-            trace: FxHashMap::default(),
+            trace: HashMap::default(),
             discount_factor,
             lambda_factor,
             get_next_q_value,
@@ -94,7 +95,7 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<'a,
 
         self.policy.after_update();
         if terminated {
-            self.trace = FxHashMap::default();
+            self.trace = HashMap::default();
             self.action_selection.update();
         }
         temporal_difference

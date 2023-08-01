@@ -1,10 +1,8 @@
 use std::fmt::Debug;
-mod double_tabular_policy;
 mod main_target_neural_policy;
 mod neural_policy;
 mod tabular_policy;
 
-pub use double_tabular_policy::DoubleTabularPolicy;
 pub use main_target_neural_policy::MainTargetNeuralPolicy;
 pub use neural_policy::NeuralPolicy;
 pub use tabular_policy::TabularPolicy;

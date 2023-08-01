@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
-use std::hash::Hash;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use crate::env::{Env, EnvNotReady};
 
@@ -23,7 +24,9 @@ impl BlackJackObservation {
         }
     }
     pub fn get_id(&self) -> usize {
-        fxhash::hash(self)
+        let mut s = DefaultHasher::new();
+        self.hash(&mut s);
+        s.finish() as usize
     }
 }
 
@@ -96,7 +99,7 @@ impl BlackJackEnv {
 }
 
 impl Default for BlackJackEnv {
-   fn default() -> Self {
+    fn default() -> Self {
         Self::new()
     }
 }
@@ -130,7 +133,7 @@ impl Env<usize, 2> for BlackJackEnv {
                     self.compute_dealer_score(),
                     self.player_has_ace,
                 );
-                return Ok((obs.get_id(), -1.0, true))
+                return Ok((obs.get_id(), -1.0, true));
             }
             let obs: BlackJackObservation =
                 BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
@@ -155,7 +158,7 @@ impl Env<usize, 2> for BlackJackEnv {
             let reward = match obs.p_score.cmp(&d_score) {
                 Ordering::Greater => 1.0,
                 Ordering::Less => -1.0,
-                Ordering::Equal => 0.0
+                Ordering::Equal => 0.0,
             };
 
             Ok((obs.get_id(), reward, true))

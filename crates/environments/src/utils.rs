@@ -20,16 +20,6 @@ pub fn max<T: PartialOrd + Clone>(vec: &[T]) -> T {
     max.clone()
 }
 
-pub fn ndarray_max<T: PartialOrd + Clone>(vec: &ndarray::Array2<T>) -> T {
-    let mut max: &T = &vec[(0, 0)];
-    for v in vec.iter() {
-        if v > max {
-            max = v;
-        }
-    }
-    max.clone()
-}
-
 pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
     let mut b: f64 = 0.0;
     let r: Vec<bool> = probs
@@ -75,25 +65,18 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
     (new_row, new_col)
 }
 
-pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
-    let mut aux: usize = 0;
-    let mut result: Vec<f64> = vec![];
-    while aux < vector.len() {
-        let end: usize = if aux + window < vector.len() {
-            aux + window
-        } else {
-            vector.len()
-        };
-        let slice: &[f64] = &vector[aux..end];
-        let r: f64 = slice.iter().sum();
-        result.push(r / window as f64);
-        aux = end;
+pub fn wrap(value: f32, min: f32, max: f32) -> f32 {
+    let diff = max - min;
+    let mut result = value;
+    while result > max {
+        result -= diff
+    }
+    while result < min {
+        result += diff
     }
     result
 }
 
-pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
-    let mut file = std::fs::File::create(path)?;
-    serde_json::to_writer(&mut file, &data)?;
-    Ok(())
+pub fn bound(value: f32, min: f32, max: f32) -> f32 {
+    value.max(min).min(max)
 }

@@ -1,6 +1,6 @@
 use crate::{
     env::{Env, EnvNotReady},
-    utils::{inc, from_2d_to_1d},
+    utils::{from_2d_to_1d, inc},
 };
 
 #[derive(Debug, Clone)]

@@ -1,6 +1,4 @@
-use std::hash::Hash;
-
-use fxhash::FxHashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use crate::utils::argmax;
 
@@ -8,7 +6,7 @@ use super::ActionSelection;
 
 #[derive(Debug, Clone)]
 pub struct UpperConfidenceBound<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
-    action_counter: FxHashMap<T, [u128; COUNT]>,
+    action_counter: HashMap<T, [u128; COUNT]>,
     t: u128,
     confidence_level: f64,
 }
@@ -16,7 +14,7 @@ pub struct UpperConfidenceBound<T: Hash + PartialEq + Eq + Clone, const COUNT: u
 impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> UpperConfidenceBound<T, COUNT> {
     pub fn new(confidence_level: f64) -> Self {
         Self {
-            action_counter: FxHashMap::default(),
+            action_counter: HashMap::default(),
             t: 1,
             confidence_level,
         }
@@ -59,7 +57,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, CO
     }
 
     fn reset(&mut self) {
-        self.action_counter = FxHashMap::default();
+        self.action_counter = HashMap::default();
         self.t = 1;
     }
 }

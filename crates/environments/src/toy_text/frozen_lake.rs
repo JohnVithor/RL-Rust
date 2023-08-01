@@ -1,5 +1,5 @@
 use crate::env::{Env, EnvNotReady};
-use crate::utils::{categorical_sample, inc, from_2d_to_1d};
+use crate::utils::{categorical_sample, from_2d_to_1d, inc};
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
@@ -9,7 +9,7 @@ type Transition = (f64, usize, f64, bool);
 #[derive(Debug, Clone)]
 pub struct FrozenLakeEnv {
     ready: bool,
-    initial_state_distrib: ndarray::Array1<f64>,
+    initial_state_distrib: Vec<f64>,
     probs: Vec<[[Transition; 3]; 4]>,
     player_pos: usize,
     dist: Uniform<f64>,
@@ -50,8 +50,7 @@ impl FrozenLakeEnv {
         let ncol: usize = map[0].len();
         // calculating start positions probabilities
         let flat_map: String = map.join("");
-        let mut initial_state_distrib: ndarray::Array1<f64> =
-            ndarray::Array1::zeros(flat_map.len());
+        let mut initial_state_distrib: Vec<f64> = vec![0.0; flat_map.len()];
         let mut counter = 0;
         let mut pos = vec![];
         for (i, c) in flat_map.char_indices() {
@@ -97,7 +96,7 @@ impl FrozenLakeEnv {
             dist: Uniform::from(0.0..1.0),
             max_steps,
             curr_step: 0,
-            map: map.join("\n")
+            map: map.join("\n"),
         }
     }
 }
@@ -106,7 +105,7 @@ impl Env<usize, 4> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
-        self.player_pos = categorical_sample(&self.initial_state_distrib.to_vec(), random);
+        self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
         self.curr_step = 0;
         self.player_pos

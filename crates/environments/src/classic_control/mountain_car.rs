@@ -1,9 +1,7 @@
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 
-use crate::env::EnvNotReady;
-
-use super::Env;
+use crate::{Env, EnvNotReady};
 
 #[derive(Debug, Clone, Default)]
 pub struct MountainCarObservation {
@@ -57,11 +55,11 @@ impl MountainCarEnv {
             state: MountainCarObservation::default(),
             dist: Uniform::from(-0.6..-0.4),
         };
-        env.state = env.initialize_car();
+        env.state = env.initialize();
         env
     }
 
-    fn initialize_car(&self) -> MountainCarObservation {
+    fn initialize(&self) -> MountainCarObservation {
         MountainCarObservation {
             position: self.dist.sample(&mut rand::thread_rng()),
             velocity: 0.0,
@@ -77,7 +75,7 @@ impl Default for MountainCarEnv {
 
 impl Env<MountainCarObservation, 3> for MountainCarEnv {
     fn reset(&mut self) -> MountainCarObservation {
-        self.state = self.initialize_car();
+        self.state = self.initialize();
         self.ready = true;
         self.curr_step = 0;
         self.state.clone()

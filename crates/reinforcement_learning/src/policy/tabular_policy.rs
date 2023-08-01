@@ -1,4 +1,4 @@
-use fxhash::FxHashMap;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -8,7 +8,7 @@ use super::Policy;
 pub struct TabularPolicy<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
     learning_rate: f64,
     default: [f64; COUNT],
-    policy: FxHashMap<T, [f64; COUNT]>,
+    policy: HashMap<T, [f64; COUNT]>,
 }
 
 impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> TabularPolicy<T, COUNT> {
@@ -16,7 +16,7 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> TabularPolicy<T, COUN
         Self {
             learning_rate,
             default: [default_value; COUNT],
-            policy: FxHashMap::default(),
+            policy: HashMap::default(),
         }
     }
 }
@@ -39,7 +39,7 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Policy<T, COU
     }
 
     fn reset(&mut self) {
-        self.policy = FxHashMap::default()
+        self.policy = HashMap::default()
     }
 
     fn after_update(&mut self) {}

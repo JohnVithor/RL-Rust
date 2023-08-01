@@ -1,19 +1,20 @@
 use std::rc::Rc;
 use std::time::Instant;
 
+extern crate environments;
+extern crate reinforcement_learning;
+extern crate structopt;
+
+use environments::{toy_text::BlackJackEnv, Env};
 use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
 use reinforcement_learning::agent::{Agent, ElegibilityTracesAgent, OneStepAgent};
-use reinforcement_learning::env::{BlackJackEnv, Env};
 use reinforcement_learning::policy::TabularPolicy;
-use reinforcement_learning::utils::{moving_average, save_json};
-
-extern crate structopt;
-
 use serde_json::json;
 use structopt::StructOpt;
 
-/// Train four RL agents using some parameters and generate some graphics of their results
+use samples::{moving_average, save_json};
+/// Train RL agents using some parameters and export some data of their results
 #[derive(StructOpt, Debug)]
 #[structopt(name = "RLRust - BlackJack")]
 struct Cli {
@@ -159,8 +160,13 @@ fn main() {
             agent.set_future_q_value_func(func);
             println!("{}", identifiers[i]);
             let now: Instant = Instant::now();
-            let (reward_history, episode_length, training_error) =
-                agent.train(&mut env, n_episodes, n_episodes / 10);
+            let (
+                training_reward,
+                training_length,
+                training_error,
+                _evaluation_reward,
+                _evaluation_length,
+            ) = agent.train(&mut env, n_episodes, n_episodes / 10, 100);
             let elapsed: std::time::Duration = now.elapsed();
             println!("{:.2?}", elapsed);
 
@@ -169,12 +175,14 @@ fn main() {
                 &training_error,
             );
             train_errors.push(ma_error);
-            let ma_reward =
-                moving_average(n_episodes as usize / moving_average_window, &reward_history);
+            let ma_reward = moving_average(
+                n_episodes as usize / moving_average_window,
+                &training_reward,
+            );
             train_rewards.push(ma_reward);
             let ma_episode = moving_average(
                 n_episodes as usize / moving_average_window,
-                &episode_length.iter().map(|x| *x as f64).collect(),
+                &training_length.iter().map(|x| *x as f64).collect(),
             );
             train_episodes_length.push(ma_episode);
 
@@ -211,14 +219,16 @@ fn main() {
                 draws as f64 / LOOP_LEN as f64
             );
 
-            let (reward_history, episode_length) = agent.evaluate(&mut env, n_episodes);
+            let (testing_rewards, testing_length) = agent.evaluate(&mut env, n_episodes);
 
-            let ma_reward =
-                moving_average(n_episodes as usize / moving_average_window, &reward_history);
+            let ma_reward = moving_average(
+                n_episodes as usize / moving_average_window,
+                &testing_rewards,
+            );
             test_rewards.push(ma_reward);
             let ma_episode = moving_average(
                 n_episodes as usize / moving_average_window,
-                &episode_length.iter().map(|x| *x as f64).collect(),
+                &testing_length.iter().map(|x| *x as f64).collect(),
             );
             test_episodes_length.push(ma_episode);
 
