@@ -120,7 +120,6 @@ impl AcrobotEnv {
     ];
     const GRAVITY: f32 = 9.8;
     const DT: f32 = 0.2;
-    const DT2: f32 = 0.1;
     const LINK_LENGTH_1: f32 = 1.0;
     const _LINK_LENGTH_2: f32 = 1.0;
     const LINK_MASS_1: f32 = 1.0;
@@ -208,14 +207,6 @@ impl AcrobotEnv {
             theta2_angular_velocity: ddtheta2,
         }
     }
-
-    fn rk4(initial_state: AcrobotState, torque: f32) -> AcrobotState {
-        let k1 = Self::dsdt(initial_state, torque);
-        let k2 = Self::dsdt(initial_state + k1 * Self::DT2, torque);
-        let k3 = Self::dsdt(initial_state + k2 * Self::DT2, torque);
-        let k4 = Self::dsdt(initial_state + k3 * Self::DT, torque);
-        initial_state + (k1 + (k2 * 2.0) + (k3 * 2.0) + k4) * (Self::DT / 6.0)
-    }
 }
 
 impl Default for AcrobotEnv {
@@ -224,7 +215,7 @@ impl Default for AcrobotEnv {
     }
 }
 
-impl Env<AcrobotObservation, 3> for AcrobotEnv {
+impl Env<AcrobotObservation, usize> for AcrobotEnv {
     fn reset(&mut self) -> AcrobotObservation {
         self.state = self.initialize();
         self.ready = true;
@@ -247,7 +238,12 @@ impl Env<AcrobotObservation, 3> for AcrobotEnv {
             torque += self.torque_dist.sample(&mut rand::thread_rng());
         }
 
-        let new_state = Self::rk4(self.state, torque);
+        let initial_state = self.state;
+        let k1 = Self::dsdt(initial_state, torque);
+        let k2 = Self::dsdt(initial_state + k1 * (Self::DT / 2.0), torque);
+        let k3 = Self::dsdt(initial_state + k2 * (Self::DT / 2.0), torque);
+        let k4 = Self::dsdt(initial_state + k3 * Self::DT, torque);
+        let new_state = initial_state + (k1 + (k2 * 2.0) + (k3 * 2.0) + k4) * (Self::DT / 6.0);
 
         self.state = AcrobotState {
             theta1: wrap(new_state.theta1, -PI, PI),
@@ -271,9 +267,5 @@ impl Env<AcrobotObservation, 3> for AcrobotEnv {
 
     fn render(&self) -> String {
         "TODO".to_string()
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }

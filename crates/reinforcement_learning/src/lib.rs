@@ -1,5 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
 pub mod model;
-pub mod network;
 pub mod policy;
 pub mod utils;
 

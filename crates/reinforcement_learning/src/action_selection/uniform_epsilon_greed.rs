@@ -1,3 +1,4 @@
+use environments::env::DiscreteAction;
 use rand::{distributions::Uniform, prelude::Distribution};
 use std::{fmt::Debug, hash::Hash, rc::Rc};
 
@@ -6,7 +7,7 @@ use crate::utils::argmax;
 use super::ActionSelection;
 
 #[derive(Clone)]
-pub struct UniformEpsilonGreed<const COUNT: usize> {
+pub struct UniformEpsilonGreed {
     exploration_decider: Uniform<f64>,
     rand_action_selecter: Uniform<usize>,
     pub initial_epsilon: f64,
@@ -15,7 +16,7 @@ pub struct UniformEpsilonGreed<const COUNT: usize> {
     final_epsilon: f64,
 }
 
-impl<const COUNT: usize> Debug for UniformEpsilonGreed<COUNT> {
+impl Debug for UniformEpsilonGreed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UniformEpsilonGreed")
             .field("exploration_decider", &self.exploration_decider)
@@ -27,11 +28,16 @@ impl<const COUNT: usize> Debug for UniformEpsilonGreed<COUNT> {
     }
 }
 
-impl<const COUNT: usize> UniformEpsilonGreed<COUNT> {
-    pub fn new(epsilon: f64, epsilon_decay: Rc<dyn Fn(f64) -> f64>, final_epsilon: f64) -> Self {
+impl UniformEpsilonGreed {
+    pub fn new(
+        size: usize,
+        epsilon: f64,
+        epsilon_decay: Rc<dyn Fn(f64) -> f64>,
+        final_epsilon: f64,
+    ) -> Self {
         Self {
             exploration_decider: Uniform::from(0.0..1.0),
-            rand_action_selecter: Uniform::from(0..COUNT),
+            rand_action_selecter: Uniform::from(0..size),
             initial_epsilon: epsilon,
             epsilon,
             epsilon_decay,
@@ -54,14 +60,16 @@ impl<const COUNT: usize> UniformEpsilonGreed<COUNT> {
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, COUNT>
-    for UniformEpsilonGreed<COUNT>
+impl<T: Hash + PartialEq + Eq + Clone, A: DiscreteAction> ActionSelection<T, A>
+    for UniformEpsilonGreed
 {
-    fn get_action(&mut self, _obs: &T, values: &[f64; COUNT]) -> usize {
+    fn get_action(&mut self, _obs: &T, values: &[f64; A::RANGE]) -> A {
         if self.should_explore() {
-            self.rand_action_selecter.sample(&mut rand::thread_rng())
+            self.rand_action_selecter
+                .sample(&mut rand::thread_rng())
+                .into()
         } else {
-            argmax(values)
+            argmax(values).into()
         }
     }
 
@@ -69,8 +77,8 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> ActionSelection<T, CO
         self.decay_epsilon();
     }
 
-    fn get_exploration_probs(&mut self, _obs: &T, values: &[f64; COUNT]) -> [f64; COUNT] {
-        let mut policy_probs: [f64; COUNT] = [self.epsilon / COUNT as f64; COUNT];
+    fn get_exploration_probs(&mut self, _obs: &T, values: &[f64; A::RANGE]) -> [f64; A::RANGE] {
+        let mut policy_probs: [f64; A::RANGE] = [self.epsilon / values.len() as f64; A::RANGE];
         policy_probs[argmax(values)] = 1.0 - self.epsilon;
         policy_probs
     }

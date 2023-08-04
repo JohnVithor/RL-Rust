@@ -1,5 +1,3 @@
-use core::panic;
-
 use crate::env::{Env, EnvNotReady};
 use crate::utils::{categorical_sample, from_1d_to_2d, from_2d_to_1d, inc};
 
@@ -206,7 +204,7 @@ impl FrozenLakePartialEnv {
     }
 }
 
-impl Env<FrozenLakeObs, 4> for FrozenLakePartialEnv {
+impl Env<FrozenLakeObs, usize> for FrozenLakePartialEnv {
     fn reset(&mut self) -> FrozenLakeObs {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -252,9 +250,5 @@ impl Env<FrozenLakeObs, 4> for FrozenLakePartialEnv {
         }
         new_map.replace_range(pos..pos + 1, "@");
         new_map
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }

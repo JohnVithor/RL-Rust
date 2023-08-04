@@ -1,7 +1,34 @@
+use std::ops::Index;
+
 use crate::{
-    env::{Env, EnvNotReady},
+    env::{Action, Env, EnvNotReady},
     utils::{from_2d_to_1d, inc},
 };
+
+#[derive(Debug)]
+pub enum CliffWalkingAction {
+    LEFT,
+    DOWN,
+    RIGHT,
+    UP,
+}
+
+impl Action for CliffWalkingAction {
+    const SIZE: usize = 1;
+}
+
+impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
+    type Output = (usize, f64, bool);
+
+    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
+        match index {
+            CliffWalkingAction::LEFT => &self[0],
+            CliffWalkingAction::DOWN => &self[1],
+            CliffWalkingAction::RIGHT => &self[2],
+            CliffWalkingAction::UP => &self[3],
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CliffWalkingEnv {
@@ -16,7 +43,6 @@ impl CliffWalkingEnv {
     const START_POSITION: usize = 36;
     const CLIFF_POSITIONS: [usize; 10] = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
     const GOAL_POSITION: usize = 47;
-    pub const ACTIONS: [&str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
     const MAP: &str = "____________\n____________\n____________\n@!!!!!!!!!!G";
 
     fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
@@ -40,14 +66,7 @@ impl CliffWalkingEnv {
             for col in 0..ncol {
                 for a in 0..4 {
                     let i = from_2d_to_1d(ncol, row, col);
-                    let li = &mut obs[i][a];
-                    let (s, r, t) = Self::update_probability_matrix(row, col, a);
-
-                    // println!("i:{:?} = row {:?}, col {:?}, action {:?}", i, row, col, a);
-                    li.0 = s;
-                    li.1 = r;
-                    li.2 = t;
-                    // println!("{:?} row {:?} col {:?}", li, row, col);
+                    obs[i][a] = Self::update_probability_matrix(row, col, a);
                 }
             }
         }
@@ -63,7 +82,7 @@ impl CliffWalkingEnv {
     }
 }
 
-impl Env<usize, 4> for CliffWalkingEnv {
+impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
     fn reset(&mut self) -> usize {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
@@ -71,7 +90,7 @@ impl Env<usize, 4> for CliffWalkingEnv {
         self.player_pos
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -99,9 +118,5 @@ impl Env<usize, 4> for CliffWalkingEnv {
         }
         new_map.replace_range(pos..pos + 1, "@");
         new_map
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }

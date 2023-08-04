@@ -1,3 +1,4 @@
+#[inline(always)]
 pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
     let mut max: &T = &vec[0];
     let mut result: usize = 0;
@@ -10,6 +11,7 @@ pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
     result
 }
 
+#[inline(always)]
 pub fn max<T: PartialOrd + Clone>(vec: &[T]) -> T {
     let mut max: &T = &vec[0];
     for v in vec {
@@ -20,6 +22,7 @@ pub fn max<T: PartialOrd + Clone>(vec: &[T]) -> T {
     max.clone()
 }
 
+#[inline(always)]
 pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
     let mut b: f64 = 0.0;
     let r: Vec<bool> = probs
@@ -32,14 +35,17 @@ pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
     argmax(&r)
 }
 
+#[inline(always)]
 pub fn from_2d_to_1d(ncol: usize, row: usize, col: usize) -> usize {
     row * ncol + col
 }
 
+#[inline(always)]
 pub fn from_1d_to_2d(ncol: usize, pos: usize) -> (usize, usize) {
     (pos / ncol, pos % ncol)
 }
 
+#[inline(always)]
 pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize, usize) {
     let new_col: usize;
     let new_row: usize;
@@ -65,6 +71,7 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
     (new_row, new_col)
 }
 
+#[inline(always)]
 pub fn wrap(value: f32, min: f32, max: f32) -> f32 {
     let diff = max - min;
     let mut result = value;
@@ -77,6 +84,7 @@ pub fn wrap(value: f32, min: f32, max: f32) -> f32 {
     result
 }
 
+#[inline(always)]
 pub fn bound(value: f32, min: f32, max: f32) -> f32 {
     value.max(min).min(max)
 }

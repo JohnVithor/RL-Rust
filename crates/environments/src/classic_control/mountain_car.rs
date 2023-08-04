@@ -73,7 +73,7 @@ impl Default for MountainCarEnv {
     }
 }
 
-impl Env<MountainCarObservation, 3> for MountainCarEnv {
+impl Env<MountainCarObservation, usize> for MountainCarEnv {
     fn reset(&mut self) -> MountainCarObservation {
         self.state = self.initialize();
         self.ready = true;
@@ -112,9 +112,5 @@ impl Env<MountainCarObservation, 3> for MountainCarEnv {
 
     fn render(&self) -> String {
         "TODO".to_string()
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }

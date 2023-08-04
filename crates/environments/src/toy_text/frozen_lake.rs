@@ -101,7 +101,7 @@ impl FrozenLakeEnv {
     }
 }
 
-impl Env<usize, 4> for FrozenLakeEnv {
+impl Env<usize, usize> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -145,9 +145,5 @@ impl Env<usize, 4> for FrozenLakeEnv {
         }
         new_map.replace_range(pos..pos + 1, "@");
         new_map
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }

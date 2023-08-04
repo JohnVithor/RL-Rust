@@ -5,6 +5,7 @@ extern crate environments;
 extern crate reinforcement_learning;
 extern crate structopt;
 
+use environments::toy_text::blackjack::{BlackJackAction, BlackJackObservation};
 use environments::{toy_text::BlackJackEnv, Env};
 use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
@@ -82,14 +83,13 @@ fn main() {
     let mut test_rewards: Vec<Vec<f64>> = vec![];
     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-    const SIZE: usize = 2;
-
     let mut one_step_policy_epg = TabularPolicy::new(learning_rate, 0.0);
     let mut one_step_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
     let mut trace_policy_epg = TabularPolicy::new(learning_rate, 0.0);
     let mut trace_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
 
     let mut one_step_epg = UniformEpsilonGreed::new(
+        2,
         initial_epsilon,
         Rc::new(move |a| a - epsilon_decay),
         final_epsilon,
@@ -97,42 +97,47 @@ fn main() {
     let mut one_step_ucb = UpperConfidenceBound::new(confidence_level);
 
     let mut trace_epg = UniformEpsilonGreed::new(
+        2,
         initial_epsilon,
         Rc::new(move |a| a - epsilon_decay),
         final_epsilon,
     );
     let mut trace_ucb = UpperConfidenceBound::new(confidence_level);
 
-    let mut one_step_agent_epg: OneStepAgent<usize, SIZE> = OneStepAgent::new(
-        discount_factor,
-        sarsa,
-        &mut one_step_policy_epg,
-        &mut one_step_epg,
-    );
-    let mut one_step_agent_ucb: OneStepAgent<usize, SIZE> = OneStepAgent::new(
-        discount_factor,
-        sarsa,
-        &mut one_step_policy_ucb,
-        &mut one_step_ucb,
-    );
+    let mut one_step_agent_epg: OneStepAgent<BlackJackObservation, BlackJackAction> =
+        OneStepAgent::new(
+            discount_factor,
+            sarsa::<BlackJackAction>,
+            &mut one_step_policy_epg,
+            &mut one_step_epg,
+        );
+    let mut one_step_agent_ucb: OneStepAgent<BlackJackObservation, BlackJackAction> =
+        OneStepAgent::new(
+            discount_factor,
+            sarsa::<BlackJackAction>,
+            &mut one_step_policy_ucb,
+            &mut one_step_ucb,
+        );
 
-    let mut trace_agent_epg: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
-        discount_factor,
-        lambda_factor,
-        sarsa,
-        &mut trace_policy_epg,
-        &mut trace_epg,
-    );
+    let mut trace_agent_epg: ElegibilityTracesAgent<BlackJackObservation, BlackJackAction> =
+        ElegibilityTracesAgent::new(
+            discount_factor,
+            lambda_factor,
+            sarsa::<BlackJackAction>,
+            &mut trace_policy_epg,
+            &mut trace_epg,
+        );
 
-    let mut trace_agent_ucb: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
-        discount_factor,
-        lambda_factor,
-        sarsa,
-        &mut trace_policy_ucb,
-        &mut trace_ucb,
-    );
+    let mut trace_agent_ucb: ElegibilityTracesAgent<BlackJackObservation, BlackJackAction> =
+        ElegibilityTracesAgent::new(
+            discount_factor,
+            lambda_factor,
+            sarsa::<BlackJackAction>,
+            &mut trace_policy_ucb,
+            &mut trace_ucb,
+        );
 
-    let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![
+    let mut agents: Vec<&mut dyn Agent<BlackJackObservation, BlackJackAction>> = vec![
         &mut one_step_agent_epg,
         &mut one_step_agent_ucb,
         &mut trace_agent_epg,
@@ -156,7 +161,11 @@ fn main() {
 
     let mut i = 0;
     for agent in agents.iter_mut() {
-        for func in [sarsa, qlearning, expected_sarsa] {
+        for func in [
+            sarsa::<BlackJackAction>,
+            qlearning::<BlackJackAction>,
+            expected_sarsa::<BlackJackAction>,
+        ] {
             agent.set_future_q_value_func(func);
             println!("{}", identifiers[i]);
             let now: Instant = Instant::now();
@@ -194,10 +203,10 @@ fn main() {
             let mut draws: u32 = 0;
             const LOOP_LEN: usize = 1000000;
             for _u in 0..LOOP_LEN {
-                let mut curr_action: usize = agent.get_action(&env.reset());
+                let mut curr_action: BlackJackAction = agent.get_action(&env.reset());
                 loop {
                     let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-                    let next_action: usize = agent.get_action(&next_obs);
+                    let next_action: BlackJackAction = agent.get_action(&next_obs);
                     curr_action = next_action;
                     if terminated {
                         if reward == 1.0 {
@@ -255,3 +264,4 @@ fn main() {
         }
     };
 }
+// fn main() {}

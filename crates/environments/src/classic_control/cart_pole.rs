@@ -78,7 +78,7 @@ impl Default for CartPoleEnv {
     }
 }
 
-impl Env<CartPoleObservation, 2> for CartPoleEnv {
+impl Env<CartPoleObservation, usize> for CartPoleEnv {
     fn reset(&mut self) -> CartPoleObservation {
         self.state = self.initialize();
         self.ready = true;
@@ -130,9 +130,5 @@ impl Env<CartPoleObservation, 2> for CartPoleEnv {
 
     fn render(&self) -> String {
         "TODO".to_string()
-    }
-
-    fn get_action_label(&self, action: usize) -> &str {
-        Self::ACTIONS[action]
     }
 }
