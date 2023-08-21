@@ -1,4 +1,4 @@
-use super::Agent;
+use super::DiscreteAgent;
 use crate::action_selection::ActionSelection;
 use crate::policy::DiscretePolicy;
 
@@ -45,8 +45,8 @@ where
     }
 }
 
-impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction + Copy + Debug> Agent<'a, T, A>
-    for ElegibilityTracesAgent<'a, T, A>
+impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction + Copy + Debug>
+    DiscreteAgent<'a, T, A> for ElegibilityTracesAgent<'a, T, A>
 where
     [f64]: Index<A, Output = f64>,
     [f64]: IndexMut<A, Output = f64>,

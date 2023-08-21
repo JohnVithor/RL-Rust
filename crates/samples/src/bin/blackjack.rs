@@ -5,11 +5,11 @@ extern crate environments;
 extern crate reinforcement_learning;
 extern crate structopt;
 
-use environments::toy_text::blackjack::{BlackJackAction, BlackJackObservation};
-use environments::{toy_text::BlackJackEnv, Env};
+use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
+use environments::DiscreteEnv;
 use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
 use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
-use reinforcement_learning::agent::{Agent, ElegibilityTracesAgent, OneStepAgent};
+use reinforcement_learning::agent::{DiscreteAgent, ElegibilityTracesAgent, OneStepAgent};
 use reinforcement_learning::policy::TabularPolicy;
 use serde_json::json;
 use structopt::StructOpt;
@@ -19,10 +19,6 @@ use samples::{moving_average, save_json};
 #[derive(StructOpt, Debug)]
 #[structopt(name = "RLRust - BlackJack")]
 struct Cli {
-    /// Show example of episode
-    #[structopt(long = "show_example")]
-    show_example: bool,
-
     /// Number of episodes for the training
     #[structopt(long = "n_episodes", short = "n", default_value = "100000")]
     n_episodes: u128,
@@ -137,7 +133,7 @@ fn main() {
             &mut trace_ucb,
         );
 
-    let mut agents: Vec<&mut dyn Agent<BlackJackObservation, BlackJackAction>> = vec![
+    let mut agents: Vec<&mut dyn DiscreteAgent<BlackJackObservation, BlackJackAction>> = vec![
         &mut one_step_agent_epg,
         &mut one_step_agent_ucb,
         &mut trace_agent_epg,
@@ -195,9 +191,6 @@ fn main() {
             );
             train_episodes_length.push(ma_episode);
 
-            if cli.show_example {
-                agent.example(&mut env);
-            }
             let mut wins: u32 = 0;
             let mut losses: u32 = 0;
             let mut draws: u32 = 0;

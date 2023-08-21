@@ -1,11 +1,11 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 use crate::{
-    env::{Action, Env, EnvNotReady},
+    env::{DiscreteAction, DiscreteEnv, EnvError},
     utils::{from_2d_to_1d, inc},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum CliffWalkingAction {
     LEFT,
     DOWN,
@@ -13,9 +13,33 @@ pub enum CliffWalkingAction {
     UP,
 }
 
-impl Action for CliffWalkingAction {
-    const SIZE: usize = 1;
+impl From<usize> for CliffWalkingAction {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::LEFT,
+            1 => Self::DOWN,
+            2 => Self::RIGHT,
+            3 => Self::UP,
+            _ => panic!(),
+        }
+    }
 }
+
+impl Index<CliffWalkingAction> for [f64] {
+    type Output = f64;
+
+    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl IndexMut<CliffWalkingAction> for [f64] {
+    fn index_mut(&mut self, index: CliffWalkingAction) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
+impl DiscreteAction for CliffWalkingAction {}
 
 impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
     type Output = (usize, f64, bool);
@@ -82,7 +106,7 @@ impl CliffWalkingEnv {
     }
 }
 
-impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
+impl DiscreteEnv<usize, CliffWalkingAction> for CliffWalkingEnv {
     fn reset(&mut self) -> usize {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
@@ -90,9 +114,9 @@ impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
         self.player_pos
     }
 
-    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvError> {
         if !self.ready {
-            return Err(EnvNotReady);
+            return Err(EnvError::EnvNotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;

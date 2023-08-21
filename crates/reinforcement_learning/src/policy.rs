@@ -1,6 +1,8 @@
+mod neural_policy;
 mod tabular_policy;
 
 use environments::env::DiscreteAction;
+// pub use neural_policy::DiscreteNeuralPolicy;
 pub use tabular_policy::TabularPolicy;
 
 pub trait DiscretePolicy<T, A: DiscreteAction> {

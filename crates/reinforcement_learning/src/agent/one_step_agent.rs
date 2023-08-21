@@ -1,4 +1,4 @@
-use super::Agent;
+use super::DiscreteAgent;
 use crate::action_selection::ActionSelection;
 use crate::policy::DiscretePolicy;
 use environments::env::DiscreteAction;
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy> Agent<'a, T, A>
+impl<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy> DiscreteAgent<'a, T, A>
     for OneStepAgent<'a, T, A>
 where
     [f64]: Index<A, Output = f64>,

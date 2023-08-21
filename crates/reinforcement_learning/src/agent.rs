@@ -13,9 +13,9 @@ use kdam::{tqdm, BarExt};
 use std::{fmt::Debug, ops::Index};
 
 extern crate environments;
-use environments::env::Env;
+use environments::env::DiscreteEnv;
 
-pub fn sarsa<A: DiscreteAction>(
+pub fn sarsa<A: DiscreteAction + From<usize>>(
     next_q_values: &[f64; A::RANGE],
     next_action: A,
     _policy_probs: &[f64; A::RANGE],
@@ -47,7 +47,7 @@ pub fn expected_sarsa<A: DiscreteAction>(
 }
 
 pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
-pub trait Agent<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy>
+pub trait DiscreteAgent<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy>
 where
     [(); A::RANGE]: Sized,
 {
@@ -60,18 +60,18 @@ where
     fn update(
         &mut self,
         curr_obs: &T,
-        curr_action: A,
+        curr_actions: A,
         reward: f64,
         terminated: bool,
         next_obs: &T,
-        next_action: A,
+        next_actions: A,
     ) -> f64;
 
     fn reset(&mut self);
 
     fn train(
         &mut self,
-        env: &mut dyn Env<T, A>,
+        env: &mut dyn DiscreteEnv<T, A>,
         n_episodes: u128,
         eval_at: u128,
         eval_for: u128,
@@ -93,23 +93,23 @@ where
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
             let mut curr_obs: T = env.reset();
-            let mut curr_action: A = self.get_action(&curr_obs);
+            let mut curr_actions: A = self.get_action(&curr_obs);
 
             loop {
                 action_counter += 1;
-                let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-                let next_action: A = self.get_action(&next_obs);
+                let (next_obs, reward, terminated) = env.step(curr_actions).unwrap();
+                let next_actions: A = self.get_action(&next_obs);
                 let td = self.update(
                     &curr_obs,
-                    curr_action,
+                    curr_actions,
                     reward,
                     terminated,
                     &next_obs,
-                    next_action,
+                    next_actions,
                 );
                 training_error.push(td);
                 curr_obs = next_obs;
-                curr_action = next_action;
+                curr_actions = next_actions;
                 epi_reward += reward;
                 if terminated {
                     training_reward.push(epi_reward);
@@ -140,18 +140,22 @@ where
         )
     }
 
-    fn evaluate(&mut self, env: &mut dyn Env<T, A>, n_episodes: u128) -> (Vec<f64>, Vec<u128>) {
+    fn evaluate(
+        &mut self,
+        env: &mut dyn DiscreteEnv<T, A>,
+        n_episodes: u128,
+    ) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
         for _episode in tqdm!(0..n_episodes) {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
-            let mut curr_action: A = self.get_action(&env.reset());
+            let mut curr_actions: A = self.get_action(&env.reset());
             loop {
                 action_counter += 1;
-                let (obs, reward, terminated) = env.step(curr_action).unwrap();
-                let next_action: A = self.get_action(&obs);
-                curr_action = next_action;
+                let (obs, reward, terminated) = env.step(curr_actions).unwrap();
+                let next_actions: A = self.get_action(&obs);
+                curr_actions = next_actions;
                 epi_reward += reward;
                 if terminated {
                     reward_history.push(epi_reward);
@@ -163,18 +167,18 @@ where
         (reward_history, episode_length)
     }
 
-    fn example(&mut self, env: &mut dyn Env<T, A>) {
+    fn example(&mut self, env: &mut dyn DiscreteEnv<T, A>) {
         let mut epi_reward = 0.0;
-        let mut curr_action: A = self.get_action(&env.reset());
+        let mut curr_actions: A = self.get_action(&env.reset());
         let mut steps: i32 = 0;
         loop {
             steps += 1;
             println!("{}", env.render());
-            let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-            let next_action: A = self.get_action(&next_obs);
+            let (next_obs, reward, terminated) = env.step(curr_actions).unwrap();
+            let next_actions: A = self.get_action(&next_obs);
             // println!("{:?}", env.get_action_label(curr_action));
             println!("step reward {:?}", reward);
-            curr_action = next_action;
+            curr_actions = next_actions;
             epi_reward += reward;
             if terminated {
                 println!("{}", env.render());

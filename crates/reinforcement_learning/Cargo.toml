@@ -12,9 +12,10 @@ include = ["src/**/*"]
 # codegen-units = 1
 
 [dependencies]
-
+serde = "1.0.183"
+burn = "0.8.0"
+kdam = "0.4.0"
+environments = { path = "../environments" }
 rand = "0.8.5"
 ndarray = "0.15.6"
 ndarray-rand = "0.14.0"
-kdam = "0.4.0"
-environments = { path = "../environments"}

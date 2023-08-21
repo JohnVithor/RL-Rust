@@ -3,7 +3,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::ops::{Index, IndexMut};
 
-use crate::env::{Action, DiscreteAction, Env, EnvNotReady};
+use crate::env::{DiscreteAction, DiscreteEnv};
+use crate::EnvError;
 
 extern crate core;
 
@@ -27,13 +28,7 @@ impl From<usize> for BlackJackAction {
     }
 }
 
-impl Action for BlackJackAction {
-    const SIZE: usize = 1;
-}
-
-impl DiscreteAction for BlackJackAction {
-    const RANGE: usize = 2;
-}
+impl DiscreteAction for BlackJackAction {}
 
 impl Index<BlackJackAction> for [f64] {
     type Output = f64;
@@ -150,7 +145,7 @@ impl Default for BlackJackEnv {
     }
 }
 
-impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
+impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
     fn reset(&mut self) -> BlackJackObservation {
         self.player = [0; 16];
         self.dealer = [0; 16];
@@ -167,9 +162,9 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
     fn step(
         &mut self,
         action: BlackJackAction,
-    ) -> Result<(BlackJackObservation, f64, bool), EnvNotReady> {
+    ) -> Result<(BlackJackObservation, f64, bool), EnvError> {
         if !self.ready {
-            return Err(EnvNotReady);
+            return Err(EnvError::EnvNotReady);
         }
         match action {
             BlackJackAction::HIT => {
@@ -237,4 +232,6 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
         result.push_str(&player_cards);
         result
     }
+
+    //fn render_episode(&self) {}
 }

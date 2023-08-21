@@ -1,30 +1,31 @@
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
-pub struct EnvNotReady;
-
-pub trait Action {
-    const SIZE: usize;
+pub enum EnvError {
+    EnvNotReady,
 }
 
-pub trait ContinuousAction: Action + From<f64> {
-    const RANGE: (f64, f64);
+pub trait DiscreteAction: From<usize>
+where
+    Self: Sized,
+{
+    const RANGE: usize = { std::mem::variant_count::<Self>() };
 }
 
-pub trait DiscreteAction: Action + From<usize> {
-    const RANGE: usize;
-}
-
-impl Action for usize {
-    const SIZE: usize = 1;
-}
-
-impl Action for f64 {
-    const SIZE: usize = 1;
-}
-
-pub trait Env<T: Debug, A: Action + Debug> {
+pub trait ContinuousEnv<T, const N: usize> {
     fn reset(&mut self) -> T;
-    fn step(&mut self, action: A) -> Result<(T, f64, bool), EnvNotReady>;
+    fn step(&mut self, actions: [f64; N]) -> Result<(T, f64, bool), EnvError>;
+    fn render(&self) -> String;
+}
+
+pub trait DiscreteEnv<T, A: DiscreteAction> {
+    fn reset(&mut self) -> T;
+    fn step(&mut self, action: A) -> Result<(T, f64, bool), EnvError>;
+    fn render(&self) -> String;
+}
+
+pub trait MixedEnv<T, A: DiscreteAction, const N: usize> {
+    fn reset(&mut self) -> T;
+    fn step(&mut self, d_action: A, c_actions: [f64; N]) -> Result<(T, f64, bool), EnvError>;
     fn render(&self) -> String;
 }
