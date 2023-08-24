@@ -1,8 +1,62 @@
-use crate::env::{Env, EnvNotReady};
+use std::ops::{Index, IndexMut};
+
+use crate::env::{DiscreteAction, DiscreteEnv, EnvError};
 use crate::utils::{categorical_sample, from_2d_to_1d, inc};
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
+
+#[derive(Debug, Copy, Clone)]
+pub enum FrozenLakeAction {
+    LEFT,
+    DOWN,
+    RIGHT,
+    UP,
+}
+
+impl From<usize> for FrozenLakeAction {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::LEFT,
+            1 => Self::DOWN,
+            2 => Self::RIGHT,
+            3 => Self::UP,
+            value => panic!(
+                "Invalid value to convert from usize to FrozenLakeAction: {}",
+                value
+            ),
+        }
+    }
+}
+
+impl Index<FrozenLakeAction> for [f64] {
+    type Output = f64;
+
+    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl IndexMut<FrozenLakeAction> for [f64] {
+    fn index_mut(&mut self, index: FrozenLakeAction) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
+impl DiscreteAction for FrozenLakeAction {}
+
+impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
+    type Output = (usize, f64, bool);
+
+    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
+        match index {
+            FrozenLakeAction::LEFT => &self[0],
+            FrozenLakeAction::DOWN => &self[1],
+            FrozenLakeAction::RIGHT => &self[2],
+            FrozenLakeAction::UP => &self[3],
+        }
+    }
+}
 
 type Transition = (f64, usize, f64, bool);
 
@@ -101,7 +155,7 @@ impl FrozenLakeEnv {
     }
 }
 
-impl Env<usize, usize> for FrozenLakeEnv {
+impl DiscreteEnv<usize, FrozenLakeAction> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -111,16 +165,16 @@ impl Env<usize, usize> for FrozenLakeEnv {
         self.player_pos
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f64, bool), EnvError> {
         if !self.ready {
-            return Err(EnvNotReady);
+            return Err(EnvError::EnvNotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
             return Ok((0, 0.0, true));
         }
         self.curr_step += 1;
-        let transitions = self.probs[self.player_pos][action];
+        let transitions = self.probs[self.player_pos][action as usize];
         let t_probs = transitions.map(|a| a.0);
         let random: f64 = self.dist.sample(&mut rand::thread_rng());
         let i = categorical_sample(t_probs.as_ref(), random);

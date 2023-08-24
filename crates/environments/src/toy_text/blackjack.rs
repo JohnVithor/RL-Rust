@@ -23,7 +23,10 @@ impl From<usize> for BlackJackAction {
         match value {
             0 => Self::HIT,
             1 => Self::STICK,
-            _ => panic!(),
+            value => panic!(
+                "Invalid value to convert from usize to BlackJackAction: {}",
+                value
+            ),
         }
     }
 }

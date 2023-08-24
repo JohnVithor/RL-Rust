@@ -20,7 +20,10 @@ impl From<usize> for CliffWalkingAction {
             1 => Self::DOWN,
             2 => Self::RIGHT,
             3 => Self::UP,
-            _ => panic!(),
+            value => panic!(
+                "Invalid value to convert from usize to CliffWalkingAction: {}",
+                value
+            ),
         }
     }
 }
