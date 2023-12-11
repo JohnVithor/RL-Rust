@@ -6,8 +6,8 @@ pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
 pub use one_step_agent::OneStepAgent;
 
-use crate::action_selection::ActionSelection;
 use crate::utils::max;
+use crate::{action_selection::ActionSelection, policy::DiscretePolicy};
 use environments::env::DiscreteAction;
 use kdam::{tqdm, BarExt};
 use std::{fmt::Debug, ops::Index};
@@ -51,6 +51,8 @@ pub trait DiscreteAgent<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy>
 where
     [(); A::RANGE]: Sized,
 {
+    fn get_policy(&self) -> &dyn DiscretePolicy<T, A>;
+
     fn set_future_q_value_func(&mut self, func: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64);
 
     fn set_action_selector(&mut self, action_selector: &'a mut dyn ActionSelection<T, A>);

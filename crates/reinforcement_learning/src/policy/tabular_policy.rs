@@ -14,6 +14,8 @@ where
     learning_rate: f64,
     default: [f64; A::RANGE],
     policy: HashMap<T, [f64; A::RANGE]>,
+    pub state_changes_counter: HashMap<(T, T), f64>,
+    pub state_action_change_counter: HashMap<(T, T), [f64; A::RANGE]>,
 }
 
 impl<T: Hash + PartialEq + Eq + Clone, A: DiscreteAction> TabularPolicy<T, A>
@@ -25,6 +27,8 @@ where
             learning_rate,
             default: [default_value; A::RANGE],
             policy: HashMap::default(),
+            state_changes_counter: HashMap::default(),
+            state_action_change_counter: HashMap::default(),
         }
     }
 }
@@ -35,6 +39,17 @@ where
     [f64]: IndexMut<A, Output = f64>,
     [(); A::RANGE]: Sized,
 {
+    fn get_estimed_transitions(&self) -> HashMap<(T, T), [f64; A::RANGE]> {
+        let mut result: HashMap<(T, T), [f64; A::RANGE]> = self.state_action_change_counter.clone();
+        for (k, v) in result.iter_mut() {
+            let c = self.state_changes_counter.get(k).unwrap();
+            for x in v.iter_mut() {
+                *x /= *c;
+            }
+        }
+        result
+    }
+
     fn predict(&mut self, obs: &T) -> [f64; A::RANGE] {
         *self.policy.get(obs).unwrap_or(&self.default)
     }
@@ -43,14 +58,25 @@ where
         *self.policy.get(obs).unwrap_or(&self.default)
     }
 
-    fn update(&mut self, obs: &T, action: A, _next_obs: &T, temporal_difference: f64) -> f64 {
-        self.policy.entry(obs.clone()).or_insert(self.default)[action] +=
+    fn update(&mut self, obs: &T, action: A, next_obs: &T, temporal_difference: f64) -> f64 {
+        self.policy.entry(obs.clone()).or_insert(self.default)[action.clone()] +=
             self.learning_rate * temporal_difference;
+
+        *self
+            .state_changes_counter
+            .entry((obs.clone(), next_obs.clone()))
+            .or_insert(0.0) += 1.0;
+        self.state_action_change_counter
+            .entry((obs.clone(), next_obs.clone()))
+            .or_insert([0.0; A::RANGE])[action] += 1.0;
+
         self.learning_rate * temporal_difference
     }
 
     fn reset(&mut self) {
-        self.policy = HashMap::default()
+        self.policy = HashMap::default();
+        self.state_changes_counter = HashMap::default();
+        self.state_action_change_counter = HashMap::default();
     }
 
     fn after_update(&mut self) {}

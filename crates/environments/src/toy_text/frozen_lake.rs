@@ -43,6 +43,20 @@ impl IndexMut<FrozenLakeAction> for [f64] {
     }
 }
 
+impl Index<FrozenLakeAction> for [u128] {
+    type Output = u128;
+
+    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl IndexMut<FrozenLakeAction> for [u128] {
+    fn index_mut(&mut self, index: FrozenLakeAction) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
 impl DiscreteAction for FrozenLakeAction {}
 
 impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
@@ -74,14 +88,14 @@ pub struct FrozenLakeEnv {
 
 impl FrozenLakeEnv {
     // default 4x4 map
-    pub const MAP_4X4: [&str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
+    pub const MAP_4X4: [&'static str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
 
-    pub const MAP_8X8: [&str; 8] = [
+    pub const MAP_8X8: [&'static str; 8] = [
         "SFFFFFFF", "FFFFFFFF", "FFFHFFFF", "FFFFFHFF", "FFFHFFFF", "FHHFFFHF", "FHFFHFHF",
         "FFFHFFFG",
     ];
 
-    pub const ACTIONS: [&str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
+    pub const ACTIONS: [&'static str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
 
     fn update_probability_matrix(
         map: &[&str],

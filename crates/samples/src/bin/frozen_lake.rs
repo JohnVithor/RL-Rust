@@ -223,9 +223,14 @@ fn main() {
             test_episodes_length.push(ma_episode);
 
             i += 1;
+            println!("{:?}", agent.get_policy().get_estimed_transitions());
             agent.reset();
         }
     }
+    // let mut one_step_policy_epg = TabularPolicy::new(learning_rate, 0.0);
+    // let mut one_step_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
+    // let mut trace_policy_epg = TabularPolicy::new(learning_rate, 0.0);
+    // let mut trace_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
     match save_json(
         "results.json",
         json!({

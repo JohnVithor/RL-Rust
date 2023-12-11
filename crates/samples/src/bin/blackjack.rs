@@ -238,6 +238,8 @@ fn main() {
             agent.reset();
         }
     }
+    println!("{:?}", one_step_policy_epg.state_changes_counter);
+    println!("{:?}", one_step_policy_epg.state_action_change_counter);
     match save_json(
         "results.json",
         json!({

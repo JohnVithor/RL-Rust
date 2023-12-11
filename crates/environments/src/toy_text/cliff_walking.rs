@@ -42,6 +42,20 @@ impl IndexMut<CliffWalkingAction> for [f64] {
     }
 }
 
+impl Index<CliffWalkingAction> for [u128] {
+    type Output = u128;
+
+    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl IndexMut<CliffWalkingAction> for [u128] {
+    fn index_mut(&mut self, index: CliffWalkingAction) -> &mut Self::Output {
+        &mut self[index as usize]
+    }
+}
+
 impl DiscreteAction for CliffWalkingAction {}
 
 impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
@@ -70,7 +84,7 @@ impl CliffWalkingEnv {
     const START_POSITION: usize = 36;
     const CLIFF_POSITIONS: [usize; 10] = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
     const GOAL_POSITION: usize = 47;
-    const MAP: &str = "____________\n____________\n____________\n@!!!!!!!!!!G";
+    const MAP: &'static str = "____________\n____________\n____________\n@!!!!!!!!!!G";
 
     fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
         let (newrow, newcol) = inc(4, 12, row, col, action);

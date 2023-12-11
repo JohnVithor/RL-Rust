@@ -53,6 +53,26 @@ impl IndexMut<BlackJackAction> for [f64] {
     }
 }
 
+impl Index<BlackJackAction> for [u128] {
+    type Output = u128;
+
+    fn index(&self, index: BlackJackAction) -> &Self::Output {
+        &self[match index {
+            BlackJackAction::HIT => 0,
+            BlackJackAction::STICK => 1,
+        }]
+    }
+}
+
+impl IndexMut<BlackJackAction> for [u128] {
+    fn index_mut(&mut self, index: BlackJackAction) -> &mut Self::Output {
+        &mut self[match index {
+            BlackJackAction::HIT => 0,
+            BlackJackAction::STICK => 1,
+        }]
+    }
+}
+
 #[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 pub struct BlackJackObservation {
     pub p_score: u8,

@@ -5,7 +5,7 @@ pub enum EnvError {
     EnvNotReady,
 }
 
-pub trait DiscreteAction: From<usize>
+pub trait DiscreteAction: From<usize> + Clone
 where
     Self: Sized,
 {

@@ -12,7 +12,7 @@ where
     // policy update
     discount_factor: f64,
     get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
-    policy: &'a mut dyn DiscretePolicy<T, A>,
+    pub policy: &'a mut dyn DiscretePolicy<T, A>,
     action_selection: &'a mut dyn ActionSelection<T, A>,
 }
 
@@ -41,6 +41,10 @@ where
     [f64]: Index<A, Output = f64>,
     [(); A::RANGE]: Sized,
 {
+    fn get_policy(&self) -> &dyn DiscretePolicy<T, A> {
+        self.policy
+    }
+
     fn set_future_q_value_func(&mut self, func: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64) {
         self.get_next_q_value = func;
     }
