@@ -1,5 +1,6 @@
 use crate::action_selection::EnumActionSelection;
 use crate::model::{EnumModel, Model};
+use crate::policy::Policy;
 
 use super::{Agent, GetNextQValue};
 use std::cell::RefCell;
@@ -42,7 +43,9 @@ impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, 
     fn get_action(&mut self, obs: &T) -> usize {
         self.agent.borrow_mut().get_action(obs)
     }
-
+    fn get_policy(&self) -> &dyn Policy<T, COUNT> {
+        unsafe { (*self.agent.as_ptr()).get_policy() }
+    }
     fn update(
         &mut self,
         curr_obs: &T,

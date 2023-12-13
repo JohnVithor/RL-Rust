@@ -6,11 +6,12 @@ use crate::utils::{categorical_sample, from_1d_to_2d, from_2d_to_1d, inc};
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum FrozenLakeTerrain {
     START,
     WALL,
     HOLE,
+    #[default]
     GROUND,
     GOAL,
 }
@@ -27,13 +28,7 @@ impl FrozenLakeTerrain {
     }
 }
 
-impl Default for FrozenLakeTerrain {
-    fn default() -> Self {
-        FrozenLakeTerrain::GROUND
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Default)]
 pub struct FrozenLakeObs {
     pub left: FrozenLakeTerrain,
     pub down: FrozenLakeTerrain,
@@ -41,19 +36,6 @@ pub struct FrozenLakeObs {
     pub up: FrozenLakeTerrain,
     pub x: usize,
     pub y: usize,
-}
-
-impl Default for FrozenLakeObs {
-    fn default() -> Self {
-        Self {
-            left: Default::default(),
-            right: Default::default(),
-            down: Default::default(),
-            up: Default::default(),
-            x: Default::default(),
-            y: Default::default(),
-        }
-    }
 }
 
 impl FrozenLakeObs {
@@ -85,17 +67,17 @@ pub struct FrozenLakeEditedEnv {
 
 impl FrozenLakeEditedEnv {
     // default 4x4 map
-    pub const MAP_4X4: [&str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
+    pub const MAP_4X4: [&'static str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
 
-    pub const MAP_8X8: [&str; 8] = [
+    pub const MAP_8X8: [&'static str; 8] = [
         "SFFFFFFF", "FFFFFFFF", "FFFHFFFF", "FFFFFHFF", "FFFHFFFF", "FHHFFFHF", "FHFFHFHF",
         "FFFHFFFG",
     ];
 
-    pub const ACTIONS: [&str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
+    pub const ACTIONS: [&'static str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
 
     fn update_probability_matrix(
-        map: &Vec<String>,
+        map: &[String],
         nrow: usize,
         ncol: usize,
         row: usize,
@@ -115,40 +97,40 @@ impl FrozenLakeEditedEnv {
         (new_obs, p_pos, reward, terminated)
     }
 
-    fn get_obs(map: &Vec<String>, row: usize, col: usize) -> FrozenLakeObs {
+    fn get_obs(map: &[String], row: usize, col: usize) -> FrozenLakeObs {
         let nrow: usize = map.len();
         let ncol: usize = map[0].len();
         let left_pos = (row, col - 1);
         let down_pos = (row + 1, col);
         let right_pos = (row, col + 1);
         let up_pos = (row - 1, col);
-        let mut s = FrozenLakeObs::default();
-        s.left = if col == 0 {
-            FrozenLakeTerrain::WALL
-        } else {
-            FrozenLakeEditedEnv::get_terrain(&map, left_pos.0, left_pos.1)
-        };
-        s.down = if row == nrow - 1 {
-            FrozenLakeTerrain::WALL
-        } else {
-            FrozenLakeEditedEnv::get_terrain(&map, down_pos.0, down_pos.1)
-        };
-        s.right = if col == ncol - 1 {
-            FrozenLakeTerrain::WALL
-        } else {
-            FrozenLakeEditedEnv::get_terrain(&map, right_pos.0, right_pos.1)
-        };
-        s.up = if row == 0 {
-            FrozenLakeTerrain::WALL
-        } else {
-            FrozenLakeEditedEnv::get_terrain(&map, up_pos.0, up_pos.1)
-        };
-        s.x = row;
-        s.y = col;
-        s
+        FrozenLakeObs {
+            left: if col == 0 {
+                FrozenLakeTerrain::WALL
+            } else {
+                FrozenLakeEditedEnv::get_terrain(map, left_pos.0, left_pos.1)
+            },
+            down: if row == nrow - 1 {
+                FrozenLakeTerrain::WALL
+            } else {
+                FrozenLakeEditedEnv::get_terrain(map, down_pos.0, down_pos.1)
+            },
+            right: if col == ncol - 1 {
+                FrozenLakeTerrain::WALL
+            } else {
+                FrozenLakeEditedEnv::get_terrain(map, right_pos.0, right_pos.1)
+            },
+            up: if row == 0 {
+                FrozenLakeTerrain::WALL
+            } else {
+                FrozenLakeEditedEnv::get_terrain(map, up_pos.0, up_pos.1)
+            },
+            x: row,
+            y: col,
+        }
     }
 
-    fn get_terrain(map: &Vec<String>, row: usize, col: usize) -> FrozenLakeTerrain {
+    fn get_terrain(map: &[String], row: usize, col: usize) -> FrozenLakeTerrain {
         let row = map.get(row);
         return match row {
             None => FrozenLakeTerrain::WALL,
@@ -168,7 +150,7 @@ impl FrozenLakeEditedEnv {
     pub fn new(map: &[&str], is_slippery: bool, max_steps: u128) -> Self {
         let nrow: usize = map.len();
         let ncol: usize = map[0].len();
-        let map: Vec<String> = map.into_iter().map(|s| s.to_string()).collect();
+        let map: Vec<String> = map.iter().map(|s| s.to_string()).collect();
         // calculating start positions probabilities
         let flat_map: String = map.join("");
         let mut initial_state_distrib: Vec<f64> = vec![0.0; flat_map.len()];

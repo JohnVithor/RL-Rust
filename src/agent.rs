@@ -9,9 +9,9 @@ pub use one_step_agent::OneStepAgent;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::action_selection::EnumActionSelection;
 use crate::env::Env;
 use crate::utils::max;
+use crate::{action_selection::EnumActionSelection, policy::Policy};
 use kdam::{tqdm, BarExt};
 
 pub type GetNextQValue<const COUNT: usize> = fn(&[f64; COUNT], usize, &[f64; COUNT]) -> f64;
@@ -50,6 +50,8 @@ pub trait Agent<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> {
     fn set_action_selector(&mut self, action_selector: EnumActionSelection<T, COUNT>);
 
     fn get_action(&mut self, obs: &T) -> usize;
+
+    fn get_policy(&self) -> &dyn Policy<T, COUNT>;
 
     fn update(
         &mut self,

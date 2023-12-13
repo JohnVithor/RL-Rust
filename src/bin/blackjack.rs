@@ -1,3 +1,4 @@
+use std::fs;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -216,7 +217,11 @@ fn main() {
                     &episode_length.iter().map(|x| *x as f64).collect(),
                 );
                 test_episodes_length.push(ma_episode);
-
+                fs::write(
+                    format!("{}_blackjack.txt", legends[i]),
+                    format!("{:?}", agent.get_policy().get_estimed_transitions()),
+                )
+                .expect("Unable to write file");
                 i += 1;
                 agent.reset();
             }

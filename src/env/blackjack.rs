@@ -41,7 +41,7 @@ pub struct BlackJackEnv {
 }
 
 impl BlackJackEnv {
-    pub const ACTIONS: [&str; 2] = ["HIT", "STICK"];
+    pub const ACTIONS: [&'static str; 2] = ["HIT", "STICK"];
     pub fn new() -> Self {
         let mut env: BlackJackEnv = Self {
             ready: false,
@@ -96,7 +96,7 @@ impl BlackJackEnv {
 }
 
 impl Default for BlackJackEnv {
-   fn default() -> Self {
+    fn default() -> Self {
         Self::new()
     }
 }
@@ -130,7 +130,7 @@ impl Env<usize, 2> for BlackJackEnv {
                     self.compute_dealer_score(),
                     self.player_has_ace,
                 );
-                return Ok((obs.get_id(), -1.0, true))
+                return Ok((obs.get_id(), -1.0, true));
             }
             let obs: BlackJackObservation =
                 BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
@@ -155,7 +155,7 @@ impl Env<usize, 2> for BlackJackEnv {
             let reward = match obs.p_score.cmp(&d_score) {
                 Ordering::Greater => 1.0,
                 Ordering::Less => -1.0,
-                Ordering::Equal => 0.0
+                Ordering::Equal => 0.0,
             };
 
             Ok((obs.get_id(), reward, true))

@@ -1,5 +1,5 @@
 use crate::env::{Env, EnvNotReady};
-use crate::utils::{categorical_sample, inc, from_2d_to_1d};
+use crate::utils::{categorical_sample, from_2d_to_1d, inc};
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
@@ -20,14 +20,14 @@ pub struct FrozenLakeEnv {
 
 impl FrozenLakeEnv {
     // default 4x4 map
-    pub const MAP_4X4: [&str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
+    pub const MAP_4X4: [&'static str; 4] = ["SFFF", "FHFH", "FFFH", "HFFG"];
 
-    pub const MAP_8X8: [&str; 8] = [
+    pub const MAP_8X8: [&'static str; 8] = [
         "SFFFFFFF", "FFFFFFFF", "FFFHFFFF", "FFFFFHFF", "FFFHFFFF", "FHHFFFHF", "FHFFHFHF",
         "FFFHFFFG",
     ];
 
-    pub const ACTIONS: [&str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
+    pub const ACTIONS: [&'static str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
 
     fn update_probability_matrix(
         map: &[&str],
@@ -97,7 +97,7 @@ impl FrozenLakeEnv {
             dist: Uniform::from(0.0..1.0),
             max_steps,
             curr_step: 0,
-            map: map.join("\n")
+            map: map.join("\n"),
         }
     }
 }

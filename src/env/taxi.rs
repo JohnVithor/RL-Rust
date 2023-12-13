@@ -18,7 +18,7 @@ pub struct TaxiEnv {
 }
 
 impl TaxiEnv {
-    const MAP: [&str; 7] = [
+    const MAP: [&'static str; 7] = [
         "+---------+",
         "|R: | : :G|",
         "| : | : : |",
@@ -28,7 +28,7 @@ impl TaxiEnv {
         "+---------+",
     ];
     pub const LOCS: [(usize, usize); 4] = [(0, 0), (0, 4), (4, 0), (4, 3)];
-    pub const ACTIONS: [&str; 6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
+    pub const ACTIONS: [&'static str; 6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
 
     fn encode(taxi_row: usize, taxi_col: usize, pass_loc: usize, dest_loc: usize) -> usize {
         let mut i: usize = taxi_row;

@@ -57,7 +57,9 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         self.action_selection
             .get_action(obs, &self.policy.predict(obs))
     }
-
+    fn get_policy(&self) -> &dyn Policy<T, COUNT> {
+        &self.policy
+    }
     fn update(
         &mut self,
         curr_obs: &T,
@@ -85,12 +87,8 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
 
         for (obs, trace_values) in &mut self.trace {
             for (action, value) in trace_values.iter_mut().enumerate() {
-                self.policy.update(
-                    obs,
-                    action,
-                    next_obs,
-                    temporal_difference * *value,
-                );
+                self.policy
+                    .update(obs, action, next_obs, temporal_difference * *value);
                 *value *= self.discount_factor * self.lambda_factor
             }
         }

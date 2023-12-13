@@ -1,6 +1,6 @@
 use crate::{
     env::{Env, EnvNotReady},
-    utils::{inc, from_2d_to_1d},
+    utils::{from_2d_to_1d, inc},
 };
 
 #[derive(Debug, Clone)]
@@ -16,8 +16,8 @@ impl CliffWalkingEnv {
     const START_POSITION: usize = 36;
     const CLIFF_POSITIONS: [usize; 10] = [37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
     const GOAL_POSITION: usize = 47;
-    pub const ACTIONS: [&str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
-    const MAP: &str = "____________\n____________\n____________\n@!!!!!!!!!!G";
+    pub const ACTIONS: [&'static str; 4] = ["LEFT", "DOWN", "RIGHT", "UP"];
+    const MAP: &'static str = "____________\n____________\n____________\n@!!!!!!!!!!G";
 
     fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
         let (newrow, newcol) = inc(4, 12, row, col, action);

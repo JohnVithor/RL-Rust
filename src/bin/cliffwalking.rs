@@ -1,3 +1,4 @@
+use std::fs;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -140,14 +141,13 @@ fn main() {
         sarsa,
     );
 
-    let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> =
-        ElegibilityTracesAgent::new(
-            EnumPolicy::from(policy),
-            discount_factor,
-            action_selection[0].clone(),
-            lambda_factor,
-            sarsa,
-        );
+    let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
+        EnumPolicy::from(policy),
+        discount_factor,
+        action_selection[0].clone(),
+        lambda_factor,
+        sarsa,
+    );
 
     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
     agents.push(&mut one_step_agent);
@@ -193,7 +193,11 @@ fn main() {
                     &episode_length.iter().map(|x| *x as f64).collect(),
                 );
                 test_episodes_length.push(ma_episode);
-
+                fs::write(
+                    format!("{}_cliff_walking.txt", legends[i]),
+                    format!("{:?}", agent.get_policy().get_estimed_transitions()),
+                )
+                .expect("Unable to write file");
                 i += 1;
                 agent.reset();
             }

@@ -49,7 +49,9 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         self.action_selection
             .get_action(obs, &self.policy.predict(obs))
     }
-
+    fn get_policy(&self) -> &dyn Policy<T, COUNT> {
+        &self.policy
+    }
     fn update(
         &mut self,
         curr_obs: &T,
@@ -71,12 +73,9 @@ impl<T: Hash + PartialEq + Eq + Clone + Debug, const COUNT: usize> Agent<T, COUN
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        let _error = self.policy.update(
-            curr_obs,
-            curr_action,
-            next_obs,
-            temporal_difference,
-        );
+        let _error = self
+            .policy
+            .update(curr_obs, curr_action, next_obs, temporal_difference);
 
         self.policy.after_update();
         if terminated {
