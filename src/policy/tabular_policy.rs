@@ -56,7 +56,9 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
     }
 
     fn after_update(&mut self) {}
-    fn get_estimed_transitions(&self) -> FxHashMap<(T, T), [f64; COUNT]> {
+    fn get_estimed_transitions(
+        &self,
+    ) -> (FxHashMap<(T, T), [f64; COUNT]>, &FxHashMap<T, [f64; COUNT]>) {
         let mut result: FxHashMap<(T, T), [f64; COUNT]> = self.state_action_change_counter.clone();
         for (k, v) in result.iter_mut() {
             let c = self.state_changes_counter.get(k).unwrap();
@@ -64,6 +66,6 @@ impl<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> Policy<T, COUNT>
                 *x /= *c;
             }
         }
-        result
+        (result, &self.policy)
     }
 }

@@ -18,7 +18,9 @@ pub trait Policy<T: Hash + PartialEq + Eq + Clone, const COUNT: usize> {
 
     fn after_update(&mut self);
 
-    fn get_estimed_transitions(&self) -> FxHashMap<(T, T), [f64; COUNT]>;
+    fn get_estimed_transitions(
+        &self,
+    ) -> (FxHashMap<(T, T), [f64; COUNT]>, &FxHashMap<T, [f64; COUNT]>);
 }
 
 #[enum_dispatch(Policy<T, COUNT>)]
