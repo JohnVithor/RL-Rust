@@ -142,14 +142,13 @@
 //         sarsa,
 //     );
 
-//     let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> =
-//         ElegibilityTracesAgent::new(
-//             EnumPolicy::from(policy),
-//             discount_factor,
-//             action_selection[0].clone(),
-//             lambda_factor,
-//             sarsa,
-//         );
+//     let mut trace_agent: ElegibilityTracesAgent<usize, SIZE> = ElegibilityTracesAgent::new(
+//         EnumPolicy::from(policy),
+//         discount_factor,
+//         action_selection[0].clone(),
+//         lambda_factor,
+//         sarsa,
+//     );
 
 //     let mut agents: Vec<&mut dyn Agent<usize, SIZE>> = vec![];
 //     agents.push(&mut one_step_agent);

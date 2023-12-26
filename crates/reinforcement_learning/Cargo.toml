@@ -13,7 +13,6 @@ include = ["src/**/*"]
 
 [dependencies]
 serde = "1.0.183"
-burn = "0.8.0"
 kdam = "0.4.0"
 environments = { path = "../environments" }
 rand = "0.8.5"

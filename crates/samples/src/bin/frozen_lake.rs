@@ -1,3 +1,4 @@
+use std::fs;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -222,9 +223,23 @@ fn main() {
             );
             test_episodes_length.push(ma_episode);
 
-            i += 1;
-            println!("{:?}", agent.get_policy().get_estimed_transitions());
+            let mut mean_reward = 0.0;
+            for v in testing_rewards {
+                mean_reward += v;
+            }
+            mean_reward /= n_episodes as f64;
+            fs::write(
+                &format!("{}_frozen_lake_probs.pair", identifiers[i]),
+                &format!(
+                    "{:?}, {:?}",
+                    agent.get_policy().get_estimed_transitions(),
+                    mean_reward
+                ),
+            )
+            .expect("Unable to write file");
+            // println!("{:?}", agent.get_policy().get_estimed_transitions());
             agent.reset();
+            i += 1;
         }
     }
     // let mut one_step_policy_epg = TabularPolicy::new(learning_rate, 0.0);
