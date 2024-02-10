@@ -9,7 +9,6 @@ pub use one_step_agent::OneStepAgent;
 use crate::utils::max;
 use crate::{action_selection::ActionSelection, policy::DiscretePolicy};
 use environments::env::DiscreteAction;
-use kdam::{tqdm, BarExt};
 use std::{fmt::Debug, ops::Index};
 
 extern crate environments;
@@ -84,13 +83,6 @@ where
         let mut evaluation_reward: Vec<f64> = vec![];
         let mut evaluation_length: Vec<f64> = vec![];
 
-        let mut pb = tqdm!(total = n_episodes as usize);
-        pb.set_description(format!("GEN {}", 1));
-        match pb.refresh() {
-            Ok(_) => (),
-            Err(e) => panic!("{}", e.to_string()),
-        };
-
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
@@ -122,15 +114,9 @@ where
                 let (r, l) = self.evaluate(env, eval_for);
                 let mr: f64 = r.iter().sum::<f64>() / r.len() as f64;
                 let ml: f64 = l.iter().sum::<u128>() as f64 / l.len() as f64;
-                pb.set_postfix(format!("eval reward={}, eval ep len={}", mr, ml));
-                pb.set_description(format!("GEN {}", (episode / eval_at) + 1));
                 evaluation_reward.push(mr);
                 evaluation_length.push(ml);
             }
-            match pb.update(1) {
-                Ok(_) => (),
-                Err(e) => panic!("{}", e.to_string()),
-            };
             training_length.push(action_counter);
         }
         (
@@ -149,7 +135,7 @@ where
     ) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
-        for _episode in tqdm!(0..n_episodes) {
+        for _episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;
             let mut curr_actions: A = self.get_action(&env.reset());

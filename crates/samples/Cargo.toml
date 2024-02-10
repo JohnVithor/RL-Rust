@@ -6,8 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.104"
-structopt = "0.3.26"
-kdam = "0.4.0"
+serde_json = "1.0"
+structopt = "0.3"
 reinforcement_learning = { path = "../reinforcement_learning" }
 environments = { path = "../environments" }

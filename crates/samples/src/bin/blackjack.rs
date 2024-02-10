@@ -185,11 +185,9 @@ fn main() {
                 n_episodes as usize / moving_average_window,
                 &training_reward,
             );
+            let v: Vec<f64> = training_length.iter().map(|x| *x as f64).collect();
             train_rewards.push(ma_reward);
-            let ma_episode = moving_average(
-                n_episodes as usize / moving_average_window,
-                &training_length.iter().map(|x| *x as f64).collect(),
-            );
+            let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
             train_episodes_length.push(ma_episode);
 
             let mut wins: u32 = 0;
@@ -229,10 +227,8 @@ fn main() {
                 &testing_rewards,
             );
             test_rewards.push(ma_reward);
-            let ma_episode = moving_average(
-                n_episodes as usize / moving_average_window,
-                &testing_length.iter().map(|x| *x as f64).collect(),
-            );
+            let v: Vec<f64> = testing_length.iter().map(|x| *x as f64).collect();
+            let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
             test_episodes_length.push(ma_episode);
 
             let mut mean_reward = 0.0;

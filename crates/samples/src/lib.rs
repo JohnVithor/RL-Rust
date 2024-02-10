@@ -4,7 +4,7 @@ pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn moving_average(window: usize, vector: &Vec<f64>) -> Vec<f64> {
+pub fn moving_average(window: usize, vector: &[f64]) -> Vec<f64> {
     let mut aux: usize = 0;
     let mut result: Vec<f64> = vec![];
     while aux < vector.len() {
