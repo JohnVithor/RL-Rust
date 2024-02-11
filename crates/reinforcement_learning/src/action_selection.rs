@@ -3,7 +3,7 @@ mod upper_confidence_bound;
 
 use ndarray::Array1;
 pub use uniform_epsilon_greed::UniformEpsilonGreed;
-// pub use upper_confidence_bound::UpperConfidenceBound;
+pub use upper_confidence_bound::UpperConfidenceBound;
 
 pub trait ActionSelection {
     fn get_action(&mut self, obs: usize, values: &Array1<f64>) -> usize;

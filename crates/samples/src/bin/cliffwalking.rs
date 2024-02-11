@@ -6,8 +6,8 @@ extern crate structopt;
 
 use environments::toy_text::cliff_walking::{CliffWalkingAction, CliffWalkingEnv};
 use reinforcement_learning::{
-    action_selection::UniformEpsilonGreed,
-    agent::{one_step_agent::OneStepAgent, qlearning, sarsa, DiscreteAgent},
+    action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
+    agent::{expected_sarsa, one_step_agent::OneStepAgent, qlearning, sarsa, DiscreteAgent},
     trainer::DiscreteTrainer,
 };
 use serde_json::json;
@@ -84,7 +84,7 @@ fn main() {
     let mut test_rewards: Vec<Vec<f64>> = vec![];
     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-    let mut sarsa_agent = OneStepAgent::new(
+    let mut epsilon_sarsa_agent = OneStepAgent::new(
         Box::new(UniformEpsilonGreed::new(
             initial_epsilon,
             Rc::new(move |a| a - epsilon_decay),
@@ -96,7 +96,7 @@ fn main() {
         discount_factor,
     );
 
-    let mut qlearning_agent = OneStepAgent::new(
+    let mut epsilon_qlearning_agent = OneStepAgent::new(
         Box::new(UniformEpsilonGreed::new(
             initial_epsilon,
             Rc::new(move |a| a - epsilon_decay),
@@ -108,15 +108,57 @@ fn main() {
         discount_factor,
     );
 
-    let agents: Vec<&mut OneStepAgent> = vec![&mut sarsa_agent, &mut qlearning_agent];
+    let mut epsilon_expected_sarsa_agent = OneStepAgent::new(
+        Box::new(UniformEpsilonGreed::new(
+            initial_epsilon,
+            Rc::new(move |a| a - epsilon_decay),
+            final_epsilon,
+        )),
+        expected_sarsa,
+        learning_rate,
+        0.0,
+        discount_factor,
+    );
 
+    let mut ucb_sarsa_agent = OneStepAgent::new(
+        Box::new(UpperConfidenceBound::new(confidence_level)),
+        sarsa,
+        learning_rate,
+        0.0,
+        discount_factor,
+    );
+
+    let mut ucb_qlearning_agent = OneStepAgent::new(
+        Box::new(UpperConfidenceBound::new(confidence_level)),
+        qlearning,
+        learning_rate,
+        0.0,
+        discount_factor,
+    );
+
+    let mut ucb_expected_sarsa_agent = OneStepAgent::new(
+        Box::new(UpperConfidenceBound::new(confidence_level)),
+        expected_sarsa,
+        learning_rate,
+        0.0,
+        discount_factor,
+    );
+
+    let agents: Vec<&mut OneStepAgent> = vec![
+        &mut epsilon_sarsa_agent,
+        &mut epsilon_qlearning_agent,
+        &mut epsilon_expected_sarsa_agent,
+        &mut ucb_sarsa_agent,
+        &mut ucb_qlearning_agent,
+        &mut ucb_expected_sarsa_agent,
+    ];
     let identifiers = [
         "ε-Greedy One-Step Sarsa",
         "ε-Greedy One-Step Qlearning",
-        // "ε-Greedy One-Step Expected Sarsa",
-        // "UCB One-Step Sarsa",
-        // "UCB One-Step Qlearning",
-        // "UCB One-Step Expected Sarsa",
+        "ε-Greedy One-Step Expected Sarsa",
+        "UCB One-Step Sarsa",
+        "UCB One-Step Qlearning",
+        "UCB One-Step Expected Sarsa",
         // "ε-Greedy Trace Sarsa",
         // "ε-Greedy Trace Qlearning",
         // "ε-Greedy Trace Expected Sarsa",

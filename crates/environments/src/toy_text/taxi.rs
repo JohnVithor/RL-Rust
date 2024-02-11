@@ -1,11 +1,9 @@
 use std::cmp::{max, min};
 
 use rand::{distributions::Uniform, prelude::Distribution};
+use utils::categorical_sample;
 
-use crate::{
-    env::{Env, EnvNotReady},
-    utils::{categorical_sample, from_2d_to_1d},
-};
+use crate::{env::EnvError::EnvNotReady, utils::from_2d_to_1d, DiscreteEnv};
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
@@ -18,7 +16,7 @@ pub struct TaxiEnv {
 }
 
 impl TaxiEnv {
-    const MAP: [&str; 7] = [
+    const MAP: [&'static str; 7] = [
         "+---------+",
         "|R: | : :G|",
         "| : | : : |",
@@ -28,7 +26,7 @@ impl TaxiEnv {
         "+---------+",
     ];
     pub const LOCS: [(usize, usize); 4] = [(0, 0), (0, 4), (4, 0), (4, 3)];
-    pub const ACTIONS: [&str; 6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
+    pub const ACTIONS: [&'static str; 6] = ["DOWN", "UP", "RIGHT", "LEFT", "PICKUP", "DROPOFF"];
 
     fn encode(taxi_row: usize, taxi_col: usize, pass_loc: usize, dest_loc: usize) -> usize {
         let mut i: usize = taxi_row;
@@ -131,7 +129,7 @@ impl TaxiEnv {
     }
 }
 
-impl Env<usize, usize> for TaxiEnv {
+impl DiscreteEnv<usize, usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -141,7 +139,7 @@ impl Env<usize, usize> for TaxiEnv {
         self.curr_obs
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), crate::EnvError> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -169,5 +167,13 @@ impl Env<usize, usize> for TaxiEnv {
         }
         new_map.replace_range(pos..pos + 1, "T");
         new_map
+    }
+
+    fn num_observations(&self) -> usize {
+        self.obs.len()
+    }
+
+    fn num_actions(&self) -> usize {
+        6
     }
 }
