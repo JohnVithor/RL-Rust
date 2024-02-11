@@ -2,7 +2,7 @@
 pub fn argmax<T: PartialOrd>(values: impl Iterator<Item = T>) -> usize {
     values
         .enumerate()
-        .max_by(|x, y| PartialOrd::partial_cmp(&x.1, &y.1).unwrap())
+        .reduce(|a, b| if a.1 >= b.1 { a } else { b })
         .unwrap()
         .0
 }

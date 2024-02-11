@@ -1,3 +1,5 @@
+use std::io::{self, BufRead};
+
 use environments::env::DiscreteEnv;
 
 use crate::agent::DiscreteAgent;
@@ -25,6 +27,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         n_episodes: u128,
         eval_at: u128,
         eval_for: u128,
+        debug: bool,
     ) -> TrainResults
     where
         Obs: Clone,
@@ -47,6 +50,13 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
                 action_counter += 1;
                 let curr_action = (self.repr_to_action)(curr_action_repr);
                 let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+
+                if debug {
+                    println!("{}", env.render());
+                    let mut line = String::new();
+                    let stdin = io::stdin();
+                    stdin.lock().read_line(&mut line).unwrap();
+                }
                 let next_obs_repr = (self.obs_to_repr)(&next_obs);
                 let next_action_repr: usize = agent.get_action(next_obs_repr);
                 let td = agent.update(
@@ -62,6 +72,9 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
                 curr_action_repr = next_action_repr;
                 epi_reward += reward;
                 if terminated {
+                    if debug {
+                        println!("{}", env.render());
+                    }
                     training_reward.push(epi_reward);
                     break;
                 }

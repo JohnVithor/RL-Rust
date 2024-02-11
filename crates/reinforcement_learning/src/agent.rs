@@ -1,13 +1,12 @@
-// mod elegibility_traces_agent;
+mod elegibility_traces_agent;
 // mod internal_model_agent;
-// mod one_step_agent;
+mod one_step_agent;
 
 use ndarray::Array1;
 
-// pub use elegibility_traces_agent::ElegibilityTracesAgent;
+pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
-// pub use one_step_agent::OneStepAgent;
-pub mod one_step_agent;
+pub use one_step_agent::OneStepAgent;
 
 extern crate environments;
 

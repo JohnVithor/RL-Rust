@@ -7,7 +7,7 @@ extern crate structopt;
 use environments::toy_text::TaxiEnv;
 use reinforcement_learning::{
     action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
-    agent::{expected_sarsa, one_step_agent::OneStepAgent, qlearning, sarsa, DiscreteAgent},
+    agent::{expected_sarsa, qlearning, sarsa, DiscreteAgent, OneStepAgent},
     trainer::DiscreteTrainer,
 };
 use serde_json::json;
@@ -180,7 +180,7 @@ fn main() {
             training_error,
             _evaluation_reward,
             _evaluation_length,
-        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100);
+        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100, false);
         let elapsed: std::time::Duration = now.elapsed();
         println!(" - training time of {:.2?}", elapsed);
 

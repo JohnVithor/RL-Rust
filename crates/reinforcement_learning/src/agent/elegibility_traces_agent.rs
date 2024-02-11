@@ -1,119 +1,111 @@
-use super::DiscreteAgent;
-use crate::action_selection::ActionSelection;
-use crate::policy::DiscretePolicy;
-
-use environments::env::DiscreteAction;
 use std::collections::HashMap;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::ops::{Index, IndexMut};
 
-pub struct ElegibilityTracesAgent<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction>
-where
-    [(); A::RANGE]: Sized,
-{
-    // policy update
+use ndarray::{Array, Array1};
+
+use crate::{action_selection::ActionSelection, agent::DiscreteAgent};
+
+use super::GetNextQValue;
+
+pub struct ElegibilityTracesAgent {
+    action_selection: Box<dyn ActionSelection>,
+    next_value_function: GetNextQValue,
+    learning_rate: f64,
+    default_values: Array1<f64>,
+    default_value: f64,
     discount_factor: f64,
     lambda_factor: f64,
-    trace: HashMap<T, [f64; A::RANGE]>,
-    get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
-    pub policy: &'a mut dyn DiscretePolicy<T, A>,
-    action_selection: &'a mut dyn ActionSelection<T, A>,
+    trace: HashMap<usize, Array1<f64>>,
+    policy: Array1<Array1<f64>>,
 }
 
-impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction>
-    ElegibilityTracesAgent<'a, T, A>
-where
-    [(); A::RANGE]: Sized,
-{
+impl ElegibilityTracesAgent {
     pub fn new(
-        // policy update
+        action_selection: Box<dyn ActionSelection>,
+        next_value_function: GetNextQValue,
+        learning_rate: f64,
+        default_value: f64,
         discount_factor: f64,
         lambda_factor: f64,
-        get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
-        policy: &'a mut dyn DiscretePolicy<T, A>,
-        action_selection: &'a mut dyn ActionSelection<T, A>,
     ) -> Self {
         Self {
-            policy,
-            trace: HashMap::default(),
+            action_selection,
+            next_value_function,
+            learning_rate,
+            default_values: Array1::default(0),
+            default_value,
             discount_factor,
             lambda_factor,
-            get_next_q_value,
-            action_selection,
+            trace: HashMap::default(),
+            policy: Array1::default(0),
         }
     }
 }
 
-impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction + Copy + Debug>
-    DiscreteAgent<'a, T, A> for ElegibilityTracesAgent<'a, T, A>
-where
-    [f64]: Index<A, Output = f64>,
-    [f64]: IndexMut<A, Output = f64>,
-    [(); A::RANGE]: Sized,
-{
-    fn get_policy(&self) -> &dyn DiscretePolicy<T, A> {
-        self.policy
-    }
-
-    fn set_future_q_value_func(&mut self, func: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64) {
-        self.get_next_q_value = func;
-    }
-
-    fn set_action_selector(&mut self, action_selecter: &'a mut dyn ActionSelection<T, A>) {
-        self.action_selection = action_selecter;
-    }
-
-    fn reset(&mut self) {
-        self.action_selection.reset();
-        self.policy.reset();
-    }
-
-    fn get_action(&mut self, obs: &T) -> A {
-        self.action_selection
-            .get_action(obs, &self.policy.predict(obs))
+impl DiscreteAgent for ElegibilityTracesAgent {
+    fn prepare(&mut self, n_obs: usize, n_actions: usize) {
+        let v = Array::from_elem((n_actions,), self.default_value);
+        self.policy = Array1::from_elem((n_obs,), v.clone());
+        self.default_values = v;
     }
 
     fn update(
         &mut self,
-        curr_obs: &T,
-        curr_action: A,
+        curr_obs: usize,
+        curr_action: usize,
         reward: f64,
         terminated: bool,
-        next_obs: &T,
-        next_action: A,
+        next_obs: usize,
+        next_action: usize,
     ) -> f64 {
-        let next_q_values: [f64; A::RANGE] = self.policy.get_values(next_obs);
-        let future_q_value: f64 = (self.get_next_q_value)(
-            &next_q_values,
+        let next_q_values: &Array1<f64> = self.policy.get(next_obs).unwrap_or(&self.default_values);
+
+        let future_q_value: f64 = (self.next_value_function)(
+            next_q_values,
             next_action,
             &self
                 .action_selection
-                .get_exploration_probs(next_obs, &next_q_values),
+                .get_exploration_probs(next_obs, next_q_values),
         );
-        let curr_q_values: [f64; A::RANGE] = self.policy.get_values(curr_obs);
+
+        let curr_q_values: &Array1<f64> = self.policy.get(curr_obs).unwrap_or(&self.default_values);
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        let curr_trace: &mut [f64; A::RANGE] = self
+        let curr_trace = self
             .trace
-            .entry(curr_obs.clone())
-            .or_insert([0.0; A::RANGE]);
+            .entry(curr_obs)
+            .or_insert(self.default_values.clone());
         curr_trace[curr_action] += 1.0;
 
         for (obs, trace_values) in &mut self.trace {
             for (action, value) in trace_values.iter_mut().enumerate() {
-                self.policy
-                    .update(obs, action.into(), next_obs, temporal_difference * *value);
+                self.policy.get_mut(*obs).unwrap()[action] =
+                    self.learning_rate * temporal_difference * *value;
                 *value *= self.discount_factor * self.lambda_factor
             }
         }
 
-        self.policy.after_update();
+        // self.trace.iter_mut().for_each(|v| {
+        //     v.iter_mut().enumerate().for_each(|(i, v)| {
+        //         self.policy.get_mut(i).unwrap()[i] = self.learning_rate * temporal_difference * *v;
+        //         *v *= self.discount_factor * self.lambda_factor;
+        //     })
+        // });
+
         if terminated {
-            self.trace = HashMap::default();
             self.action_selection.update();
+            self.trace = HashMap::default();
         }
         temporal_difference
+    }
+
+    fn get_action(&mut self, obs: usize) -> usize {
+        self.action_selection
+            .get_action(obs, self.policy.get(obs).unwrap_or(&self.default_values))
+    }
+
+    fn reset(&mut self) {
+        self.policy.fill(self.default_values.clone());
+        self.action_selection.reset();
     }
 }

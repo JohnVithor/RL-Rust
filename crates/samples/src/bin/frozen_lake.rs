@@ -6,10 +6,11 @@ extern crate reinforcement_learning;
 extern crate structopt;
 
 use environments::toy_text::frozen_lake::{FrozenLakeAction, FrozenLakeEnv};
-use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
-use reinforcement_learning::agent::{one_step_agent::OneStepAgent, DiscreteAgent};
-use reinforcement_learning::trainer::DiscreteTrainer;
+use reinforcement_learning::{
+    action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
+    agent::{expected_sarsa, qlearning, sarsa, DiscreteAgent, OneStepAgent},
+    trainer::DiscreteTrainer,
+};
 use samples::{moving_average, save_json};
 use serde_json::json;
 use structopt::StructOpt;
@@ -207,7 +208,7 @@ fn main() {
             training_error,
             _evaluation_reward,
             _evaluation_length,
-        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100);
+        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100, false);
         let elapsed: std::time::Duration = now.elapsed();
         println!(" - training time of {:.2?}", elapsed);
 

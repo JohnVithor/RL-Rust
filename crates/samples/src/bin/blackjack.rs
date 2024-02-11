@@ -7,10 +7,12 @@ extern crate structopt;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::DiscreteEnv;
-use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::agent::one_step_agent::OneStepAgent;
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa, DiscreteAgent};
-use reinforcement_learning::trainer::DiscreteTrainer;
+use reinforcement_learning::agent::ElegibilityTracesAgent;
+use reinforcement_learning::{
+    action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
+    agent::{expected_sarsa, qlearning, sarsa, DiscreteAgent, OneStepAgent},
+    trainer::DiscreteTrainer,
+};
 use serde_json::json;
 use structopt::StructOpt;
 
@@ -67,7 +69,7 @@ fn main() {
     let final_epsilon: f64 = cli.final_epsilon;
     let confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
-    let _lambda_factor: f64 = cli.lambda_factor;
+    let lambda_factor: f64 = cli.lambda_factor;
 
     let moving_average_window: usize = cli.moving_average_window;
 
@@ -148,6 +150,17 @@ fn main() {
         &mut ucb_expected_sarsa_agent,
     ];
 
+    let mut ucb_expected_sarsa_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
+        Box::new(UpperConfidenceBound::new(confidence_level)),
+        expected_sarsa,
+        learning_rate,
+        0.0,
+        discount_factor,
+        lambda_factor,
+    );
+
+    let agents: Vec<&mut ElegibilityTracesAgent> = vec![&mut ucb_expected_sarsa_trace_agent];
+
     let identifiers = [
         "ε-Greedy One-Step Sarsa",
         "ε-Greedy One-Step Qlearning",
@@ -190,7 +203,7 @@ fn main() {
             training_error,
             _evaluation_reward,
             _evaluation_length,
-        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100);
+        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100, false);
         let elapsed: std::time::Duration = now.elapsed();
         println!(" - training time of {:.2?}", elapsed);
 
