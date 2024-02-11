@@ -71,7 +71,11 @@ impl BlackJackEnv {
     }
 
     fn get_dealer_card(&self) -> u8 {
-        self.dealer[0]
+        if self.dealer[0] == 1 {
+            11
+        } else {
+            self.dealer[0]
+        }
     }
 
     fn get_new_card(&mut self) -> u8 {
@@ -118,7 +122,7 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
     }
 
     fn num_observations(&self) -> usize {
-        32 * 11 * 2
+        26 * 28 * 2
     }
     fn num_actions(&self) -> usize {
         2
@@ -156,9 +160,6 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
                     self.dealer[self.dealer_i] = self.get_new_card();
                     self.dealer_i += 1;
                     d_score = self.compute_dealer_score();
-                }
-                if d_score == 1 {
-                    println!("{:?}", self.dealer);
                 }
                 let obs: BlackJackObservation = BlackJackObservation::new(
                     self.compute_player_score(),

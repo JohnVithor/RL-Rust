@@ -1,11 +1,9 @@
-use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::time::Instant;
 
 extern crate environments;
 extern crate reinforcement_learning;
 extern crate structopt;
-use std::collections::hash_map::DefaultHasher;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::DiscreteEnv;
@@ -135,9 +133,10 @@ fn main() {
                 }
             },
             |repr: &BlackJackObservation| -> usize {
-                let mut s = DefaultHasher::new();
-                repr.hash(&mut s);
-                s.finish() as usize
+                let p_score = repr.p_score as usize;
+                let d_score = repr.d_score as usize;
+                let p_ace = repr.p_ace as usize;
+                56 * (p_score - 4) + 2 * (d_score - 2) + p_ace
             },
         );
         let now: Instant = Instant::now();
