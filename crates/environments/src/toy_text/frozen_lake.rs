@@ -3,10 +3,12 @@ use std::ops::{Index, IndexMut};
 use crate::env::{DiscreteAction, DiscreteEnv, EnvError};
 use crate::utils::{categorical_sample, from_2d_to_1d, inc};
 
+use num_enum::IntoPrimitive;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, IntoPrimitive)]
+#[repr(usize)]
 pub enum FrozenLakeAction {
     LEFT,
     DOWN,

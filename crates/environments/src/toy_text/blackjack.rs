@@ -8,11 +8,13 @@ use crate::EnvError;
 
 extern crate core;
 
+use num_enum::IntoPrimitive;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, IntoPrimitive)]
+#[repr(usize)]
 pub enum BlackJackAction {
     HIT,
     STICK,

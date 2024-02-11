@@ -1,17 +1,17 @@
-use std::fs;
-use std::rc::Rc;
+use std::hash::{Hash, Hasher};
 use std::time::Instant;
 
 extern crate environments;
 extern crate reinforcement_learning;
 extern crate structopt;
+use std::collections::hash_map::DefaultHasher;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::DiscreteEnv;
-use reinforcement_learning::action_selection::{UniformEpsilonGreed, UpperConfidenceBound};
-use reinforcement_learning::agent::{expected_sarsa, qlearning, sarsa};
-use reinforcement_learning::agent::{DiscreteAgent, ElegibilityTracesAgent, OneStepAgent};
-use reinforcement_learning::policy::TabularPolicy;
+use reinforcement_learning::agent::one_step_epsilon_greed_qlearning::OneStepEpsilonGreedQlearning;
+use reinforcement_learning::agent::one_step_epsilon_greed_sarsa::OneStepEpsilonGreedSarsa;
+use reinforcement_learning::agent::DiscreteAgent;
+use reinforcement_learning::trainer::DiscreteTrainer;
 use serde_json::json;
 use structopt::StructOpt;
 
@@ -66,9 +66,9 @@ fn main() {
     let initial_epsilon: f64 = cli.initial_epsilon;
     let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
     let final_epsilon: f64 = cli.final_epsilon;
-    let confidence_level: f64 = cli.confidence_level;
+    let _confidence_level: f64 = cli.confidence_level;
     let discount_factor: f64 = cli.discount_factor;
-    let lambda_factor: f64 = cli.lambda_factor;
+    let _lambda_factor: f64 = cli.lambda_factor;
 
     let moving_average_window: usize = cli.moving_average_window;
 
@@ -80,178 +80,149 @@ fn main() {
     let mut test_rewards: Vec<Vec<f64>> = vec![];
     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-    let mut one_step_policy_epg = TabularPolicy::new(learning_rate, 0.0);
-    let mut one_step_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
-    let mut trace_policy_epg = TabularPolicy::new(learning_rate, 0.0);
-    let mut trace_policy_ucb = TabularPolicy::new(learning_rate, 0.0);
-
-    let mut one_step_epg = UniformEpsilonGreed::new(
+    let mut sarsa = OneStepEpsilonGreedSarsa::new(
         2,
         initial_epsilon,
-        Rc::new(move |a| a - epsilon_decay),
+        epsilon_decay,
         final_epsilon,
+        learning_rate,
+        0.0,
+        discount_factor,
     );
-    let mut one_step_ucb = UpperConfidenceBound::new(confidence_level);
 
-    let mut trace_epg = UniformEpsilonGreed::new(
+    let mut qlearning = OneStepEpsilonGreedQlearning::new(
         2,
         initial_epsilon,
-        Rc::new(move |a| a - epsilon_decay),
+        epsilon_decay,
         final_epsilon,
+        learning_rate,
+        0.0,
+        discount_factor,
     );
-    let mut trace_ucb = UpperConfidenceBound::new(confidence_level);
 
-    let mut one_step_agent_epg: OneStepAgent<BlackJackObservation, BlackJackAction> =
-        OneStepAgent::new(
-            discount_factor,
-            sarsa::<BlackJackAction>,
-            &mut one_step_policy_epg,
-            &mut one_step_epg,
-        );
-    let mut one_step_agent_ucb: OneStepAgent<BlackJackObservation, BlackJackAction> =
-        OneStepAgent::new(
-            discount_factor,
-            sarsa::<BlackJackAction>,
-            &mut one_step_policy_ucb,
-            &mut one_step_ucb,
-        );
-
-    let mut trace_agent_epg: ElegibilityTracesAgent<BlackJackObservation, BlackJackAction> =
-        ElegibilityTracesAgent::new(
-            discount_factor,
-            lambda_factor,
-            sarsa::<BlackJackAction>,
-            &mut trace_policy_epg,
-            &mut trace_epg,
-        );
-
-    let mut trace_agent_ucb: ElegibilityTracesAgent<BlackJackObservation, BlackJackAction> =
-        ElegibilityTracesAgent::new(
-            discount_factor,
-            lambda_factor,
-            sarsa::<BlackJackAction>,
-            &mut trace_policy_ucb,
-            &mut trace_ucb,
-        );
-
-    let mut agents: Vec<&mut dyn DiscreteAgent<BlackJackObservation, BlackJackAction>> = vec![
-        &mut one_step_agent_epg,
-        &mut one_step_agent_ucb,
-        &mut trace_agent_epg,
-        &mut trace_agent_ucb,
-    ];
+    let agents: Vec<&mut dyn DiscreteAgent> = vec![&mut sarsa, &mut qlearning];
 
     let identifiers = [
         "ε-Greedy One-Step Sarsa",
         "ε-Greedy One-Step Qlearning",
-        "ε-Greedy One-Step Expected Sarsa",
-        "UCB One-Step Sarsa",
-        "UCB One-Step Qlearning",
-        "UCB One-Step Expected Sarsa",
-        "ε-Greedy Trace Sarsa",
-        "ε-Greedy Trace Qlearning",
-        "ε-Greedy Trace Expected Sarsa",
-        "UCB Trace Sarsa",
-        "UCB Trace Qlearning",
-        "UCB Trace Expected Sarsa",
+        // "ε-Greedy One-Step Expected Sarsa",
+        // "UCB One-Step Sarsa",
+        // "UCB One-Step Qlearning",
+        // "UCB One-Step Expected Sarsa",
+        // "ε-Greedy Trace Sarsa",
+        // "ε-Greedy Trace Qlearning",
+        // "ε-Greedy Trace Expected Sarsa",
+        // "UCB Trace Sarsa",
+        // "UCB Trace Qlearning",
+        // "UCB Trace Expected Sarsa",
     ];
 
-    let mut i = 0;
-    for agent in agents.iter_mut() {
-        for func in [
-            sarsa::<BlackJackAction>,
-            qlearning::<BlackJackAction>,
-            expected_sarsa::<BlackJackAction>,
-        ] {
-            agent.set_future_q_value_func(func);
-            println!("{}", identifiers[i]);
-            let now: Instant = Instant::now();
-            let (
-                training_reward,
-                training_length,
-                training_error,
-                _evaluation_reward,
-                _evaluation_length,
-            ) = agent.train(&mut env, n_episodes, n_episodes / 10, 100);
-            let elapsed: std::time::Duration = now.elapsed();
-            println!("{:.2?}", elapsed);
+    for (i, agent) in agents.into_iter().enumerate() {
+        println!("{} has:", identifiers[i]);
+        let mut trainer = DiscreteTrainer::new(
+            |repr: usize| -> BlackJackAction {
+                match repr {
+                    0 => BlackJackAction::HIT,
+                    1 => BlackJackAction::STICK,
+                    repr => panic!(
+                        "Invalid value to convert from usize to BlackJackAction: {}",
+                        repr
+                    ),
+                }
+            },
+            |repr: &BlackJackObservation| -> usize {
+                let mut s = DefaultHasher::new();
+                repr.hash(&mut s);
+                s.finish() as usize
+            },
+        );
+        let now: Instant = Instant::now();
+        let (
+            training_reward,
+            training_length,
+            training_error,
+            _evaluation_reward,
+            _evaluation_length,
+        ) = trainer.train(&mut env, agent, n_episodes, n_episodes / 10, 100);
+        let elapsed: std::time::Duration = now.elapsed();
+        println!(" - training time of {:.2?}", elapsed);
 
-            let ma_error = moving_average(
-                training_error.len() / moving_average_window,
-                &training_error,
-            );
-            train_errors.push(ma_error);
-            let ma_reward = moving_average(
-                n_episodes as usize / moving_average_window,
-                &training_reward,
-            );
-            let v: Vec<f64> = training_length.iter().map(|x| *x as f64).collect();
-            train_rewards.push(ma_reward);
-            let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
-            train_episodes_length.push(ma_episode);
+        let ma_error = moving_average(
+            training_error.len() / moving_average_window,
+            &training_error,
+        );
+        train_errors.push(ma_error);
+        let ma_reward = moving_average(
+            n_episodes as usize / moving_average_window,
+            &training_reward,
+        );
+        let v: Vec<f64> = training_length.iter().map(|x| *x as f64).collect();
+        train_rewards.push(ma_reward);
+        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
+        train_episodes_length.push(ma_episode);
 
-            let mut wins: u32 = 0;
-            let mut losses: u32 = 0;
-            let mut draws: u32 = 0;
-            const LOOP_LEN: usize = 1000000;
-            for _u in 0..LOOP_LEN {
-                let mut curr_action: BlackJackAction = agent.get_action(&env.reset());
-                loop {
-                    let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-                    let next_action: BlackJackAction = agent.get_action(&next_obs);
-                    curr_action = next_action;
-                    if terminated {
-                        if reward == 1.0 {
-                            wins += 1;
-                        } else if reward == -1.0 {
-                            losses += 1;
-                        } else {
-                            draws += 1;
-                        }
-                        break;
+        let mut wins: u32 = 0;
+        let mut losses: u32 = 0;
+        let mut draws: u32 = 0;
+        const LOOP_LEN: usize = 1000000;
+        for _u in 0..LOOP_LEN {
+            let mut curr_action: BlackJackAction =
+                (trainer.repr_to_action)(agent.get_action((trainer.obs_to_repr)(&env.reset())));
+            loop {
+                let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+                let next_action: BlackJackAction =
+                    (trainer.repr_to_action)(agent.get_action((trainer.obs_to_repr)(&next_obs)));
+                curr_action = next_action;
+                if terminated {
+                    if reward == 1.0 {
+                        wins += 1;
+                    } else if reward == -1.0 {
+                        losses += 1;
+                    } else {
+                        draws += 1;
                     }
+                    break;
                 }
             }
-            println!(
-                "{} has win-rate of {}%, loss-rate of {}% and draw-rate {}%",
-                identifiers[i],
-                wins as f64 / LOOP_LEN as f64,
-                losses as f64 / LOOP_LEN as f64,
-                draws as f64 / LOOP_LEN as f64
-            );
-
-            let (testing_rewards, testing_length) = agent.evaluate(&mut env, n_episodes);
-
-            let ma_reward = moving_average(
-                n_episodes as usize / moving_average_window,
-                &testing_rewards,
-            );
-            test_rewards.push(ma_reward);
-            let v: Vec<f64> = testing_length.iter().map(|x| *x as f64).collect();
-            let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
-            test_episodes_length.push(ma_episode);
-
-            let mut mean_reward = 0.0;
-            for v in testing_rewards {
-                mean_reward += v;
-            }
-            mean_reward /= n_episodes as f64;
-            fs::write(
-                &format!("{}_blackjackprobs.pair", identifiers[i]),
-                &format!(
-                    "{:?}, {:?}",
-                    agent.get_policy().get_estimed_transitions(),
-                    mean_reward
-                ),
-            )
-            .expect("Unable to write file");
-            // println!("{:?}", agent.get_policy().get_estimed_transitions());
-            agent.reset();
-            i += 1;
         }
+        println!(
+            " - win-rate of {:.2?}%\n - loss-rate of {:.2?}%\n - draw-rate {:.2?}%",
+            wins as f64 / LOOP_LEN as f64,
+            losses as f64 / LOOP_LEN as f64,
+            draws as f64 / LOOP_LEN as f64
+        );
+
+        let (testing_rewards, testing_length) = trainer.evaluate(&mut env, agent, n_episodes);
+
+        let ma_reward = moving_average(
+            n_episodes as usize / moving_average_window,
+            &testing_rewards,
+        );
+        test_rewards.push(ma_reward);
+        let v: Vec<f64> = testing_length.iter().map(|x| *x as f64).collect();
+        let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
+        test_episodes_length.push(ma_episode);
+
+        let mut mean_reward = 0.0;
+        for v in testing_rewards {
+            mean_reward += v;
+        }
+        mean_reward /= n_episodes as f64;
+        println!(" - mean reward of {:.2?}", mean_reward);
+        // fs::write(
+        //     &format!("{}_blackjackprobs.pair", identifiers[i]),
+        //     &format!(
+        //         "{:?}, {:?}",
+        //         agent.get_policy().get_estimed_transitions(),
+        //         mean_reward
+        //     ),
+        // )
+        // .expect("Unable to write file");
+        // println!("{:?}", agent.get_policy().get_estimed_transitions());
+        agent.reset();
     }
-    println!("{:?}", one_step_policy_epg.state_changes_counter);
-    println!("{:?}", one_step_policy_epg.state_action_change_counter);
+    // println!("{:?}", one_step_policy_epg.state_changes_counter);
+    // println!("{:?}", one_step_policy_epg.state_action_change_counter);
     match save_json(
         "results.json",
         json!({

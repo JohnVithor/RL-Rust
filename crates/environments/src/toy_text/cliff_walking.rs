@@ -1,11 +1,14 @@
 use std::ops::{Index, IndexMut};
 
+use num_enum::IntoPrimitive;
+
 use crate::{
     env::{DiscreteAction, DiscreteEnv, EnvError},
     utils::{from_2d_to_1d, inc},
 };
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, IntoPrimitive)]
+#[repr(usize)]
 pub enum CliffWalkingAction {
     LEFT,
     DOWN,
