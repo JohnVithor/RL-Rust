@@ -1,8 +1,6 @@
-use environments::env::DiscreteAction;
+use ndarray::{Array, Array1};
 use rand::{distributions::Uniform, prelude::Distribution};
-use std::{fmt::Debug, hash::Hash, rc::Rc};
-
-use crate::utils::argmax;
+use std::{fmt::Debug, rc::Rc};
 
 use super::ActionSelection;
 
@@ -60,16 +58,23 @@ impl UniformEpsilonGreed {
     }
 }
 
-impl<T: Hash + PartialEq + Eq + Clone, A: DiscreteAction> ActionSelection<T, A>
-    for UniformEpsilonGreed
-{
-    fn get_action(&mut self, _obs: &T, values: &[f64; A::RANGE]) -> A {
+impl ActionSelection for UniformEpsilonGreed {
+    fn get_action(&mut self, _obs: usize, values: &Array1<f64>) -> usize {
         if self.should_explore() {
-            self.rand_action_selecter
-                .sample(&mut rand::thread_rng())
-                .into()
+            self.rand_action_selecter.sample(&mut rand::thread_rng())
         } else {
-            argmax(values).into()
+            values
+                .iter()
+                .enumerate()
+                .skip(1)
+                .fold((0, values[0]), |(idx_max, val_max), (idx, val)| {
+                    if &val_max > val {
+                        (idx_max, val_max)
+                    } else {
+                        (idx, *val)
+                    }
+                })
+                .0
         }
     }
 
@@ -77,9 +82,22 @@ impl<T: Hash + PartialEq + Eq + Clone, A: DiscreteAction> ActionSelection<T, A>
         self.decay_epsilon();
     }
 
-    fn get_exploration_probs(&mut self, _obs: &T, values: &[f64; A::RANGE]) -> [f64; A::RANGE] {
-        let mut policy_probs: [f64; A::RANGE] = [self.epsilon / values.len() as f64; A::RANGE];
-        policy_probs[argmax(values)] = 1.0 - self.epsilon;
+    fn get_exploration_probs(&mut self, _obs: usize, values: &Array1<f64>) -> Array1<f64> {
+        let mut policy_probs: Array1<f64> =
+            Array::from_elem((values.len(),), self.epsilon / values.len() as f64);
+        let argmax = values
+            .iter()
+            .enumerate()
+            .skip(1)
+            .fold((0, values[0]), |(idx_max, val_max), (idx, val)| {
+                if &val_max > val {
+                    (idx_max, val_max)
+                } else {
+                    (idx, *val)
+                }
+            })
+            .0;
+        policy_probs[argmax] = 1.0 - self.epsilon;
         policy_probs
     }
 

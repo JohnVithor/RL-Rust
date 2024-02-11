@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 use std::time::Instant;
 
 extern crate environments;
@@ -8,8 +9,9 @@ use std::collections::hash_map::DefaultHasher;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::DiscreteEnv;
-use reinforcement_learning::agent::one_step_epsilon_greed_qlearning::OneStepEpsilonGreedQlearning;
+use reinforcement_learning::action_selection::UniformEpsilonGreed;
 use reinforcement_learning::agent::one_step_epsilon_greed_sarsa::OneStepEpsilonGreedSarsa;
+use reinforcement_learning::agent::one_step_qlearning::OneStepQlearning;
 use reinforcement_learning::agent::DiscreteAgent;
 use reinforcement_learning::trainer::DiscreteTrainer;
 use serde_json::json;
@@ -90,11 +92,14 @@ fn main() {
         discount_factor,
     );
 
-    let mut qlearning = OneStepEpsilonGreedQlearning::new(
+    let mut qlearning = OneStepQlearning::new(
         2,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
+        Box::new(UniformEpsilonGreed::new(
+            2,
+            initial_epsilon,
+            Rc::new(move |a| a - epsilon_decay),
+            final_epsilon,
+        )),
         learning_rate,
         0.0,
         discount_factor,

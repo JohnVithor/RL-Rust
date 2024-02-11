@@ -1,4 +1,4 @@
-use environments::{env::DiscreteAction, DiscreteEnv};
+use environments::env::DiscreteEnv;
 
 use crate::agent::DiscreteAgent;
 pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
@@ -10,10 +10,7 @@ pub struct DiscreteTrainer<Obs, Action> {
     // repr_to_obs: Rc<dyn Fn(usize) -> Obs>,
 }
 
-impl<Obs, Action> DiscreteTrainer<Obs, Action>
-where
-    Action: DiscreteAction,
-{
+impl<Obs, Action> DiscreteTrainer<Obs, Action> {
     pub fn new(repr_to_action: fn(usize) -> Action, obs_to_repr: fn(&Obs) -> usize) -> Self {
         Self {
             repr_to_action,
@@ -31,7 +28,6 @@ where
     ) -> TrainResults
     where
         Obs: Clone,
-        usize: std::convert::From<Action>,
     {
         let mut training_reward: Vec<f64> = vec![];
         let mut training_length: Vec<u128> = vec![];
@@ -91,11 +87,7 @@ where
         env: &mut dyn DiscreteEnv<Obs, Action>,
         agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
-    ) -> (Vec<f64>, Vec<u128>)
-    where
-        Action: DiscreteAction,
-        usize: std::convert::From<Action>,
-    {
+    ) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
         let mut episode_length: Vec<u128> = vec![];
         for _episode in 0..n_episodes {

@@ -86,6 +86,7 @@ impl DiscreteAgent for OneStepEpsilonGreedSarsa {
             values
                 .iter()
                 .enumerate()
+                .skip(1)
                 .fold((0, values[0]), |(idx_max, val_max), (idx, val)| {
                     if &val_max > val {
                         (idx_max, val_max)

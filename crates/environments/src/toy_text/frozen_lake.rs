@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::env::{DiscreteAction, DiscreteEnv, EnvError};
+use crate::env::{DiscreteEnv, EnvError};
 use crate::utils::{categorical_sample, from_2d_to_1d, inc};
 
 use num_enum::IntoPrimitive;
@@ -58,8 +58,6 @@ impl IndexMut<FrozenLakeAction> for [u128] {
         &mut self[index as usize]
     }
 }
-
-impl DiscreteAction for FrozenLakeAction {}
 
 impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
     type Output = (usize, f64, bool);

@@ -5,8 +5,8 @@
 // pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
 // pub use one_step_agent::OneStepAgent;
-pub mod one_step_epsilon_greed_qlearning;
 pub mod one_step_epsilon_greed_sarsa;
+pub mod one_step_qlearning;
 
 extern crate environments;
 

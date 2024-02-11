@@ -1,14 +1,11 @@
 use std::ops::{Index, IndexMut};
 
-use num_enum::IntoPrimitive;
-
 use crate::{
-    env::{DiscreteAction, DiscreteEnv, EnvError},
+    env::{DiscreteEnv, EnvError},
     utils::{from_2d_to_1d, inc},
 };
 
-#[derive(Debug, Copy, Clone, IntoPrimitive)]
-#[repr(usize)]
+#[derive(Debug, Copy, Clone)]
 pub enum CliffWalkingAction {
     LEFT,
     DOWN,
@@ -58,8 +55,6 @@ impl IndexMut<CliffWalkingAction> for [u128] {
         &mut self[index as usize]
     }
 }
-
-impl DiscreteAction for CliffWalkingAction {}
 
 impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
     type Output = (usize, f64, bool);

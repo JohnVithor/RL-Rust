@@ -1,81 +1,19 @@
 use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::ops::{Index, IndexMut};
 
-use crate::env::{DiscreteAction, DiscreteEnv};
+use crate::env::DiscreteEnv;
 use crate::EnvError;
 
-extern crate core;
-
-use num_enum::IntoPrimitive;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::ThreadRng;
 
-#[derive(Debug, Copy, Clone, IntoPrimitive)]
-#[repr(usize)]
+#[derive(Debug, Copy, Clone)]
 pub enum BlackJackAction {
     HIT,
     STICK,
 }
 
-impl From<usize> for BlackJackAction {
-    fn from(value: usize) -> Self {
-        match value {
-            0 => Self::HIT,
-            1 => Self::STICK,
-            value => panic!(
-                "Invalid value to convert from usize to BlackJackAction: {}",
-                value
-            ),
-        }
-    }
-}
-
-impl DiscreteAction for BlackJackAction {}
-
-impl Index<BlackJackAction> for [f64] {
-    type Output = f64;
-
-    fn index(&self, index: BlackJackAction) -> &Self::Output {
-        &self[match index {
-            BlackJackAction::HIT => 0,
-            BlackJackAction::STICK => 1,
-        }]
-    }
-}
-
-impl IndexMut<BlackJackAction> for [f64] {
-    fn index_mut(&mut self, index: BlackJackAction) -> &mut Self::Output {
-        &mut self[match index {
-            BlackJackAction::HIT => 0,
-            BlackJackAction::STICK => 1,
-        }]
-    }
-}
-
-impl Index<BlackJackAction> for [u128] {
-    type Output = u128;
-
-    fn index(&self, index: BlackJackAction) -> &Self::Output {
-        &self[match index {
-            BlackJackAction::HIT => 0,
-            BlackJackAction::STICK => 1,
-        }]
-    }
-}
-
-impl IndexMut<BlackJackAction> for [u128] {
-    fn index_mut(&mut self, index: BlackJackAction) -> &mut Self::Output {
-        &mut self[match index {
-            BlackJackAction::HIT => 0,
-            BlackJackAction::STICK => 1,
-        }]
-    }
-}
-
-#[derive(Hash, Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct BlackJackObservation {
     pub p_score: u8,
     pub d_score: u8,
@@ -89,11 +27,6 @@ impl BlackJackObservation {
             d_score,
             p_ace,
         }
-    }
-    pub fn get_id(&self) -> usize {
-        let mut s = DefaultHasher::new();
-        self.hash(&mut s);
-        s.finish() as usize
     }
 }
 
@@ -257,6 +190,4 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
         result.push_str(&player_cards);
         result
     }
-
-    //fn render_episode(&self) {}
 }
