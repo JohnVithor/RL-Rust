@@ -20,8 +20,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn train(
         &mut self,
-        env: &mut dyn DiscreteEnv<Obs, Action>,
-        agent: &mut dyn DiscreteAgent,
+        env: &mut impl DiscreteEnv<Obs, Action>,
+        agent: &mut impl DiscreteAgent,
         n_episodes: u128,
         eval_at: u128,
         eval_for: u128,
@@ -86,8 +86,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn evaluate(
         &self,
-        env: &mut dyn DiscreteEnv<Obs, Action>,
-        agent: &mut dyn DiscreteAgent,
+        env: &mut impl DiscreteEnv<Obs, Action>,
+        agent: &mut impl DiscreteAgent,
         n_episodes: u128,
     ) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
@@ -114,5 +114,34 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
             episode_length.push(action_counter);
         }
         (reward_history, episode_length)
+    }
+
+    pub fn example(
+        &mut self,
+        mut env: impl DiscreteEnv<Obs, Action>,
+        mut agent: impl DiscreteAgent,
+    ) {
+        let mut epi_reward = 0.0;
+        let obs_repr = (self.obs_to_repr)(&env.reset());
+        let action_repr: usize = agent.get_action(obs_repr);
+        let mut curr_action = (self.repr_to_action)(action_repr);
+        let mut steps: i32 = 0;
+        loop {
+            steps += 1;
+            println!("{}", env.render());
+            let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
+            let next_obs_repr = (self.obs_to_repr)(&next_obs);
+            let next_action_repr: usize = agent.get_action(next_obs_repr);
+            let next_action = (self.repr_to_action)(next_action_repr);
+            println!("step reward {:?}", reward);
+            curr_action = next_action;
+            epi_reward += reward;
+            if terminated {
+                println!("{}", env.render());
+                println!("episode reward {:?}", epi_reward);
+                println!("terminated with {:?} steps", steps);
+                break;
+            }
+        }
     }
 }

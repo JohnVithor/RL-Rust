@@ -1,94 +1,86 @@
-use super::DiscreteAgent;
-use crate::action_selection::ActionSelection;
-use crate::policy::DiscretePolicy;
-use environments::env::DiscreteAction;
-use std::fmt::Debug;
-use std::ops::Index;
+use ndarray::{Array, Array1};
 
-pub struct OneStepAgent<'a, T: Clone + Debug, A: DiscreteAction>
-where
-    [(); A::RANGE]: Sized,
-{
-    // policy update
+use crate::{action_selection::ActionSelection, agent::DiscreteAgent};
+
+use super::GetNextQValue;
+
+pub struct OneStepAgent {
+    action_selection: Box<dyn ActionSelection>,
+    next_value_function: GetNextQValue,
+    learning_rate: f64,
+    default_values: Array1<f64>,
+    default_value: f64,
     discount_factor: f64,
-    get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
-    pub policy: &'a mut dyn DiscretePolicy<T, A>,
-    action_selection: &'a mut dyn ActionSelection<T, A>,
+    policy: Array1<Array1<f64>>,
 }
 
-impl<'a, T: Clone + Debug, A: DiscreteAction> OneStepAgent<'a, T, A>
-where
-    [(); A::RANGE]: Sized,
-{
+impl OneStepAgent {
     pub fn new(
+        action_selection: Box<dyn ActionSelection>,
+        next_value_function: GetNextQValue,
+        learning_rate: f64,
+        default_value: f64,
         discount_factor: f64,
-        get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
-        policy: &'a mut dyn DiscretePolicy<T, A>,
-        action_selection: &'a mut dyn ActionSelection<T, A>,
     ) -> Self {
         Self {
-            policy,
-            discount_factor,
             action_selection,
-            get_next_q_value,
+            next_value_function,
+            learning_rate,
+            default_values: Array1::default(0),
+            default_value,
+            discount_factor,
+            policy: Array1::default(0),
         }
     }
 }
 
-impl<'a, T: Clone + Debug, A: DiscreteAction + Debug + Copy> DiscreteAgent<'a, T, A>
-    for OneStepAgent<'a, T, A>
-where
-    [f64]: Index<A, Output = f64>,
-    [(); A::RANGE]: Sized,
-{
-    fn get_policy(&self) -> &dyn DiscretePolicy<T, A> {
-        self.policy
-    }
-
-    fn set_future_q_value_func(&mut self, func: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64) {
-        self.get_next_q_value = func;
-    }
-
-    fn set_action_selector(&mut self, action_selecter: &'a mut dyn ActionSelection<T, A>) {
-        self.action_selection = action_selecter;
-    }
-
-    fn reset(&mut self) {
-        self.action_selection.reset();
-        self.policy.reset();
-    }
-
-    fn get_action(&mut self, obs: &T) -> A {
-        self.action_selection
-            .get_action(obs, &self.policy.predict(obs))
+impl DiscreteAgent for OneStepAgent {
+    fn prepare(&mut self, n_obs: usize, n_actions: usize) {
+        let v = Array::from_elem((n_actions,), self.default_value);
+        self.policy = Array1::from_elem((n_obs,), v.clone());
+        self.default_values = v;
     }
 
     fn update(
         &mut self,
-        curr_obs: &T,
-        curr_action: A,
+        curr_obs: usize,
+        curr_action: usize,
         reward: f64,
         terminated: bool,
-        next_obs: &T,
-        next_action: A,
+        next_obs: usize,
+        next_action: usize,
     ) -> f64 {
-        let next_q_values: [f64; A::RANGE] = self.policy.get_values(next_obs);
-        let probs = &self
-            .action_selection
-            .get_exploration_probs(next_obs, &next_q_values);
-        let future_q_value: f64 = (self.get_next_q_value)(&next_q_values, next_action, probs);
-        let curr_q_values: [f64; A::RANGE] = self.policy.get_values(curr_obs);
+        let next_q_values: &Array1<f64> = self.policy.get(next_obs).unwrap_or(&self.default_values);
+
+        let future_q_value: f64 = (self.next_value_function)(
+            next_q_values,
+            next_action,
+            &self
+                .action_selection
+                .get_exploration_probs(next_obs, next_q_values),
+        );
+
+        let curr_q_values: &Array1<f64> = self.policy.get(curr_obs).unwrap_or(&self.default_values);
         let temporal_difference: f64 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        let _error = self
-            .policy
-            .update(curr_obs, curr_action, next_obs, temporal_difference);
+        let value = self.policy.get(curr_obs).unwrap_or(&self.default_values)[curr_action];
+        self.policy.get_mut(curr_obs).unwrap()[curr_action] =
+            value + self.learning_rate * temporal_difference;
 
-        self.policy.after_update();
         if terminated {
             self.action_selection.update();
         }
         temporal_difference
+    }
+
+    fn get_action(&mut self, obs: usize) -> usize {
+        self.action_selection
+            .get_action(obs, self.policy.get(obs).unwrap_or(&self.default_values))
+    }
+
+    fn reset(&mut self) {
+        self.policy.fill(self.default_values.clone());
+        self.action_selection.reset();
     }
 }

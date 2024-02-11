@@ -46,7 +46,7 @@ impl CliffWalkingEnv {
         let newstate: usize = from_2d_to_1d(12, newrow, newcol);
         let win: bool = newstate == Self::GOAL_POSITION;
         let lose: bool = Self::CLIFF_POSITIONS.contains(&newstate);
-        let reward: f64 = if lose { -100.0 } else { -1.0 };
+        let reward: f64 = if lose { -17.0 } else { -1.0 };
         (newstate, reward, lose || win)
     }
 

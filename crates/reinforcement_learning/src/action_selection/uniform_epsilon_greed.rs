@@ -6,8 +6,8 @@ use utils::argmax;
 
 #[derive(Clone)]
 pub struct UniformEpsilonGreed {
-    pub initial_epsilon: f64,
-    pub epsilon: f64,
+    initial_epsilon: f64,
+    epsilon: f64,
     epsilon_decay: Rc<dyn Fn(f64) -> f64>,
     final_epsilon: f64,
 }
