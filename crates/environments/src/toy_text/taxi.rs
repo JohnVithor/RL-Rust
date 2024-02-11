@@ -3,7 +3,12 @@ use std::cmp::{max, min};
 use rand::{distributions::Uniform, prelude::Distribution};
 use utils::categorical_sample;
 
-use crate::{env::EnvError::EnvNotReady, utils::from_2d_to_1d, DiscreteEnv};
+use crate::{
+    env::EnvError::EnvNotReady,
+    space::{SpaceInfo, SpaceTypeBounds},
+    utils::from_2d_to_1d,
+    Env,
+};
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
@@ -129,7 +134,7 @@ impl TaxiEnv {
     }
 }
 
-impl DiscreteEnv<usize, usize> for TaxiEnv {
+impl Env<usize, usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -169,11 +174,11 @@ impl DiscreteEnv<usize, usize> for TaxiEnv {
         new_map
     }
 
-    fn num_observations(&self) -> usize {
-        self.obs.len()
+    fn observation_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(self.obs.len())])
     }
 
-    fn num_actions(&self) -> usize {
-        6
+    fn action_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(6)])
     }
 }

@@ -1,6 +1,6 @@
 use std::io::{self, BufRead};
 
-use environments::env::DiscreteEnv;
+use environments::{env::Env, space::SpaceType};
 
 use crate::agent::DiscreteAgent;
 pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
@@ -22,7 +22,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn train(
         &mut self,
-        env: &mut dyn DiscreteEnv<Obs, Action>,
+        env: &mut dyn Env<Obs, Action>,
         agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
         eval_at: u128,
@@ -32,13 +32,22 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
     where
         Obs: Clone,
     {
+        if env.observation_space().get_type() != SpaceType::Discrete {
+            panic!("observation_space must be of type SpaceType::Discrete");
+        }
+        if env.action_space().get_type() != SpaceType::Discrete {
+            panic!("action_space must be of type SpaceType::Discrete");
+        }
         let mut training_reward: Vec<f64> = vec![];
         let mut training_length: Vec<u128> = vec![];
         let mut training_error: Vec<f64> = vec![];
         let mut evaluation_reward: Vec<f64> = vec![];
         let mut evaluation_length: Vec<f64> = vec![];
 
-        agent.prepare(env.num_observations(), env.num_actions());
+        agent.prepare(
+            env.observation_space().get_discrete_combinations(),
+            env.action_space().get_discrete_combinations(),
+        );
 
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
@@ -99,7 +108,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn evaluate(
         &self,
-        env: &mut dyn DiscreteEnv<Obs, Action>,
+        env: &mut dyn Env<Obs, Action>,
         agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
     ) -> (Vec<f64>, Vec<u128>) {
@@ -129,11 +138,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         (reward_history, episode_length)
     }
 
-    pub fn example(
-        &mut self,
-        env: &mut impl DiscreteEnv<Obs, Action>,
-        agent: &mut impl DiscreteAgent,
-    ) {
+    pub fn example(&mut self, env: &mut impl Env<Obs, Action>, agent: &mut impl DiscreteAgent) {
         let mut epi_reward = 0.0;
         let obs_repr = (self.obs_to_repr)(&env.reset());
         let action_repr: usize = agent.get_action(obs_repr);

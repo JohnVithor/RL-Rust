@@ -40,6 +40,7 @@ pub fn expected_sarsa(
 pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
 pub trait DiscreteAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize);
+
     fn get_action(&mut self, obs: usize) -> usize;
 
     fn update(
@@ -49,6 +50,24 @@ pub trait DiscreteAgent {
         reward: f64,
         terminated: bool,
         next_obs: usize,
+        next_actions: usize,
+    ) -> f64;
+
+    fn reset(&mut self);
+}
+
+pub trait ContinuousAgent {
+    fn prepare(&mut self, obs_dim: usize, n_actions: usize);
+
+    fn get_action(&mut self, obs: Array1<f64>) -> usize;
+
+    fn update(
+        &mut self,
+        curr_obs: Array1<f64>,
+        curr_actions: usize,
+        reward: f64,
+        terminated: bool,
+        next_obs: Array1<f64>,
         next_actions: usize,
     ) -> f64;
 

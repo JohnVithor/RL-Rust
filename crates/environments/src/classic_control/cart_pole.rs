@@ -1,9 +1,9 @@
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 
-use crate::env::EnvNotReady;
-
-use crate::Env;
+use crate::space::{SpaceInfo, SpaceTypeBounds};
+use crate::EnvError::EnvNotReady;
+use crate::{Env, EnvError};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CartPoleObservation {
@@ -39,7 +39,7 @@ pub struct CartPoleEnv {
 }
 
 impl CartPoleEnv {
-    pub const ACTIONS: [&str; 2] = ["PUSH TO THE LEFT", "PUSH TO THE RIGTH"];
+    pub const ACTIONS: [&'static str; 2] = ["PUSH TO THE LEFT", "PUSH TO THE RIGTH"];
     const GRAVITY: f32 = 9.8;
     const POLE_MASS: f32 = 0.1;
     const TOTAL_MASS: f32 = 1.1;
@@ -86,7 +86,7 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
         self.state.clone()
     }
 
-    fn step(&mut self, action: usize) -> Result<(CartPoleObservation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(CartPoleObservation, f64, bool), EnvError> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -130,5 +130,17 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
 
     fn render(&self) -> String {
         "TODO".to_string()
+    }
+
+    fn observation_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![
+            SpaceTypeBounds::Continuous(-4.8, 4.8),
+            SpaceTypeBounds::Continuous(f64::NEG_INFINITY, f64::INFINITY),
+            SpaceTypeBounds::Continuous(-0.418, 0.418),
+            SpaceTypeBounds::Continuous(f64::NEG_INFINITY, f64::INFINITY),
+        ])
+    }
+    fn action_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(2)])
     }
 }

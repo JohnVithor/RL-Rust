@@ -5,7 +5,7 @@ extern crate reinforcement_learning;
 extern crate structopt;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
-use environments::DiscreteEnv;
+use environments::Env;
 use reinforcement_learning::trainer::DiscreteTrainer;
 use serde_json::json;
 use structopt::StructOpt;

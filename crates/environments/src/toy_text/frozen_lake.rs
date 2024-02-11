@@ -1,6 +1,7 @@
 use std::ops::Index;
 
-use crate::env::{DiscreteEnv, EnvError};
+use crate::env::{Env, EnvError};
+use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::utils::{from_2d_to_1d, inc};
 
 use num_enum::IntoPrimitive;
@@ -127,7 +128,7 @@ impl FrozenLakeEnv {
     }
 }
 
-impl DiscreteEnv<usize, FrozenLakeAction> for FrozenLakeEnv {
+impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f64> = Uniform::from(0.0..1.0);
         let random: f64 = dist.sample(&mut rand::thread_rng());
@@ -137,11 +138,12 @@ impl DiscreteEnv<usize, FrozenLakeAction> for FrozenLakeEnv {
         self.player_pos
     }
 
-    fn num_observations(&self) -> usize {
-        self.probs.len()
+    fn observation_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(self.probs.len())])
     }
-    fn num_actions(&self) -> usize {
-        4
+
+    fn action_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
     fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f64, bool), EnvError> {

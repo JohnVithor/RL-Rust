@@ -1,7 +1,8 @@
 use std::ops::Index;
 
 use crate::{
-    env::{DiscreteEnv, EnvError},
+    env::{Env, EnvError},
+    space::{SpaceInfo, SpaceTypeBounds},
     utils::{from_2d_to_1d, inc},
 };
 
@@ -78,7 +79,7 @@ impl CliffWalkingEnv {
     }
 }
 
-impl DiscreteEnv<usize, CliffWalkingAction> for CliffWalkingEnv {
+impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
     fn reset(&mut self) -> usize {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
@@ -86,12 +87,12 @@ impl DiscreteEnv<usize, CliffWalkingAction> for CliffWalkingEnv {
         self.player_pos
     }
 
-    fn num_observations(&self) -> usize {
-        48
+    fn observation_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(48)])
     }
 
-    fn num_actions(&self) -> usize {
-        4
+    fn action_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
     fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvError> {

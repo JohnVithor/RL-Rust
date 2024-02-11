@@ -1,26 +1,16 @@
 use std::fmt::Debug;
 
+use crate::space::SpaceInfo;
+
 #[derive(Debug, Clone)]
 pub enum EnvError {
     EnvNotReady,
 }
 
-pub trait ContinuousEnv<T, const N: usize> {
-    fn reset(&mut self) -> T;
-    fn step(&mut self, actions: [f64; N]) -> Result<(T, f64, bool), EnvError>;
-    fn render(&self) -> String;
-}
-
-pub trait DiscreteEnv<T, A> {
+pub trait Env<T, A> {
     fn reset(&mut self) -> T;
     fn step(&mut self, action: A) -> Result<(T, f64, bool), EnvError>;
     fn render(&self) -> String;
-    fn num_observations(&self) -> usize;
-    fn num_actions(&self) -> usize;
-}
-
-pub trait MixedEnv<T, A, const N: usize> {
-    fn reset(&mut self) -> T;
-    fn step(&mut self, d_action: A, c_actions: [f64; N]) -> Result<(T, f64, bool), EnvError>;
-    fn render(&self) -> String;
+    fn observation_space(&self) -> SpaceInfo;
+    fn action_space(&self) -> SpaceInfo;
 }

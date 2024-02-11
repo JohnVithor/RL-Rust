@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
-use crate::env::DiscreteEnv;
+use crate::env::Env;
+use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::EnvError;
 
 use rand::distributions::Uniform;
@@ -107,7 +108,7 @@ impl Default for BlackJackEnv {
     }
 }
 
-impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
+impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
     fn reset(&mut self) -> BlackJackObservation {
         self.player = [0; 16];
         self.dealer = [0; 16];
@@ -121,11 +122,15 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
         obs
     }
 
-    fn num_observations(&self) -> usize {
-        26 * 28 * 2
+    fn observation_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![
+            SpaceTypeBounds::Discrete(26),
+            SpaceTypeBounds::Discrete(28),
+            SpaceTypeBounds::Discrete(2),
+        ])
     }
-    fn num_actions(&self) -> usize {
-        2
+    fn action_space(&self) -> SpaceInfo {
+        SpaceInfo::new(vec![SpaceTypeBounds::Discrete(2)])
     }
 
     fn step(
