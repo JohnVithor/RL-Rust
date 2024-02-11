@@ -84,14 +84,17 @@ fn main() {
         let mut wins: u32 = 0;
         let mut losses: u32 = 0;
         let mut draws: u32 = 0;
-        const LOOP_LEN: usize = 1000000;
+        const LOOP_LEN: usize = 10_000;
         for _u in 0..LOOP_LEN {
-            let mut curr_action: BlackJackAction =
-                (trainer.repr_to_action)(agent.get_action((trainer.obs_to_repr)(&env.reset())));
+            let start_state = &env.reset();
+            let start_state_repr = (trainer.obs_to_repr)(start_state);
+            let curr_action_repr = agent.get_action(start_state_repr);
+            let mut curr_action: BlackJackAction = (trainer.repr_to_action)(curr_action_repr);
             loop {
                 let (next_obs, reward, terminated) = env.step(curr_action).unwrap();
-                let next_action: BlackJackAction =
-                    (trainer.repr_to_action)(agent.get_action((trainer.obs_to_repr)(&next_obs)));
+                let next_state_repr = (trainer.obs_to_repr)(&next_obs);
+                let next_action_repr = agent.get_action(next_state_repr);
+                let next_action: BlackJackAction = (trainer.repr_to_action)(next_action_repr);
                 curr_action = next_action;
                 if terminated {
                     if reward == 1.0 {
