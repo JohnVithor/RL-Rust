@@ -82,8 +82,8 @@ impl DiscreteAgent for ElegibilityTracesAgent {
 
         for (obs, trace_values) in &mut self.trace {
             for (action, value) in trace_values.iter_mut().enumerate() {
-                self.policy.get_mut(*obs).unwrap()[action] =
-                    self.learning_rate * temporal_difference * *value;
+                let policy_values = self.policy.get_mut(*obs).unwrap();
+                policy_values[action] = self.learning_rate * temporal_difference * *value;
                 *value *= self.discount_factor * self.lambda_factor
             }
         }

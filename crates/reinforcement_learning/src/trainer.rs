@@ -22,8 +22,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn train(
         &mut self,
-        env: &mut impl DiscreteEnv<Obs, Action>,
-        agent: &mut impl DiscreteAgent,
+        env: &mut dyn DiscreteEnv<Obs, Action>,
+        agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
         eval_at: u128,
         eval_for: u128,
@@ -99,8 +99,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn evaluate(
         &self,
-        env: &mut impl DiscreteEnv<Obs, Action>,
-        agent: &mut impl DiscreteAgent,
+        env: &mut dyn DiscreteEnv<Obs, Action>,
+        agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
     ) -> (Vec<f64>, Vec<u128>) {
         let mut reward_history: Vec<f64> = vec![];
