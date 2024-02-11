@@ -195,6 +195,8 @@ fn main() {
         let elapsed: std::time::Duration = now.elapsed();
         println!(" - training time of {:.2?}", elapsed);
 
+        // trainer.example(&mut env, agent);
+
         let ma_error = moving_average(
             training_error.len() / moving_average_window,
             &training_error,

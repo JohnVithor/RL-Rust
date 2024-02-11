@@ -29,7 +29,7 @@ impl UniformEpsilonGreed {
     }
 
     fn should_explore(&self) -> bool {
-        self.epsilon != 0.0 && rand::thread_rng().gen_range(0.0..1.0) < self.epsilon
+        self.epsilon != 0.0 && rand::thread_rng().gen_range(0.0..1.0) <= self.epsilon
     }
 }
 

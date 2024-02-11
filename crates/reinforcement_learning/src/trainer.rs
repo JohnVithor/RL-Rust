@@ -118,8 +118,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
     pub fn example(
         &mut self,
-        mut env: impl DiscreteEnv<Obs, Action>,
-        mut agent: impl DiscreteAgent,
+        env: &mut impl DiscreteEnv<Obs, Action>,
+        agent: &mut impl DiscreteAgent,
     ) {
         let mut epi_reward = 0.0;
         let obs_repr = (self.obs_to_repr)(&env.reset());
@@ -133,6 +133,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
             let next_obs_repr = (self.obs_to_repr)(&next_obs);
             let next_action_repr: usize = agent.get_action(next_obs_repr);
             let next_action = (self.repr_to_action)(next_action_repr);
+            println!("action : {}", next_action_repr);
             println!("step reward {:?}", reward);
             curr_action = next_action;
             epi_reward += reward;
