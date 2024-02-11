@@ -15,6 +15,8 @@ pub trait DiscreteEnv<T, A> {
     fn reset(&mut self) -> T;
     fn step(&mut self, action: A) -> Result<(T, f64, bool), EnvError>;
     fn render(&self) -> String;
+    fn num_observations(&self) -> usize;
+    fn num_actions(&self) -> usize;
 }
 
 pub trait MixedEnv<T, A, const N: usize> {

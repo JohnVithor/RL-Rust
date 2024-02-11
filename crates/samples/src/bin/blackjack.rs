@@ -10,8 +10,8 @@ use std::collections::hash_map::DefaultHasher;
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::DiscreteEnv;
 use reinforcement_learning::action_selection::UniformEpsilonGreed;
-use reinforcement_learning::agent::one_step_epsilon_greed_sarsa::OneStepEpsilonGreedSarsa;
 use reinforcement_learning::agent::one_step_qlearning::OneStepQlearning;
+use reinforcement_learning::agent::one_step_sarsa::OneStepSarsa;
 use reinforcement_learning::agent::DiscreteAgent;
 use reinforcement_learning::trainer::DiscreteTrainer;
 use serde_json::json;
@@ -82,20 +82,19 @@ fn main() {
     let mut test_rewards: Vec<Vec<f64>> = vec![];
     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-    let mut sarsa = OneStepEpsilonGreedSarsa::new(
-        2,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
+    let mut sarsa = OneStepSarsa::new(
+        Box::new(UniformEpsilonGreed::new(
+            initial_epsilon,
+            Rc::new(move |a| a - epsilon_decay),
+            final_epsilon,
+        )),
         learning_rate,
         0.0,
         discount_factor,
     );
 
     let mut qlearning = OneStepQlearning::new(
-        2,
         Box::new(UniformEpsilonGreed::new(
-            2,
             initial_epsilon,
             Rc::new(move |a| a - epsilon_decay),
             final_epsilon,

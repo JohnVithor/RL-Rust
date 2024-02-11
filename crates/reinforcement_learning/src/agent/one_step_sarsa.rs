@@ -4,7 +4,7 @@ use ndarray::{Array, Array1};
 
 use crate::{action_selection::ActionSelection, agent::DiscreteAgent};
 
-pub struct OneStepQlearning {
+pub struct OneStepSarsa {
     action_selection: Box<dyn ActionSelection>,
     learning_rate: f64,
     default_values: Array1<f64>,
@@ -13,7 +13,7 @@ pub struct OneStepQlearning {
     policy: HashMap<usize, Array1<f64>>,
 }
 
-impl OneStepQlearning {
+impl OneStepSarsa {
     pub fn new(
         action_selection: Box<dyn ActionSelection>,
         learning_rate: f64,
@@ -31,12 +31,13 @@ impl OneStepQlearning {
     }
 }
 
-impl DiscreteAgent for OneStepQlearning {
+impl DiscreteAgent for OneStepSarsa {
     fn prepare(&mut self, n_obs: usize, n_actions: usize) {
         let v = Array::from_elem((n_actions,), self.default_value);
         self.policy = HashMap::from_iter((0..n_obs).map(|obs| (obs, v.clone())));
         self.default_values = v;
     }
+
     fn update(
         &mut self,
         curr_obs: usize,
@@ -44,13 +45,13 @@ impl DiscreteAgent for OneStepQlearning {
         reward: f64,
         terminated: bool,
         next_obs: usize,
-        _next_action: usize,
+        next_action: usize,
     ) -> f64 {
         let next_q_values: &Array1<f64> =
             self.policy.get(&next_obs).unwrap_or(&self.default_values);
 
-        // Qlearning
-        let future_q_value: f64 = next_q_values.iter().fold(f64::NAN, |acc, x| acc.max(*x));
+        // Sarsa
+        let future_q_value: f64 = next_q_values[next_action];
 
         let curr_q_values: &Array1<f64> =
             self.policy.get(&curr_obs).unwrap_or(&self.default_values);

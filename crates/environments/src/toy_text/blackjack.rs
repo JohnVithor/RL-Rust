@@ -117,6 +117,13 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
         obs
     }
 
+    fn num_observations(&self) -> usize {
+        32 * 11 * 2
+    }
+    fn num_actions(&self) -> usize {
+        2
+    }
+
     fn step(
         &mut self,
         action: BlackJackAction,
@@ -149,6 +156,9 @@ impl DiscreteEnv<BlackJackObservation, BlackJackAction> for BlackJackEnv {
                     self.dealer[self.dealer_i] = self.get_new_card();
                     self.dealer_i += 1;
                     d_score = self.compute_dealer_score();
+                }
+                if d_score == 1 {
+                    println!("{:?}", self.dealer);
                 }
                 let obs: BlackJackObservation = BlackJackObservation::new(
                     self.compute_player_score(),

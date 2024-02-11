@@ -35,6 +35,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         let mut evaluation_reward: Vec<f64> = vec![];
         let mut evaluation_length: Vec<f64> = vec![];
 
+        agent.prepare(env.num_observations(), env.num_actions());
+
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
             let mut epi_reward: f64 = 0.0;

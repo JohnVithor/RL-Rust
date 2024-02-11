@@ -1,4 +1,4 @@
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 use crate::{
     env::{DiscreteEnv, EnvError},
@@ -11,49 +11,6 @@ pub enum CliffWalkingAction {
     DOWN,
     RIGHT,
     UP,
-}
-
-impl From<usize> for CliffWalkingAction {
-    fn from(value: usize) -> Self {
-        match value {
-            0 => Self::LEFT,
-            1 => Self::DOWN,
-            2 => Self::RIGHT,
-            3 => Self::UP,
-            value => panic!(
-                "Invalid value to convert from usize to CliffWalkingAction: {}",
-                value
-            ),
-        }
-    }
-}
-
-impl Index<CliffWalkingAction> for [f64] {
-    type Output = f64;
-
-    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
-        &self[index as usize]
-    }
-}
-
-impl IndexMut<CliffWalkingAction> for [f64] {
-    fn index_mut(&mut self, index: CliffWalkingAction) -> &mut Self::Output {
-        &mut self[index as usize]
-    }
-}
-
-impl Index<CliffWalkingAction> for [u128] {
-    type Output = u128;
-
-    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
-        &self[index as usize]
-    }
-}
-
-impl IndexMut<CliffWalkingAction> for [u128] {
-    fn index_mut(&mut self, index: CliffWalkingAction) -> &mut Self::Output {
-        &mut self[index as usize]
-    }
 }
 
 impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
@@ -127,6 +84,14 @@ impl DiscreteEnv<usize, CliffWalkingAction> for CliffWalkingEnv {
         self.ready = true;
         self.curr_step = 0;
         self.player_pos
+    }
+
+    fn num_observations(&self) -> usize {
+        48
+    }
+
+    fn num_actions(&self) -> usize {
+        4
     }
 
     fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvError> {

@@ -5,8 +5,8 @@
 // pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
 // pub use one_step_agent::OneStepAgent;
-pub mod one_step_epsilon_greed_sarsa;
 pub mod one_step_qlearning;
+pub mod one_step_sarsa;
 
 extern crate environments;
 
@@ -24,6 +24,7 @@ extern crate environments;
 
 pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
 pub trait DiscreteAgent {
+    fn prepare(&mut self, n_obs: usize, n_actions: usize);
     fn get_action(&mut self, obs: usize) -> usize;
 
     fn update(

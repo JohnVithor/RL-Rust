@@ -1,11 +1,12 @@
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 
 use crate::env::{DiscreteEnv, EnvError};
-use crate::utils::{categorical_sample, from_2d_to_1d, inc};
+use crate::utils::{from_2d_to_1d, inc};
 
 use num_enum::IntoPrimitive;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
+use utils::categorical_sample;
 
 #[derive(Debug, Copy, Clone, IntoPrimitive)]
 #[repr(usize)]
@@ -14,49 +15,6 @@ pub enum FrozenLakeAction {
     DOWN,
     RIGHT,
     UP,
-}
-
-impl From<usize> for FrozenLakeAction {
-    fn from(value: usize) -> Self {
-        match value {
-            0 => Self::LEFT,
-            1 => Self::DOWN,
-            2 => Self::RIGHT,
-            3 => Self::UP,
-            value => panic!(
-                "Invalid value to convert from usize to FrozenLakeAction: {}",
-                value
-            ),
-        }
-    }
-}
-
-impl Index<FrozenLakeAction> for [f64] {
-    type Output = f64;
-
-    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
-        &self[index as usize]
-    }
-}
-
-impl IndexMut<FrozenLakeAction> for [f64] {
-    fn index_mut(&mut self, index: FrozenLakeAction) -> &mut Self::Output {
-        &mut self[index as usize]
-    }
-}
-
-impl Index<FrozenLakeAction> for [u128] {
-    type Output = u128;
-
-    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
-        &self[index as usize]
-    }
-}
-
-impl IndexMut<FrozenLakeAction> for [u128] {
-    fn index_mut(&mut self, index: FrozenLakeAction) -> &mut Self::Output {
-        &mut self[index as usize]
-    }
 }
 
 impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
@@ -177,6 +135,13 @@ impl DiscreteEnv<usize, FrozenLakeAction> for FrozenLakeEnv {
         self.ready = true;
         self.curr_step = 0;
         self.player_pos
+    }
+
+    fn num_observations(&self) -> usize {
+        self.probs.len()
+    }
+    fn num_actions(&self) -> usize {
+        4
     }
 
     fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f64, bool), EnvError> {

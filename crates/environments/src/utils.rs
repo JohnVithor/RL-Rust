@@ -1,41 +1,4 @@
 #[inline(always)]
-pub fn argmax<T: PartialOrd>(vec: &[T]) -> usize {
-    let mut max: &T = &vec[0];
-    let mut result: usize = 0;
-    for (i, v) in vec.iter().enumerate() {
-        if v > max {
-            max = v;
-            result = i;
-        }
-    }
-    result
-}
-
-#[inline(always)]
-pub fn max<T: PartialOrd + Clone>(vec: &[T]) -> T {
-    let mut max: &T = &vec[0];
-    for v in vec {
-        if v > max {
-            max = v;
-        }
-    }
-    max.clone()
-}
-
-#[inline(always)]
-pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
-    let mut b: f64 = 0.0;
-    let r: Vec<bool> = probs
-        .iter()
-        .map(|a| {
-            b += a;
-            b > random
-        })
-        .collect();
-    argmax(&r)
-}
-
-#[inline(always)]
 pub fn from_2d_to_1d(ncol: usize, row: usize, col: usize) -> usize {
     row * ncol + col
 }
@@ -69,22 +32,4 @@ pub fn inc(nrow: usize, ncol: usize, row: usize, col: usize, a: usize) -> (usize
         return (row, col);
     }
     (new_row, new_col)
-}
-
-#[inline(always)]
-pub fn wrap(value: f32, min: f32, max: f32) -> f32 {
-    let diff = max - min;
-    let mut result = value;
-    while result > max {
-        result -= diff
-    }
-    while result < min {
-        result += diff
-    }
-    result
-}
-
-#[inline(always)]
-pub fn bound(value: f32, min: f32, max: f32) -> f32 {
-    value.max(min).min(max)
 }

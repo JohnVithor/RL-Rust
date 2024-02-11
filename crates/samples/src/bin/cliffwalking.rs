@@ -7,10 +7,7 @@ extern crate structopt;
 use environments::toy_text::cliff_walking::{CliffWalkingAction, CliffWalkingEnv};
 use reinforcement_learning::{
     action_selection::UniformEpsilonGreed,
-    agent::{
-        one_step_epsilon_greed_sarsa::OneStepEpsilonGreedSarsa,
-        one_step_qlearning::OneStepQlearning, DiscreteAgent,
-    },
+    agent::{one_step_qlearning::OneStepQlearning, one_step_sarsa::OneStepSarsa, DiscreteAgent},
     trainer::DiscreteTrainer,
 };
 use serde_json::json;
@@ -87,20 +84,19 @@ fn main() {
     let mut test_rewards: Vec<Vec<f64>> = vec![];
     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
 
-    let mut sarsa = OneStepEpsilonGreedSarsa::new(
-        4,
-        initial_epsilon,
-        epsilon_decay,
-        final_epsilon,
+    let mut sarsa = OneStepSarsa::new(
+        Box::new(UniformEpsilonGreed::new(
+            initial_epsilon,
+            Rc::new(move |a| a - epsilon_decay),
+            final_epsilon,
+        )),
         learning_rate,
         0.0,
         discount_factor,
     );
 
     let mut qlearning = OneStepQlearning::new(
-        4,
         Box::new(UniformEpsilonGreed::new(
-            4,
             initial_epsilon,
             Rc::new(move |a| a - epsilon_decay),
             final_epsilon,
