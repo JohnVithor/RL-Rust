@@ -10,3 +10,12 @@ serde_json = "1.0"
 structopt = "0.3"
 reinforcement_learning = { path = "../reinforcement_learning" }
 environments = { path = "../environments" }
+tch = { version = "0.14", path = "/home/johnvithor/Projetos/Rust/tch-rs-main" }
+ndarray = "0.15"
+rand = "0.8"
+ndarray-rand = "0.14"
+cpython = "0.7"
+
+
+[dev-dependencies]
+torch-sys = { version = "0.14", path = "/home/johnvithor/Projetos/Rust/tch-rs-main/torch-sys" }
