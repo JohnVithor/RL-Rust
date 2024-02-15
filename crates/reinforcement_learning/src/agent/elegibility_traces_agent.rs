@@ -15,7 +15,6 @@ pub struct ElegibilityTracesAgent {
     default_value: f64,
     discount_factor: f64,
     lambda_factor: f64,
-    // trace: Array1<Array1<f64>>,
     trace: HashMap<usize, Array1<f64>>,
     policy: Array1<Array1<f64>>,
 }
@@ -37,7 +36,6 @@ impl ElegibilityTracesAgent {
             default_value,
             discount_factor,
             lambda_factor,
-            // trace: Array1::default(0),
             trace: HashMap::default(),
             policy: Array1::default(0),
         }
@@ -48,7 +46,6 @@ impl DiscreteAgent for ElegibilityTracesAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize) {
         let v = Array::from_elem((n_actions,), self.default_value);
         self.policy = Array1::from_elem((n_obs,), v.clone());
-        // self.trace = Array1::from_elem((n_obs,), v.clone());
         self.default_values = v;
     }
 
@@ -84,33 +81,14 @@ impl DiscreteAgent for ElegibilityTracesAgent {
         for (obs, trace_values) in &mut self.trace {
             for (action, value) in trace_values.iter_mut().enumerate() {
                 let policy_values = self.policy.get_mut(*obs).unwrap();
-                policy_values[action] = self.learning_rate * temporal_difference * *value;
+                policy_values[action] += self.learning_rate * temporal_difference * *value;
                 *value *= self.discount_factor * self.lambda_factor
             }
         }
 
-        // let value = self.trace.get(curr_obs).unwrap_or(&self.default_values)[curr_action];
-        // self.trace.get_mut(curr_obs).unwrap()[curr_action] =
-        //     value + self.learning_rate * temporal_difference;
-
-        // self.trace
-        //     .iter_mut()
-        //     .enumerate()
-        //     .for_each(|(obs, trace_values)| {
-        //         trace_values
-        //             .iter_mut()
-        //             .enumerate()
-        //             .for_each(|(action, value)| {
-        //                 self.policy.get_mut(obs).unwrap()[action] =
-        //                     self.learning_rate * temporal_difference * *value;
-        //                 *value *= self.discount_factor * self.lambda_factor;
-        //             })
-        //     });
-
         if terminated {
             self.action_selection.update();
             self.trace = HashMap::default();
-            // self.trace.fill(self.default_values.clone());
         }
         temporal_difference
     }
