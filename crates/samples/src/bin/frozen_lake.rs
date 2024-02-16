@@ -29,11 +29,11 @@ fn main() {
         max_steps,
     );
 
-    let mut train_rewards: Vec<Vec<f64>> = vec![];
-    let mut train_episodes_length: Vec<Vec<f64>> = vec![];
-    let mut train_errors: Vec<Vec<f64>> = vec![];
-    let mut test_rewards: Vec<Vec<f64>> = vec![];
-    let mut test_episodes_length: Vec<Vec<f64>> = vec![];
+    let mut train_rewards: Vec<Vec<f32>> = vec![];
+    let mut train_episodes_length: Vec<Vec<f32>> = vec![];
+    let mut train_errors: Vec<Vec<f32>> = vec![];
+    let mut test_rewards: Vec<Vec<f32>> = vec![];
+    let mut test_episodes_length: Vec<Vec<f32>> = vec![];
 
     let (agents, identifiers) = get_agents(cli);
 
@@ -83,7 +83,7 @@ fn main() {
             n_episodes as usize / moving_average_window,
             &training_reward,
         );
-        let v: Vec<f64> = training_length.iter().map(|x| *x as f64).collect();
+        let v: Vec<f32> = training_length.iter().map(|x| *x as f32).collect();
         train_rewards.push(ma_reward);
         let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
         train_episodes_length.push(ma_episode);
@@ -96,7 +96,7 @@ fn main() {
             &testing_rewards,
         );
         test_rewards.push(ma_reward);
-        let v: Vec<f64> = testing_length.iter().map(|x| *x as f64).collect();
+        let v: Vec<f32> = testing_length.iter().map(|x| *x as f32).collect();
         let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
         test_episodes_length.push(ma_episode);
 
@@ -104,7 +104,7 @@ fn main() {
         for v in testing_rewards {
             mean_reward += v;
         }
-        mean_reward /= n_episodes as f64;
+        mean_reward /= n_episodes as f32;
         println!(" - mean reward of {:.2?}", mean_reward);
         agent.reset();
     }

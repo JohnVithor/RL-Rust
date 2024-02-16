@@ -15,7 +15,7 @@ pub enum FrozenLakeTerrain {
 }
 
 impl FrozenLakeTerrain {
-    pub fn value(&self) -> f64 {
+    pub fn value(&self) -> f32 {
         match self {
             FrozenLakeTerrain::HOLE => -1.0,
             FrozenLakeTerrain::WALL => -0.5,
@@ -48,15 +48,15 @@ impl FrozenLakeObs {
     }
 }
 
-type Transition = (f64, FrozenLakeObs, usize, f64, bool);
+type Transition = (f32, FrozenLakeObs, usize, f32, bool);
 
 #[derive(Debug, Clone)]
 pub struct FrozenLakePartialEnv {
     ready: bool,
-    initial_state_distrib: Vec<f64>,
+    initial_state_distrib: Vec<f32>,
     probs: Vec<[[Transition; 3]; 4]>,
     player_pos: usize,
-    dist: Uniform<f64>,
+    dist: Uniform<f32>,
     max_steps: u128,
     curr_step: u128,
     map: Vec<String>,
@@ -81,7 +81,7 @@ impl FrozenLakePartialEnv {
         row: usize,
         col: usize,
         action: usize,
-    ) -> (FrozenLakeObs, usize, f64, bool) {
+    ) -> (FrozenLakeObs, usize, f32, bool) {
         let curr_obs = Self::get_obs(map, row, col);
         let next_terrain = curr_obs.get(action);
 
@@ -91,7 +91,7 @@ impl FrozenLakePartialEnv {
 
         let win = next_terrain == FrozenLakeTerrain::GOAL;
         let terminated: bool = win || next_terrain == FrozenLakeTerrain::HOLE;
-        let reward: f64 = if win { 10.0 } else { -1.0 };
+        let reward: f32 = if win { 10.0 } else { -1.0 };
         (new_obs, p_pos, reward, terminated)
     }
 
@@ -151,7 +151,7 @@ impl FrozenLakePartialEnv {
         let map: Vec<String> = map.iter().map(|s| s.to_string()).collect();
         // calculating start positions probabilities
         let flat_map: String = map.join("");
-        let mut initial_state_distrib: Vec<f64> = vec![0.0; flat_map.len()];
+        let mut initial_state_distrib: Vec<f32> = vec![0.0; flat_map.len()];
         let mut counter = 0;
         let mut pos = vec![];
         for (i, c) in flat_map.char_indices() {
@@ -161,7 +161,7 @@ impl FrozenLakePartialEnv {
             }
         }
         for i in pos {
-            initial_state_distrib[i] = 1.0 / counter as f64;
+            initial_state_distrib[i] = 1.0 / counter as f32;
         }
         // calculating transitions probabilities
         let mut probs: Vec<[[Transition; 3]; 4]> =
@@ -206,8 +206,8 @@ impl FrozenLakePartialEnv {
 
 impl Env<FrozenLakeObs, usize> for FrozenLakePartialEnv {
     fn reset(&mut self) -> FrozenLakeObs {
-        let dist: Uniform<f64> = Uniform::from(0.0..1.0);
-        let random: f64 = dist.sample(&mut rand::thread_rng());
+        let dist: Uniform<f32> = Uniform::from(0.0..1.0);
+        let random: f32 = dist.sample(&mut rand::thread_rng());
         self.player_pos = categorical_sample(&self.initial_state_distrib.to_vec(), random);
         self.ready = true;
         self.curr_step = 0;
@@ -215,7 +215,7 @@ impl Env<FrozenLakeObs, usize> for FrozenLakePartialEnv {
         Self::get_obs(&self.map, row, col)
     }
 
-    fn step(&mut self, action: usize) -> Result<(FrozenLakeObs, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(FrozenLakeObs, f32, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -227,7 +227,7 @@ impl Env<FrozenLakeObs, usize> for FrozenLakePartialEnv {
         self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action];
         let t_probs = transitions.map(|a| a.0);
-        let random: f64 = self.dist.sample(&mut rand::thread_rng());
+        let random: f32 = self.dist.sample(&mut rand::thread_rng());
         let i = categorical_sample(t_probs.as_ref(), random);
         let (_p, s, p, r, t) = transitions[i];
         self.player_pos = p;

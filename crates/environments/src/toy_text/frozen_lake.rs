@@ -18,8 +18,8 @@ pub enum FrozenLakeAction {
     UP,
 }
 
-impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
-    type Output = (usize, f64, bool);
+impl Index<FrozenLakeAction> for [(usize, f32, bool); 4] {
+    type Output = (usize, f32, bool);
 
     fn index(&self, index: FrozenLakeAction) -> &Self::Output {
         match index {
@@ -31,15 +31,15 @@ impl Index<FrozenLakeAction> for [(usize, f64, bool); 4] {
     }
 }
 
-type Transition = (f64, usize, f64, bool);
+type Transition = (f32, usize, f32, bool);
 
 #[derive(Debug, Clone)]
 pub struct FrozenLakeEnv {
     ready: bool,
-    initial_state_distrib: Vec<f64>,
+    initial_state_distrib: Vec<f32>,
     probs: Vec<[[Transition; 3]; 4]>,
     player_pos: usize,
-    dist: Uniform<f64>,
+    dist: Uniform<f32>,
     max_steps: u128,
     curr_step: u128,
     map: String,
@@ -63,12 +63,12 @@ impl FrozenLakeEnv {
         row: usize,
         col: usize,
         action: usize,
-    ) -> (usize, f64, bool) {
+    ) -> (usize, f32, bool) {
         let (newrow, newcol) = inc(nrow, ncol, row, col, action);
         let newstate: usize = from_2d_to_1d(ncol, newrow, newcol);
         let newletter: &str = map[newrow].get(newcol..newcol + 1).unwrap();
         let terminated: bool = "GH".contains(newletter);
-        let reward: f64 = (newletter == "G").into();
+        let reward: f32 = (newletter == "G").into();
         (newstate, reward, terminated)
     }
 
@@ -77,7 +77,7 @@ impl FrozenLakeEnv {
         let ncol: usize = map[0].len();
         // calculating start positions probabilities
         let flat_map: String = map.join("");
-        let mut initial_state_distrib: Vec<f64> = vec![0.0; flat_map.len()];
+        let mut initial_state_distrib: Vec<f32> = vec![0.0; flat_map.len()];
         let mut counter = 0;
         let mut pos = vec![];
         for (i, c) in flat_map.char_indices() {
@@ -87,7 +87,7 @@ impl FrozenLakeEnv {
             }
         }
         for i in pos {
-            initial_state_distrib[i] = 1.0 / counter as f64;
+            initial_state_distrib[i] = 1.0 / counter as f32;
         }
         // calculating transitions probabilities
         let mut probs: Vec<[[Transition; 3]; 4]> =
@@ -130,8 +130,8 @@ impl FrozenLakeEnv {
 
 impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
-        let dist: Uniform<f64> = Uniform::from(0.0..1.0);
-        let random: f64 = dist.sample(&mut rand::thread_rng());
+        let dist: Uniform<f32> = Uniform::from(0.0..1.0);
+        let random: f32 = dist.sample(&mut rand::thread_rng());
         self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
         self.curr_step = 0;
@@ -146,7 +146,7 @@ impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
         SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
-    fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f64, bool), EnvError> {
+    fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f32, bool), EnvError> {
         if !self.ready {
             return Err(EnvError::EnvNotReady);
         }
@@ -157,7 +157,7 @@ impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
         self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action as usize];
         let t_probs = transitions.map(|a| a.0);
-        let random: f64 = self.dist.sample(&mut rand::thread_rng());
+        let random: f32 = self.dist.sample(&mut rand::thread_rng());
         let i = categorical_sample(t_probs.as_ref(), random);
         let (_p, s, r, t) = transitions[i];
         self.player_pos = s;

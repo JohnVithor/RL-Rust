@@ -30,8 +30,8 @@ pub fn ndarray_max<T: PartialOrd + Clone>(vec: &ndarray::Array2<T>) -> T {
     max.clone()
 }
 
-pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
-    let mut b: f64 = 0.0;
+pub fn categorical_sample(probs: &[f32], random: f32) -> usize {
+    let mut b: f32 = 0.0;
     let r: Vec<bool> = probs
         .iter()
         .map(|a| {

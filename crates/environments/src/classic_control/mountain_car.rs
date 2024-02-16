@@ -81,7 +81,7 @@ impl Env<MountainCarObservation, usize> for MountainCarEnv {
         self.state.clone()
     }
 
-    fn step(&mut self, action: usize) -> Result<(MountainCarObservation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(MountainCarObservation, f32, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }

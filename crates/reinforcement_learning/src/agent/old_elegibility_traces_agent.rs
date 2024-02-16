@@ -13,10 +13,10 @@ where
     [(); A::RANGE]: Sized,
 {
     // policy update
-    discount_factor: f64,
-    lambda_factor: f64,
-    trace: HashMap<T, [f64; A::RANGE]>,
-    get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
+    discount_factor: f32,
+    lambda_factor: f32,
+    trace: HashMap<T, [f32; A::RANGE]>,
+    get_next_q_value: fn(&[f32; A::RANGE], A, &[f32; A::RANGE]) -> f32,
     pub policy: &'a mut dyn DiscretePolicy<T, A>,
     action_selection: &'a mut dyn ActionSelection<T, A>,
 }
@@ -28,9 +28,9 @@ where
 {
     pub fn new(
         // policy update
-        discount_factor: f64,
-        lambda_factor: f64,
-        get_next_q_value: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64,
+        discount_factor: f32,
+        lambda_factor: f32,
+        get_next_q_value: fn(&[f32; A::RANGE], A, &[f32; A::RANGE]) -> f32,
         policy: &'a mut dyn DiscretePolicy<T, A>,
         action_selection: &'a mut dyn ActionSelection<T, A>,
     ) -> Self {
@@ -48,15 +48,15 @@ where
 impl<'a, T: Hash + PartialEq + Eq + Clone + Debug, A: DiscreteAction + Copy + Debug>
     DiscreteAgent<'a, T, A> for ElegibilityTracesAgent<'a, T, A>
 where
-    [f64]: Index<A, Output = f64>,
-    [f64]: IndexMut<A, Output = f64>,
+    [f32]: Index<A, Output = f32>,
+    [f32]: IndexMut<A, Output = f32>,
     [(); A::RANGE]: Sized,
 {
     fn get_policy(&self) -> &dyn DiscretePolicy<T, A> {
         self.policy
     }
 
-    fn set_future_q_value_func(&mut self, func: fn(&[f64; A::RANGE], A, &[f64; A::RANGE]) -> f64) {
+    fn set_future_q_value_func(&mut self, func: fn(&[f32; A::RANGE], A, &[f32; A::RANGE]) -> f32) {
         self.get_next_q_value = func;
     }
 
@@ -78,24 +78,24 @@ where
         &mut self,
         curr_obs: &T,
         curr_action: A,
-        reward: f64,
+        reward: f32,
         terminated: bool,
         next_obs: &T,
         next_action: A,
-    ) -> f64 {
-        let next_q_values: [f64; A::RANGE] = self.policy.get_values(next_obs);
-        let future_q_value: f64 = (self.get_next_q_value)(
+    ) -> f32 {
+        let next_q_values: [f32; A::RANGE] = self.policy.get_values(next_obs);
+        let future_q_value: f32 = (self.get_next_q_value)(
             &next_q_values,
             next_action,
             &self
                 .action_selection
                 .get_exploration_probs(next_obs, &next_q_values),
         );
-        let curr_q_values: [f64; A::RANGE] = self.policy.get_values(curr_obs);
-        let temporal_difference: f64 =
+        let curr_q_values: [f32; A::RANGE] = self.policy.get_values(curr_obs);
+        let temporal_difference: f32 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
-        let curr_trace: &mut [f64; A::RANGE] = self
+        let curr_trace: &mut [f32; A::RANGE] = self
             .trace
             .entry(curr_obs.clone())
             .or_insert([0.0; A::RANGE]);

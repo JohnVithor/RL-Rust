@@ -2,7 +2,7 @@ use environments::{classic_control::CartPoleEnv, Env};
 use ndarray::{Array1, Array2, Axis};
 use rand::Rng;
 use tch::{
-    nn::{self, ModuleT, OptimizerConfig},
+    nn::{self, Module, OptimizerConfig},
     Device, Tensor,
 };
 
@@ -10,19 +10,19 @@ pub struct ReplayBuffer {
     index: usize,
     pub size: usize,
     capacity: usize,
-    states: Array2<f64>,
-    actions: Array1<u8>,
-    rewards: Array1<f64>,
-    next_states: Array2<f64>,
-    dones: Array1<bool>,
+    states: Array2<f32>,
+    actions: Array1<i64>,
+    rewards: Array1<f32>,
+    next_states: Array2<f32>,
+    dones: Array1<u8>,
 }
 
 type BufferSample = (
-    Array2<f64>,
+    Array2<f32>,
+    Array1<i64>,
+    Array1<f32>,
+    Array2<f32>,
     Array1<u8>,
-    Array1<f64>,
-    Array2<f64>,
-    Array1<bool>,
 );
 
 impl ReplayBuffer {
@@ -32,6 +32,7 @@ impl ReplayBuffer {
             size: 0,
             capacity,
             states: Array2::zeros((capacity, obs_space)),
+            // actions: Array2::zeros((capacity, 1)),
             actions: Array1::zeros(capacity),
             rewards: Array1::zeros(capacity),
             next_states: Array2::zeros((capacity, obs_space)),
@@ -40,17 +41,17 @@ impl ReplayBuffer {
     }
     pub fn update(
         &mut self,
-        state: Array1<f64>,
-        action: u8,
-        reward: f64,
-        next_state: Array1<f64>,
+        state: Array1<f32>,
+        action: i64,
+        reward: f32,
+        next_state: Array1<f32>,
         is_terminal: bool,
     ) {
         self.states.row_mut(self.index).assign(&state);
         self.actions[self.index] = action;
         self.rewards[self.index] = reward;
         self.next_states.row_mut(self.index).assign(&next_state);
-        self.dones[self.index] = is_terminal;
+        self.dones[self.index] = is_terminal as u8;
 
         self.index = (self.index + 1) % self.capacity;
         if self.size < self.capacity {
@@ -60,7 +61,8 @@ impl ReplayBuffer {
 
     pub fn sample(&self, batch_size: usize) -> BufferSample {
         let mut rng = rand::thread_rng();
-        let indexes = rand::seq::index::sample(&mut rng, self.index, batch_size).into_vec();
+        // print!("sample {} {} {}", self.index, self.size, batch_size);
+        let indexes = rand::seq::index::sample(&mut rng, self.size, batch_size).into_vec();
         (
             self.states.select(Axis(0), &indexes),
             self.actions.select(Axis(0), &indexes),
@@ -73,73 +75,51 @@ impl ReplayBuffer {
 
 #[derive(Debug)]
 pub struct LinearNetwork {
-    l1: nn::Linear,
-    l2: nn::Linear,
-    l3: nn::Linear,
+    pub l1: nn::Linear,
+    pub l2: nn::Linear,
+    pub l3: nn::Linear,
 }
 
 impl LinearNetwork {
     pub fn new(vs: &nn::Path, input_size: i64, output_size: i64) -> Self {
-        let l1 = nn::linear(vs, input_size, 128, Default::default());
-        let l2 = nn::linear(vs, 128, 128, Default::default());
-        let l3 = nn::linear(vs, 128, output_size, Default::default());
+        let l1 = nn::linear(vs, input_size, 256, Default::default());
+        let l2 = nn::linear(vs, 256, 256, Default::default());
+        let l3 = nn::linear(vs, 256, output_size, Default::default());
         Self { l1, l2, l3 }
     }
 }
 
-impl nn::ModuleT for LinearNetwork {
-    fn forward_t(&self, xs: &Tensor, _train: bool) -> Tensor {
+impl nn::Module for LinearNetwork {
+    fn forward(&self, xs: &Tensor) -> Tensor {
         xs.apply(&self.l1)
             .relu()
             .apply(&self.l2)
             .relu()
             .apply(&self.l3)
     }
-
-    fn batch_accuracy_for_logits(
-        &self,
-        xs: &tch::Tensor,
-        ys: &tch::Tensor,
-        d: tch::Device,
-        batch_size: i64,
-    ) -> f64 {
-        let _no_grad = tch::no_grad_guard();
-        let mut sum_accuracy = 0f64;
-        let mut sample_count = 0f64;
-        for (xs, ys) in tch::data::Iter2::new(xs, ys, batch_size).return_smaller_last_batch() {
-            let acc = self
-                .forward_t(&xs.to_device(d), false)
-                .accuracy_for_logits(&ys.to_device(d));
-            let size = xs.size()[0] as f64;
-            sum_accuracy += f64::try_from(&acc).unwrap() * size;
-            sample_count += size;
-        }
-        sum_accuracy / sample_count
-    }
 }
 
 pub struct DeepQLearningAgent {
-    // learning_rate: f64,
-    pub epsilon: f64,
-    epsilon_decay: f64,
-    final_epsilon: f64,
-    discount_factor: f64,
+    pub epsilon: f32,
+    epsilon_decay: f32,
+    final_epsilon: f32,
+    discount_factor: f32,
     batch_size: usize,
-    // max_memory: i64,
-    // device: VarStore,
     network: LinearNetwork,
+    target_network: LinearNetwork,
     replay_buffer: ReplayBuffer,
     optimizer: nn::Optimizer,
     action_space: i64,
+    pub training_error: Vec<f64>,
 }
 
 impl DeepQLearningAgent {
     pub fn new(
-        learning_rate: f64,
-        epsilon: f64,
-        epsilon_decay: f64,
-        final_epsilon: f64,
-        discount_factor: f64,
+        learning_rate: f32,
+        epsilon: f32,
+        epsilon_decay: f32,
+        final_epsilon: f32,
+        discount_factor: f32,
         batch_size: usize,
         max_memory: i64,
         obs_space: i64,
@@ -147,25 +127,26 @@ impl DeepQLearningAgent {
     ) -> Self {
         let vs = nn::VarStore::new(Device::cuda_if_available());
         Self {
-            // learning_rate,
             epsilon,
             epsilon_decay,
             final_epsilon,
             discount_factor,
             batch_size,
             action_space,
-            // max_memory,
-            optimizer: nn::Adam::default().build(&vs, learning_rate).unwrap(),
+            optimizer: nn::Adam::default()
+                .build(&vs, learning_rate.into())
+                .unwrap(),
             network: LinearNetwork::new(&vs.root(), obs_space, action_space),
+            target_network: LinearNetwork::new(&vs.root(), obs_space, action_space),
             replay_buffer: ReplayBuffer::new(max_memory as usize, obs_space as usize),
-            // device: vs,
+            training_error: vec![],
         }
     }
     pub fn act(&self, obs: &Tensor) -> usize {
         let mut action = 0;
         tch::no_grad(|| {
-            let v = self.network.forward_t(obs, false).argmax(-1, false);
-            action = f64::try_from(v).unwrap() as usize;
+            let v = self.network.forward(obs).argmax(-1, false);
+            action = f32::try_from(v).unwrap() as usize;
         });
         action
     }
@@ -179,13 +160,13 @@ impl DeepQLearningAgent {
     pub fn remember(
         &mut self,
         state: Tensor,
-        action: u8,
-        reward: f64,
+        action: i64,
+        reward: f32,
         new_state: Tensor,
         is_terminal: bool,
     ) {
-        let nd_state: ndarray::ArrayD<f64> = (&state).try_into().unwrap();
-        let nd_n_state: ndarray::ArrayD<f64> = (&new_state).try_into().unwrap();
+        let nd_state: ndarray::ArrayD<f32> = (&state).try_into().unwrap();
+        let nd_n_state: ndarray::ArrayD<f32> = (&new_state).try_into().unwrap();
         self.replay_buffer.update(
             nd_state.into_dimensionality().unwrap(),
             action,
@@ -201,35 +182,55 @@ impl DeepQLearningAgent {
         let (states, actions, rewards, next_states, dones) =
             self.replay_buffer.sample(self.batch_size);
 
-        let states = Tensor::from_slice(states.as_slice().unwrap());
-        let actions = Tensor::from_slice(actions.as_slice().unwrap());
-        let rewards = Tensor::from_slice(rewards.as_slice().unwrap());
-        let next_states = Tensor::from_slice(next_states.as_slice().unwrap());
-        let dones = Tensor::from_slice(dones.as_slice().unwrap());
+        let states = Tensor::try_from(states).unwrap();
+        let actions = Tensor::try_from(actions).unwrap().unsqueeze(-1);
+        let rewards = Tensor::try_from(rewards).unwrap().unsqueeze(-1);
+        let next_states = Tensor::try_from(next_states).unwrap();
+        let dones = Tensor::try_from(dones).unwrap().unsqueeze(-1);
 
-        let q1 = self
-            .network
-            .forward_t(&states, true)
-            .gather(-1, &actions, false);
+        let q1 = self.network.forward(&states).gather(-1, &actions, false);
 
-        let mut target = Tensor::default();
-        tch::no_grad(|| {
-            let q2 = self
-                .network
-                .forward_t(&next_states, false)
+        let q2 = tch::no_grad(|| -> Tensor {
+            self.target_network
+                .forward(&next_states)
                 .gather(-1, &actions, false)
                 .max_dim(-1, true)
-                .0;
-            target = rewards + (1 - dones) * self.discount_factor * q2;
+                .0
         });
-        let temporal_difference_loss = q1.mse_loss(&target, tch::Reduction::Mean);
-        // self.training_error.append(temporal_difference_loss.item())
+
+        let target = (rewards + (1 - dones)) * (self.discount_factor * q2);
+        let temporal_difference_loss = q1.mse_loss(&target, tch::Reduction::Sum);
+        // println!("Training error: {:?}", temporal_difference_loss);
+        self.training_error
+            .push(temporal_difference_loss.double_value(&[]));
         self.optimizer.zero_grad();
         temporal_difference_loss.backward();
         self.optimizer.step();
     }
     pub fn decay_epsilon(&mut self) {
         self.epsilon = self.final_epsilon.max(self.epsilon - self.epsilon_decay)
+    }
+    pub fn sync(&mut self) {
+        tch::no_grad(|| {
+            self.target_network.l1.ws = self.network.l1.ws.clone(&self.target_network.l1.ws);
+            self.target_network.l2.ws = self.network.l2.ws.clone(&self.target_network.l2.ws);
+            self.target_network.l3.ws = self.network.l3.ws.clone(&self.target_network.l3.ws);
+            if let Some(t) = &self.network.l1.bs {
+                let mut tt = Tensor::default();
+                tt = t.clone(&tt);
+                self.target_network.l1.bs = Some(tt);
+            }
+            if let Some(t) = &self.network.l2.bs {
+                let mut tt = Tensor::default();
+                tt = t.clone(&tt);
+                self.target_network.l2.bs = Some(tt);
+            }
+            if let Some(t) = &self.network.l3.bs {
+                let mut tt = Tensor::default();
+                tt = t.clone(&tt);
+                self.target_network.l3.bs = Some(tt);
+            }
+        });
     }
 }
 
@@ -238,7 +239,7 @@ pub fn test_accurracy(
     agent: &mut DeepQLearningAgent,
     num_steps: usize,
     num_episodes: usize,
-) -> f64 {
+) -> f32 {
     let mut counter = 0;
     let mut nb_success = 0.0;
 
@@ -265,16 +266,17 @@ pub fn test_accurracy(
         }
         counter += 1
     }
-    nb_success / (num_episodes as f64)
+    nb_success / (num_episodes as f32)
 }
 fn main() {
     tch::manual_seed(42);
-    let learning_rate = 1e-4;
-    let start_epsilon = 1.0;
-    let final_epsilon = 0.1;
-    let nb_max_episodes = 400;
+    tch::maybe_init_cuda();
+    let learning_rate = 2.3e-3;
+    let start_epsilon = 0.5;
+    let final_epsilon = 0.05;
+    let nb_max_episodes = 2000;
     let discount_factor = 0.99;
-    let batch_size = 32;
+    let batch_size = 64;
     let max_memory = 10_000;
     let test_freq = 100;
 
@@ -283,7 +285,7 @@ fn main() {
     let mut agent = DeepQLearningAgent::new(
         learning_rate,
         start_epsilon,
-        start_epsilon / nb_max_episodes as f64,
+        start_epsilon / nb_max_episodes as f32,
         final_epsilon,
         discount_factor,
         batch_size,
@@ -310,7 +312,7 @@ fn main() {
                 state.pole_angle,
                 state.pole_angular_velocity,
             ]);
-            let action = agent.choose_action(&tensor);
+            let action: usize = agent.choose_action(&tensor);
             if let Ok((next_state, reward, t)) = env.step(action) {
                 is_terminal = t;
                 let n_tensor = Tensor::from_slice(&[
@@ -319,8 +321,11 @@ fn main() {
                     next_state.pole_angle,
                     next_state.pole_angular_velocity,
                 ]);
-                agent.remember(tensor, action as u8, reward, n_tensor, is_terminal);
+                agent.remember(tensor, action as i64, reward, n_tensor, is_terminal);
                 agent.update();
+                // if total_steps % 100 == 0 {
+                //     agent.sync();
+                // }
                 state = next_state;
                 total_steps += 1;
                 total_reward += reward;
@@ -333,15 +338,19 @@ fn main() {
         if (epi + 1) % test_freq == 0 {
             let accur = test_accurracy(&mut env, &mut agent, 400, 25);
             accuracies.push(accur);
-            let s: f64 = mean_rewards.iter().sum();
-            println!("step: {}, episode: {}, training reward mean: {}, test reward mean: {}, random move probability: {}",total_steps, epi+1, s/test_freq as f64, accur, agent.epsilon);
+            let s: f32 = mean_rewards.iter().sum();
+            println!("step: {}, episode: {}, training reward mean: {}, test reward mean: {}, random move probability: {}",total_steps, epi+1, s/test_freq as f32, accur, agent.epsilon);
             mean_rewards.clear();
         }
         rewards.push(total_reward);
         steps.push(episode_step);
     }
     println!(
-        "total steps: {}, total episodes: {}",
+        "total steps: {}, total episodes: {}, ",
         total_steps, nb_max_episodes
+    );
+    println!(
+        "training error mean: {}",
+        agent.training_error.iter().sum::<f64>() / nb_max_episodes as f64
     );
 }

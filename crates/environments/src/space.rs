@@ -7,7 +7,7 @@ pub enum SpaceType {
 
 pub enum SpaceTypeBounds {
     Discrete(usize),
-    Continuous(f64, f64),
+    Continuous(f32, f32),
 }
 
 pub struct SpaceInfo {

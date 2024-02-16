@@ -1,5 +1,5 @@
 use std::convert::From;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 use std::ops::{Add, Mul};
 
 use rand::distributions::Uniform;
@@ -11,12 +11,12 @@ use crate::Env;
 
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct PendulumState {
-    pub theta: f64,
-    pub theta_angular_velocity: f64,
+    pub theta: f32,
+    pub theta_angular_velocity: f32,
 }
 
 impl PendulumState {
-    pub fn new(theta: f64, theta_angular_velocity: f64) -> Self {
+    pub fn new(theta: f32, theta_angular_velocity: f32) -> Self {
         Self {
             theta,
             theta_angular_velocity,
@@ -34,9 +34,9 @@ impl Add for PendulumState {
     }
 }
 
-impl Mul<f64> for PendulumState {
+impl Mul<f32> for PendulumState {
     type Output = Self;
-    fn mul(self, other: f64) -> Self {
+    fn mul(self, other: f32) -> Self {
         Self {
             theta: self.theta * other,
             theta_angular_velocity: self.theta_angular_velocity * other,
@@ -46,13 +46,13 @@ impl Mul<f64> for PendulumState {
 
 #[derive(Debug, Copy, Clone, Default, PartialEq)]
 pub struct PendulumObservation {
-    pub theta_cos: f64,
-    pub theta_sin: f64,
-    pub theta_angular_velocity: f64,
+    pub theta_cos: f32,
+    pub theta_sin: f32,
+    pub theta_angular_velocity: f32,
 }
 
 impl PendulumObservation {
-    pub fn new(theta_cos: f64, theta_sin: f64, theta_angular_velocity: f64) -> Self {
+    pub fn new(theta_cos: f32, theta_sin: f32, theta_angular_velocity: f32) -> Self {
         Self {
             theta_cos,
             theta_sin,
@@ -77,18 +77,18 @@ pub struct PendulumEnv {
     max_steps: u128,
     curr_step: u128,
     state: PendulumState,
-    theta_dist: Uniform<f64>,
-    theta_angular_velocity_dist: Uniform<f64>,
+    theta_dist: Uniform<f32>,
+    theta_angular_velocity_dist: Uniform<f32>,
 }
 
 impl PendulumEnv {
     pub const ACTIONS: [&str; 1] = ["TORQUE"];
-    const GRAVITY: f64 = 9.8;
-    const MAX_SPEED: f64 = 8.0;
-    const MAX_TORQUE: f64 = 2.0;
-    const DT: f64 = 0.05;
-    const M: f64 = 1.0;
-    const L: f64 = 1.0;
+    const GRAVITY: f32 = 9.8;
+    const MAX_SPEED: f32 = 8.0;
+    const MAX_TORQUE: f32 = 2.0;
+    const DT: f32 = 0.05;
+    const M: f32 = 1.0;
+    const L: f32 = 1.0;
 
     pub fn new(max_steps: u128) -> Self {
         let mut env: PendulumEnv = Self {
@@ -111,7 +111,7 @@ impl PendulumEnv {
                 .sample(&mut rand::thread_rng()),
         }
     }
-    fn angle_normalize(x: f64) -> f64 {
+    fn angle_normalize(x: f32) -> f32 {
         ((x + PI) % (2.0 * PI)) - PI
     }
 }
@@ -122,7 +122,7 @@ impl Default for PendulumEnv {
     }
 }
 
-impl Env<PendulumObservation, f64> for PendulumEnv {
+impl Env<PendulumObservation, f32> for PendulumEnv {
     fn reset(&mut self) -> PendulumObservation {
         self.state = self.initialize();
         self.ready = true;
@@ -130,7 +130,7 @@ impl Env<PendulumObservation, f64> for PendulumEnv {
         self.state.into()
     }
 
-    fn step(&mut self, action: f64) -> Result<(PendulumObservation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: f32) -> Result<(PendulumObservation, f32, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }

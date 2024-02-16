@@ -8,8 +8,8 @@ pub fn argmax<T: PartialOrd>(values: impl Iterator<Item = T>) -> usize {
 }
 
 #[inline(always)]
-pub fn categorical_sample(probs: &[f64], random: f64) -> usize {
-    let mut b: f64 = 0.0;
+pub fn categorical_sample(probs: &[f32], random: f32) -> usize {
+    let mut b: f32 = 0.0;
     let r = probs.iter().map(|a| {
         b += a;
         b > random

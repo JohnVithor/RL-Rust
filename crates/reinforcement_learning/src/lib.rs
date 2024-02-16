@@ -6,3 +6,5 @@ pub mod action_selection;
 pub mod agent;
 
 pub mod trainer;
+
+pub type Float = f32;

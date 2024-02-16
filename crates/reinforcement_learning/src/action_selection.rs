@@ -6,8 +6,8 @@ pub use uniform_epsilon_greed::UniformEpsilonGreed;
 pub use upper_confidence_bound::UpperConfidenceBound;
 
 pub trait ActionSelection {
-    fn get_action(&mut self, obs: usize, values: &Array1<f64>) -> usize;
+    fn get_action(&mut self, obs: usize, values: &Array1<f32>) -> usize;
     fn update(&mut self);
-    fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f64>) -> Array1<f64>;
+    fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f32>) -> Array1<f32>;
     fn reset(&mut self);
 }

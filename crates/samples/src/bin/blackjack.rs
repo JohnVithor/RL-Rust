@@ -23,11 +23,11 @@ fn main() {
 
     let (agents, identifiers) = get_agents(cli);
 
-    let mut train_rewards: Vec<Vec<f64>> = vec![];
-    let mut train_episodes_length: Vec<Vec<f64>> = vec![];
-    let mut train_errors: Vec<Vec<f64>> = vec![];
-    let mut test_rewards: Vec<Vec<f64>> = vec![];
-    let mut test_episodes_length: Vec<Vec<f64>> = vec![];
+    let mut train_rewards: Vec<Vec<f32>> = vec![];
+    let mut train_episodes_length: Vec<Vec<f32>> = vec![];
+    let mut train_errors: Vec<Vec<f32>> = vec![];
+    let mut test_rewards: Vec<Vec<f32>> = vec![];
+    let mut test_episodes_length: Vec<Vec<f32>> = vec![];
 
     for (i, mut agent) in agents.into_iter().enumerate() {
         println!("{} has:", identifiers[i]);
@@ -76,7 +76,7 @@ fn main() {
             n_episodes as usize / moving_average_window,
             &training_reward,
         );
-        let v: Vec<f64> = training_length.iter().map(|x| *x as f64).collect();
+        let v: Vec<f32> = training_length.iter().map(|x| *x as f32).collect();
         train_rewards.push(ma_reward);
         let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
         train_episodes_length.push(ma_episode);
@@ -110,9 +110,9 @@ fn main() {
         }
         println!(
             " - win-rate of {:.2?}%\n - loss-rate of {:.2?}%\n - draw-rate {:.2?}%",
-            wins as f64 / LOOP_LEN as f64,
-            losses as f64 / LOOP_LEN as f64,
-            draws as f64 / LOOP_LEN as f64
+            wins as f32 / LOOP_LEN as f32,
+            losses as f32 / LOOP_LEN as f32,
+            draws as f32 / LOOP_LEN as f32
         );
 
         let (testing_rewards, testing_length) =
@@ -123,7 +123,7 @@ fn main() {
             &testing_rewards,
         );
         test_rewards.push(ma_reward);
-        let v: Vec<f64> = testing_length.iter().map(|x| *x as f64).collect();
+        let v: Vec<f32> = testing_length.iter().map(|x| *x as f32).collect();
         let ma_episode = moving_average(n_episodes as usize / moving_average_window, &v);
         test_episodes_length.push(ma_episode);
 
@@ -131,7 +131,7 @@ fn main() {
         for v in testing_rewards {
             mean_reward += v;
         }
-        mean_reward /= n_episodes as f64;
+        mean_reward /= n_episodes as f32;
         println!(" - mean reward of {:.2?}", mean_reward);
     }
     match save_json(

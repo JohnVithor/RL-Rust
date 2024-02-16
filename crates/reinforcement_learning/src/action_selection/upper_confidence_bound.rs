@@ -9,11 +9,11 @@ use super::ActionSelection;
 pub struct UpperConfidenceBound {
     action_counter: HashMap<usize, Array1<u128>>,
     t: u128,
-    confidence_level: f64,
+    confidence_level: f32,
 }
 
 impl UpperConfidenceBound {
-    pub fn new(confidence_level: f64) -> Self {
+    pub fn new(confidence_level: f32) -> Self {
         Self {
             action_counter: HashMap::default(),
             t: 1,
@@ -23,7 +23,7 @@ impl UpperConfidenceBound {
 }
 
 impl ActionSelection for UpperConfidenceBound {
-    fn get_action(&mut self, obs: usize, values: &Array1<f64>) -> usize {
+    fn get_action(&mut self, obs: usize, values: &Array1<f32>) -> usize {
         let obs_actions = self
             .action_counter
             .entry(obs)
@@ -32,7 +32,7 @@ impl ActionSelection for UpperConfidenceBound {
         for i in 0..values.len() {
             ucbs[i] = values[i]
                 + self.confidence_level
-                    * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt()
+                    * ((self.t as f32).ln() / (obs_actions[i] as f32 + f32::MIN_POSITIVE)).sqrt()
         }
         let action = argmax(ucbs.iter());
         obs_actions[action] += 1;
@@ -42,7 +42,7 @@ impl ActionSelection for UpperConfidenceBound {
 
     fn update(&mut self) {}
 
-    fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f64>) -> Array1<f64> {
+    fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f32>) -> Array1<f32> {
         let obs_actions = self
             .action_counter
             .entry(obs)
@@ -51,7 +51,7 @@ impl ActionSelection for UpperConfidenceBound {
         for i in 0..values.len() {
             ucbs[i] = values[i]
                 + self.confidence_level
-                    * ((self.t as f64).ln() / (obs_actions[i] as f64 + f64::MIN_POSITIVE)).sqrt()
+                    * ((self.t as f32).ln() / (obs_actions[i] as f32 + f32::MIN_POSITIVE)).sqrt()
         }
         let action = argmax(ucbs.iter());
         let mut probs = Array1::from_elem(values.len(), 0.0);

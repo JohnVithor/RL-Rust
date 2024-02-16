@@ -86,7 +86,7 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
         self.state.clone()
     }
 
-    fn step(&mut self, action: usize) -> Result<(CartPoleObservation, f64, bool), EnvError> {
+    fn step(&mut self, action: usize) -> Result<(CartPoleObservation, f32, bool), EnvError> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -135,9 +135,9 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
     fn observation_space(&self) -> SpaceInfo {
         SpaceInfo::new(vec![
             SpaceTypeBounds::Continuous(-4.8, 4.8),
-            SpaceTypeBounds::Continuous(f64::NEG_INFINITY, f64::INFINITY),
+            SpaceTypeBounds::Continuous(f32::NEG_INFINITY, f32::INFINITY),
             SpaceTypeBounds::Continuous(-0.418, 0.418),
-            SpaceTypeBounds::Continuous(f64::NEG_INFINITY, f64::INFINITY),
+            SpaceTypeBounds::Continuous(f32::NEG_INFINITY, f32::INFINITY),
         ])
     }
     fn action_space(&self) -> SpaceInfo {

@@ -13,18 +13,18 @@ pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn moving_average(window: usize, vector: &[f64]) -> Vec<f64> {
+pub fn moving_average(window: usize, vector: &[f32]) -> Vec<f32> {
     let mut aux: usize = 0;
-    let mut result: Vec<f64> = vec![];
+    let mut result: Vec<f32> = vec![];
     while aux < vector.len() {
         let end: usize = if aux + window < vector.len() {
             aux + window
         } else {
             vector.len()
         };
-        let slice: &[f64] = &vector[aux..end];
-        let r: f64 = slice.iter().sum();
-        result.push(r / window as f64);
+        let slice: &[f32] = &vector[aux..end];
+        let r: f32 = slice.iter().sum();
+        result.push(r / window as f32);
         aux = end;
     }
     result
@@ -51,31 +51,31 @@ pub struct Cli {
 
     /// Learning rate of the RL agent
     #[structopt(long = "learning_rate", default_value = "0.05")]
-    pub learning_rate: f64,
+    pub learning_rate: f32,
 
     /// Initial value for the exploration ratio
     #[structopt(long = "initial_epsilon", default_value = "1.0")]
-    pub initial_epsilon: f64,
+    pub initial_epsilon: f32,
 
     /// Value to determine percentage of episodes where exploration is possible;
     #[structopt(long = "exploration_time", default_value = "0.5")]
-    pub exploration_time: f64,
+    pub exploration_time: f32,
 
     /// Final value for the exploration ratio
     #[structopt(long = "final_epsilon", default_value = "0.0")]
-    pub final_epsilon: f64,
+    pub final_epsilon: f32,
 
     /// Confidence level for the UCB action selection strategy
     #[structopt(long = "confidence_level", default_value = "0.5")]
-    pub confidence_level: f64,
+    pub confidence_level: f32,
 
     /// Discont factor to be used on the temporal difference calculation
     #[structopt(long = "discount_factor", default_value = "0.95")]
-    pub discount_factor: f64,
+    pub discount_factor: f32,
 
     /// Lambda factor to be used on the eligibility traces algorithms
     #[structopt(long = "lambda_factor", default_value = "0.5")]
-    pub lambda_factor: f64,
+    pub lambda_factor: f32,
 
     /// Moving average window to be used on the visualization of results
     #[structopt(long = "moving_average_window", default_value = "100")]
@@ -87,7 +87,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),
@@ -101,7 +101,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),
@@ -115,7 +115,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),
@@ -153,7 +153,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),
@@ -168,7 +168,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),
@@ -183,7 +183,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
             Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f64)
+                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
         )),

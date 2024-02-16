@@ -14,8 +14,8 @@ pub enum CliffWalkingAction {
     UP,
 }
 
-impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
-    type Output = (usize, f64, bool);
+impl Index<CliffWalkingAction> for [(usize, f32, bool); 4] {
+    type Output = (usize, f32, bool);
 
     fn index(&self, index: CliffWalkingAction) -> &Self::Output {
         match index {
@@ -30,7 +30,7 @@ impl Index<CliffWalkingAction> for [(usize, f64, bool); 4] {
 #[derive(Debug, Clone)]
 pub struct CliffWalkingEnv {
     ready: bool,
-    obs: [[(usize, f64, bool); 4]; 48],
+    obs: [[(usize, f32, bool); 4]; 48],
     player_pos: usize,
     max_steps: u128,
     curr_step: u128,
@@ -42,12 +42,12 @@ impl CliffWalkingEnv {
     const GOAL_POSITION: usize = 47;
     const MAP: &'static str = "____________\n____________\n____________\n@!!!!!!!!!!G";
 
-    fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f64, bool) {
+    fn update_probability_matrix(row: usize, col: usize, action: usize) -> (usize, f32, bool) {
         let (newrow, newcol) = inc(4, 12, row, col, action);
         let newstate: usize = from_2d_to_1d(12, newrow, newcol);
         let win: bool = newstate == Self::GOAL_POSITION;
         let lose: bool = Self::CLIFF_POSITIONS.contains(&newstate);
-        let reward: f64 = if lose { -100.0 } else { -1.0 };
+        let reward: f32 = if lose { -100.0 } else { -1.0 };
         (newstate, reward, lose || win)
     }
 
@@ -55,10 +55,10 @@ impl CliffWalkingEnv {
         let ncol: usize = 12;
         let nrow: usize = 4;
         // calculating start positions probabilities
-        let mut initial_state_distrib: [f64; 48] = [0.0; 48];
+        let mut initial_state_distrib: [f32; 48] = [0.0; 48];
         initial_state_distrib[Self::START_POSITION] = 1.0;
         // calculating transitions probabilities
-        let mut obs: [[(usize, f64, bool); 4]; 48] = [[(0, 0.0, false); 4]; 48];
+        let mut obs: [[(usize, f32, bool); 4]; 48] = [[(0, 0.0, false); 4]; 48];
         for row in 0..nrow {
             for col in 0..ncol {
                 for a in 0..4 {
@@ -95,7 +95,7 @@ impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
         SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
-    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f64, bool), EnvError> {
+    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f32, bool), EnvError> {
         if !self.ready {
             return Err(EnvError::EnvNotReady);
         }
@@ -104,7 +104,7 @@ impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
             return Ok((0, -100.0, true));
         }
         self.curr_step += 1;
-        let obs: (usize, f64, bool) = self.obs[self.player_pos][action];
+        let obs: (usize, f32, bool) = self.obs[self.player_pos][action];
         self.player_pos = obs.0;
         if obs.2 {
             self.ready = false;

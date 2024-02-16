@@ -10,23 +10,23 @@ use super::GetNextQValue;
 pub struct ElegibilityTracesAgent {
     action_selection: Box<dyn ActionSelection>,
     next_value_function: GetNextQValue,
-    learning_rate: f64,
-    default_values: Array1<f64>,
-    default_value: f64,
-    discount_factor: f64,
-    lambda_factor: f64,
-    trace: HashMap<usize, Array1<f64>>,
-    policy: Array1<Array1<f64>>,
+    learning_rate: f32,
+    default_values: Array1<f32>,
+    default_value: f32,
+    discount_factor: f32,
+    lambda_factor: f32,
+    trace: HashMap<usize, Array1<f32>>,
+    policy: Array1<Array1<f32>>,
 }
 
 impl ElegibilityTracesAgent {
     pub fn new(
         action_selection: Box<dyn ActionSelection>,
         next_value_function: GetNextQValue,
-        learning_rate: f64,
-        default_value: f64,
-        discount_factor: f64,
-        lambda_factor: f64,
+        learning_rate: f32,
+        default_value: f32,
+        discount_factor: f32,
+        lambda_factor: f32,
     ) -> Self {
         Self {
             action_selection,
@@ -53,14 +53,14 @@ impl DiscreteAgent for ElegibilityTracesAgent {
         &mut self,
         curr_obs: usize,
         curr_action: usize,
-        reward: f64,
+        reward: f32,
         terminated: bool,
         next_obs: usize,
         next_action: usize,
-    ) -> f64 {
-        let next_q_values: &Array1<f64> = self.policy.get(next_obs).unwrap_or(&self.default_values);
+    ) -> f32 {
+        let next_q_values: &Array1<f32> = self.policy.get(next_obs).unwrap_or(&self.default_values);
 
-        let future_q_value: f64 = (self.next_value_function)(
+        let future_q_value: f32 = (self.next_value_function)(
             next_q_values,
             next_action,
             &self
@@ -68,8 +68,8 @@ impl DiscreteAgent for ElegibilityTracesAgent {
                 .get_exploration_probs(next_obs, next_q_values),
         );
 
-        let curr_q_values: &Array1<f64> = self.policy.get(curr_obs).unwrap_or(&self.default_values);
-        let temporal_difference: f64 =
+        let curr_q_values: &Array1<f32> = self.policy.get(curr_obs).unwrap_or(&self.default_values);
+        let temporal_difference: f32 =
             reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
 
         let curr_trace = self

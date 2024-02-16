@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use environments::{env::Env, space::SpaceType};
 
 use crate::agent::DiscreteAgent;
-pub type TrainResults = (Vec<f64>, Vec<u128>, Vec<f64>, Vec<f64>, Vec<f64>);
+pub type TrainResults = (Vec<f32>, Vec<u128>, Vec<f32>, Vec<f32>, Vec<f32>);
 
 pub struct DiscreteTrainer<Obs, Action> {
     // action_to_repr: Rc<dyn Fn(&Action) -> usize>,
@@ -38,11 +38,11 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         if env.action_space().get_type() != SpaceType::Discrete {
             panic!("action_space must be of type SpaceType::Discrete");
         }
-        let mut training_reward: Vec<f64> = vec![];
+        let mut training_reward: Vec<f32> = vec![];
         let mut training_length: Vec<u128> = vec![];
-        let mut training_error: Vec<f64> = vec![];
-        let mut evaluation_reward: Vec<f64> = vec![];
-        let mut evaluation_length: Vec<f64> = vec![];
+        let mut training_error: Vec<f32> = vec![];
+        let mut evaluation_reward: Vec<f32> = vec![];
+        let mut evaluation_length: Vec<f32> = vec![];
 
         agent.prepare(
             env.observation_space().get_discrete_combinations(),
@@ -51,7 +51,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
 
         for episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
-            let mut epi_reward: f64 = 0.0;
+            let mut epi_reward: f32 = 0.0;
             let mut curr_obs: Obs = env.reset();
             let mut curr_action_repr: usize = agent.get_action((self.obs_to_repr)(&curr_obs));
 
@@ -90,8 +90,8 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
             }
             if episode % eval_at == 0 {
                 let (r, l) = self.evaluate(env, agent, eval_for);
-                let mr: f64 = r.iter().sum::<f64>() / r.len() as f64;
-                let ml: f64 = l.iter().sum::<u128>() as f64 / l.len() as f64;
+                let mr: f32 = r.iter().sum::<f32>() / r.len() as f32;
+                let ml: f32 = l.iter().sum::<u128>() as f32 / l.len() as f32;
                 evaluation_reward.push(mr);
                 evaluation_length.push(ml);
             }
@@ -111,12 +111,12 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         env: &mut dyn Env<Obs, Action>,
         agent: &mut dyn DiscreteAgent,
         n_episodes: u128,
-    ) -> (Vec<f64>, Vec<u128>) {
-        let mut reward_history: Vec<f64> = vec![];
+    ) -> (Vec<f32>, Vec<u128>) {
+        let mut reward_history: Vec<f32> = vec![];
         let mut episode_length: Vec<u128> = vec![];
         for _episode in 0..n_episodes {
             let mut action_counter: u128 = 0;
-            let mut epi_reward: f64 = 0.0;
+            let mut epi_reward: f32 = 0.0;
             let obs_repr = (self.obs_to_repr)(&env.reset());
             let action_repr: usize = agent.get_action(obs_repr);
             let mut curr_action = (self.repr_to_action)(action_repr);

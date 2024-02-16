@@ -17,9 +17,9 @@ use tch::{
 };
 
 // The impact of the q value of the next state on the current state's q value.
-const GAMMA: f64 = 0.99;
+const GAMMA: f32 = 0.99;
 // The weight for updating the target networks.
-const TAU: f64 = 0.005;
+const TAU: f32 = 0.005;
 // The capacity of the replay buffer used for sampling training data.
 const REPLAY_BUFFER_CAPACITY: usize = 100_000;
 // The training batch size for each training iteration.
@@ -32,22 +32,22 @@ const EPISODE_LENGTH: usize = 200;
 const TRAINING_ITERATIONS: usize = 200;
 
 // Ornstein-Uhlenbeck process parameters.
-const MU: f64 = 0.0;
-const THETA: f64 = 0.15;
-const SIGMA: f64 = 0.1;
+const MU: f32 = 0.0;
+const THETA: f32 = 0.15;
+const SIGMA: f32 = 0.1;
 
-const ACTOR_LEARNING_RATE: f64 = 1e-4;
-const CRITIC_LEARNING_RATE: f64 = 1e-3;
+const ACTOR_LEARNING_RATE: f32 = 1e-4;
+const CRITIC_LEARNING_RATE: f32 = 1e-3;
 
 struct OuNoise {
-    mu: f64,
-    theta: f64,
-    sigma: f64,
+    mu: f32,
+    theta: f32,
+    sigma: f32,
     state: Tensor,
 }
 
 impl OuNoise {
-    fn new(mu: f64, theta: f64, sigma: f64, num_actions: usize) -> Self {
+    fn new(mu: f32, theta: f32, sigma: f32, num_actions: usize) -> Self {
         let state = Tensor::ones([num_actions as _], FLOAT_CPU);
         Self {
             mu,
@@ -88,7 +88,7 @@ impl ReplayBuffer {
         }
     }
 
-    fn push(&mut self, obs: &Tensor, actions: u8, reward: f64, next_obs: &Tensor) {
+    fn push(&mut self, obs: &Tensor, actions: u8, reward: f32, next_obs: &Tensor) {
         let i = self.i % self.capacity;
         self.obs.get(i as _).copy_(obs);
         self.rewards.get(i as _).copy_(&Tensor::from(reward));
@@ -124,7 +124,7 @@ struct Actor {
     num_obs: usize,
     num_actions: usize,
     opt: nn::Optimizer,
-    learning_rate: f64,
+    learning_rate: f32,
 }
 
 impl Clone for Actor {
@@ -136,10 +136,10 @@ impl Clone for Actor {
 }
 
 impl Actor {
-    fn new(num_obs: usize, num_actions: usize, learning_rate: f64) -> Self {
+    fn new(num_obs: usize, num_actions: usize, learning_rate: f32) -> Self {
         let var_store = nn::VarStore::new(tch::Device::Cpu);
         let opt = nn::Adam::default()
-            .build(&var_store, learning_rate)
+            .build(&var_store, learning_rate.into())
             .unwrap();
         let p = &var_store.root();
         Self {
@@ -176,7 +176,7 @@ struct Critic {
     num_obs: usize,
     num_actions: usize,
     opt: nn::Optimizer,
-    learning_rate: f64,
+    learning_rate: f32,
 }
 
 impl Clone for Critic {
@@ -188,7 +188,7 @@ impl Clone for Critic {
 }
 
 impl Critic {
-    fn new(num_obs: usize, num_actions: usize, learning_rate: f64) -> Self {
+    fn new(num_obs: usize, num_actions: usize, learning_rate: f32) -> Self {
         let var_store = nn::VarStore::new(tch::Device::Cpu);
         let opt = nn::Adam::default().build(&var_store, 1e-3).unwrap();
         let p = &var_store.root();
@@ -219,7 +219,7 @@ impl Critic {
     }
 }
 
-fn track(dest: &mut nn::VarStore, src: &nn::VarStore, tau: f64) {
+fn track(dest: &mut nn::VarStore, src: &nn::VarStore, tau: f32) {
     tch::no_grad(|| {
         for (dest, src) in dest
             .trainable_variables()
@@ -244,8 +244,8 @@ struct Agent {
 
     train: bool,
 
-    gamma: f64,
-    tau: f64,
+    gamma: f32,
+    tau: f32,
 }
 
 impl Agent {
@@ -255,8 +255,8 @@ impl Agent {
         ou_noise: OuNoise,
         replay_buffer_capacity: usize,
         train: bool,
-        gamma: f64,
-        tau: f64,
+        gamma: f32,
+        tau: f32,
     ) -> Self {
         let actor_target = actor.clone();
         let critic_target = critic.clone();
@@ -283,7 +283,7 @@ impl Agent {
         actions
     }
 
-    fn remember(&mut self, obs: &Tensor, actions: u8, reward: f64, next_obs: &Tensor) {
+    fn remember(&mut self, obs: &Tensor, actions: u8, reward: f32, next_obs: &Tensor) {
         self.replay_buffer.push(obs, actions, reward, next_obs);
     }
 

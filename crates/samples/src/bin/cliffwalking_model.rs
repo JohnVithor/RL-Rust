@@ -34,31 +34,31 @@
 
 //     /// Learning rate of the RL agent
 //     #[structopt(long = "learning_rate", default_value = "0.05")]
-//     learning_rate: f64,
+//     learning_rate: f32,
 
 //     /// Initial value for the exploration ratio
 //     #[structopt(long = "initial_epsilon", default_value = "1.0")]
-//     initial_epsilon: f64,
+//     initial_epsilon: f32,
 
 //     /// Value to determine percentage of episodes where exploration is possible;
 //     #[structopt(long = "exploration_time", default_value = "0.5")]
-//     exploration_time: f64,
+//     exploration_time: f32,
 
 //     /// Final value for the exploration ratio
 //     #[structopt(long = "final_epsilon", default_value = "0.0")]
-//     final_epsilon: f64,
+//     final_epsilon: f32,
 
 //     /// Confidence level for the UCB action selection strategy
 //     #[structopt(long = "confidence_level", default_value = "0.5")]
-//     confidence_level: f64,
+//     confidence_level: f32,
 
 //     /// Discont factor to be used on the temporal difference calculation
 //     #[structopt(long = "discount_factor", default_value = "0.95")]
-//     discount_factor: f64,
+//     discount_factor: f32,
 
 //     /// Lambda factor to be used on the eligibility traces algorithms
 //     #[structopt(long = "lambda_factor", default_value = "0.5")]
-//     lambda_factor: f64,
+//     lambda_factor: f32,
 
 //     /// Moving average window to be used on the visualization of results
 //     #[structopt(long = "moving_average_window", default_value = "100")]
@@ -71,23 +71,23 @@
 //     let n_episodes: u128 = cli.n_episodes;
 //     let max_steps: u128 = cli.max_steps;
 
-//     let learning_rate: f64 = cli.learning_rate;
-//     let initial_epsilon: f64 = cli.initial_epsilon;
-//     let epsilon_decay: f64 = initial_epsilon / (cli.exploration_time * n_episodes as f64);
-//     let final_epsilon: f64 = cli.final_epsilon;
-//     let _confidence_level: f64 = cli.confidence_level;
-//     let discount_factor: f64 = cli.discount_factor;
-//     let _lambda_factor: f64 = cli.lambda_factor;
+//     let learning_rate: f32 = cli.learning_rate;
+//     let initial_epsilon: f32 = cli.initial_epsilon;
+//     let epsilon_decay: f32 = initial_epsilon / (cli.exploration_time * n_episodes as f32);
+//     let final_epsilon: f32 = cli.final_epsilon;
+//     let _confidence_level: f32 = cli.confidence_level;
+//     let discount_factor: f32 = cli.discount_factor;
+//     let _lambda_factor: f32 = cli.lambda_factor;
 
 //     let moving_average_window: usize = cli.moving_average_window;
 
 //     let mut env = CliffWalkingEnv::new(max_steps);
 
-//     let mut train_rewards: Vec<Vec<f64>> = vec![];
-//     let mut train_episodes_length: Vec<Vec<f64>> = vec![];
-//     let mut train_errors: Vec<Vec<f64>> = vec![];
-//     let mut test_rewards: Vec<Vec<f64>> = vec![];
-//     let mut test_episodes_length: Vec<Vec<f64>> = vec![];
+//     let mut train_rewards: Vec<Vec<f32>> = vec![];
+//     let mut train_episodes_length: Vec<Vec<f32>> = vec![];
+//     let mut train_errors: Vec<Vec<f32>> = vec![];
+//     let mut test_rewards: Vec<Vec<f32>> = vec![];
+//     let mut test_episodes_length: Vec<Vec<f32>> = vec![];
 
 //     const SIZE: usize = 4;
 
@@ -180,7 +180,7 @@
 //             train_rewards.push(ma_reward);
 //             let ma_episode = moving_average(
 //                 n_episodes as usize / moving_average_window,
-//                 &episode_length.iter().map(|x| *x as f64).collect(),
+//                 &episode_length.iter().map(|x| *x as f32).collect(),
 //             );
 //             train_episodes_length.push(ma_episode);
 
@@ -195,7 +195,7 @@
 //             test_rewards.push(ma_reward);
 //             let ma_episode = moving_average(
 //                 n_episodes as usize / moving_average_window,
-//                 &episode_length.iter().map(|x| *x as f64).collect(),
+//                 &episode_length.iter().map(|x| *x as f32).collect(),
 //             );
 //             test_episodes_length.push(ma_episode);
 

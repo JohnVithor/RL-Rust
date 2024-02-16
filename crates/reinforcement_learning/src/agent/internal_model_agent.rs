@@ -44,11 +44,11 @@
 //         &mut self,
 //         curr_obs: &T,
 //         curr_action: usize,
-//         reward: f64,
+//         reward: f32,
 //         terminated: bool,
 //         next_obs: &T,
 //         next_action: usize,
-//     ) -> f64 {
+//     ) -> f32 {
 //         let td = self.agent.borrow_mut().update(
 //             curr_obs,
 //             curr_action,

@@ -13,8 +13,8 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
     ready: bool,
-    initial_state_distrib: [f64; 500],
-    obs: [[(usize, f64, bool); 6]; 500],
+    initial_state_distrib: [f32; 500],
+    obs: [[(usize, f32, bool); 6]; 500],
     curr_obs: usize,
     max_steps: u128,
     curr_step: u128,
@@ -58,9 +58,9 @@ impl TaxiEnv {
     }
 
     pub fn new(max_steps: u128) -> Self {
-        let mut initial_state_distrib: [f64; 500] = [0.0; 500];
-        let mut obs: [[(usize, f64, bool); 6]; 500] = [[(0, 0.0, false); 6]; 500];
-        let mut sum: f64 = 0.0;
+        let mut initial_state_distrib: [f32; 500] = [0.0; 500];
+        let mut obs: [[(usize, f32, bool); 6]; 500] = [[(0, 0.0, false); 6]; 500];
+        let mut sum: f32 = 0.0;
         for row in 0..5 {
             for col in 0..5 {
                 for pass_loc in 0..5 {
@@ -136,15 +136,15 @@ impl TaxiEnv {
 
 impl Env<usize, usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
-        let dist: Uniform<f64> = Uniform::from(0.0..1.0);
-        let random: f64 = dist.sample(&mut rand::thread_rng());
+        let dist: Uniform<f32> = Uniform::from(0.0..1.0);
+        let random: f32 = dist.sample(&mut rand::thread_rng());
         self.curr_obs = categorical_sample(self.initial_state_distrib.as_ref(), random);
         self.ready = true;
         self.curr_step = 0;
         self.curr_obs
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f64, bool), crate::EnvError> {
+    fn step(&mut self, action: usize) -> Result<(usize, f32, bool), crate::EnvError> {
         if !self.ready {
             return Err(EnvNotReady);
         }
@@ -153,7 +153,7 @@ impl Env<usize, usize> for TaxiEnv {
             return Ok((0, 0.0, true));
         }
         self.curr_step += 1;
-        let obs: (usize, f64, bool) = self.obs[self.curr_obs][action];
+        let obs: (usize, f32, bool) = self.obs[self.curr_obs][action];
         self.curr_obs = obs.0;
         if obs.2 {
             self.ready = false;

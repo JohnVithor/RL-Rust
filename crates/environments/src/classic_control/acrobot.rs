@@ -223,7 +223,7 @@ impl Env<AcrobotObservation, usize> for AcrobotEnv {
         self.state.into()
     }
 
-    fn step(&mut self, action: usize) -> Result<(AcrobotObservation, f64, bool), EnvNotReady> {
+    fn step(&mut self, action: usize) -> Result<(AcrobotObservation, f32, bool), EnvNotReady> {
         if !self.ready {
             return Err(EnvNotReady);
         }

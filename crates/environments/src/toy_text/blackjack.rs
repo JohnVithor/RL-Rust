@@ -136,7 +136,7 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
     fn step(
         &mut self,
         action: BlackJackAction,
-    ) -> Result<(BlackJackObservation, f64, bool), EnvError> {
+    ) -> Result<(BlackJackObservation, f32, bool), EnvError> {
         if !self.ready {
             return Err(EnvError::EnvNotReady);
         }

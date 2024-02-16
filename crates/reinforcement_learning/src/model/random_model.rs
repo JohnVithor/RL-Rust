@@ -9,7 +9,7 @@ pub struct RandomExperienceReplay<
     A: Default + Copy + Clone,
     const SIZE: usize,
 > {
-    values: [(T, A, f64, T, A); SIZE],
+    values: [(T, A, f32, T, A); SIZE],
     curr_size: usize,
     curr_pos: usize,
 }
@@ -29,12 +29,12 @@ impl<T: Default + Copy + Clone + Debug, A: Default + Copy + Clone, const SIZE: u
 impl<T: Default + Copy + Clone + Debug, A: Default + Copy + Clone, const SIZE: usize> Model<T, A>
     for RandomExperienceReplay<T, A, SIZE>
 {
-    fn get_info(&self) -> (T, A, f64, T, A) {
+    fn get_info(&self) -> (T, A, f32, T, A) {
         let pos: usize = rand::thread_rng().gen_range(0..self.curr_size);
         self.values[pos]
     }
 
-    fn add_info(&mut self, obs: T, action: A, reward: f64, next_obs: T, next_action: A) {
+    fn add_info(&mut self, obs: T, action: A, reward: f32, next_obs: T, next_action: A) {
         self.values[self.curr_pos] = (obs, action, reward, next_obs, next_action);
         self.curr_pos = (self.curr_pos + 1) % SIZE;
         self.curr_size = (self.curr_size + 1).min(SIZE - 1);
