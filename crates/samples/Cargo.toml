@@ -15,7 +15,7 @@ ndarray = "0.15"
 rand = "0.8"
 ndarray-rand = "0.14"
 cpython = "0.7"
-
+pyo3 = {version = "0.20", features=["auto-initialize"]}
 
 [dev-dependencies]
 torch-sys = "0.15"

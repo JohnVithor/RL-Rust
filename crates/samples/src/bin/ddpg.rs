@@ -345,7 +345,7 @@ pub fn run() {
     let num_actions = env.action_space().data.len();
 
     let actor = Actor::new(num_obs, num_actions, ACTOR_LEARNING_RATE);
-    let critic = Critic::new(num_obs, num_actions, CRITIC_LEARNING_RATE);
+    let critic: Critic = Critic::new(num_obs, num_actions, CRITIC_LEARNING_RATE);
     let ou_noise = OuNoise::new(MU, THETA, SIGMA, num_actions);
     let mut agent = Agent::new(
         actor,

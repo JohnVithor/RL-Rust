@@ -1,4 +1,4 @@
-use environments::{classic_control::CartPoleEnv, Env};
+use pyo3::prelude::*;
 use rand::Rng;
 use std::{collections::HashMap, collections::VecDeque};
 use tch::{Device, Kind, Tensor};
@@ -118,10 +118,70 @@ impl Compute for Linear {
 
 pub fn mse(target: &Tensor, pred: &Tensor) -> Tensor {
     pred.smooth_l1_loss(target, tch::Reduction::Mean, 0.0)
+    //(target - pred).square().mean(Kind::Float)
 }
 
 pub fn zeros(size: &[i64]) -> Tensor {
     Tensor::zeros(size, (Kind::Float, Device::Cpu))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// RL Functions
+pub fn py_proc(cmd: &str) {
+    Python::with_gil(|py| {
+        py.run(cmd, None, None).unwrap();
+    })
+}
+
+pub fn py_getf32(var: &str) -> f32 {
+    Python::with_gil(|py: Python<'_>| {
+        let result = py.eval(var, None, None).unwrap();
+        let out: f32 = result.extract().unwrap();
+        out
+    })
+}
+
+pub fn py_getf32vec(var: &str) -> Tensor {
+    Python::with_gil(|py: Python<'_>| {
+        let result = py.eval(var, None, None).unwrap();
+        let out: Vec<f32> = result.extract().unwrap();
+        Tensor::from_slice(&out)
+    })
+}
+
+pub fn gym_make(game: &str) {
+    pyo3::prepare_freethreaded_python();
+    py_proc("import warnings");
+    py_proc("warnings.filterwarnings('ignore')");
+    py_proc("import gymnasium as gym");
+    py_proc("import numpy as np");
+    let cmd = format!("env = gym.make('{}')", game);
+    py_proc(cmd.as_str());
+}
+
+pub fn reset() -> Tensor {
+    py_proc("observation, info = env.reset(seed=42)");
+    py_getf32vec("observation")
+}
+
+pub fn sample_discrete_action() -> i64 {
+    py_proc("action = env.action_space.sample()");
+    py_getf32("action") as i64
+}
+
+pub fn step(action: i64) -> (Tensor, f32, bool) {
+    let cmd = format!(
+        "observation, reward, termination, truncation, _ = env.step({})",
+        action
+    );
+    py_proc(&cmd.to_string());
+    let state = py_getf32vec("observation");
+    let reward = py_getf32("reward");
+    let termimantion = py_getf32("termination") != 0.0;
+    let truncation = py_getf32("truncation") != 0.0;
+    let done = termimantion || truncation;
+    (state, reward, done)
 }
 
 pub fn epsilon_greedy(mem: &Memory, policy: &dyn Compute, epsilon: f32, obs: &Tensor) -> i64 {
@@ -131,7 +191,7 @@ pub fn epsilon_greedy(mem: &Memory, policy: &dyn Compute, epsilon: f32, obs: &Te
         let value = tch::no_grad(|| policy.forward(mem, obs));
         value.argmax(1, false).int64_value(&[])
     } else {
-        rng.gen_range(0..2).into()
+        sample_discrete_action()
     }
 }
 
@@ -258,46 +318,17 @@ impl ReplayMemory {
     }
 
     pub fn init(&mut self) {
-        let mut env = CartPoleEnv::default();
-        let mut state = {
-            let s = env.reset();
-            Tensor::from_slice(&[
-                s.cart_position,
-                s.cart_velocity,
-                s.pole_angle,
-                s.pole_angular_velocity,
-            ])
-        };
+        let mut state = reset();
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
-            let action = rand::thread_rng().gen_range(0..2);
-            let (state_, reward, done) = {
-                let (state_, reward, done) = env.step(action).unwrap();
-                (
-                    Tensor::from_slice(&[
-                        state_.cart_position,
-                        state_.cart_velocity,
-                        state_.pole_angle,
-                        state_.pole_angular_velocity,
-                    ]),
-                    reward,
-                    done,
-                )
-            };
+            let action = sample_discrete_action();
+            let (state_, reward, done) = step(action);
             if s % stepskip == 0 {
-                let t = Transition::new(&state, action as i64, reward, done, &state_);
+                let t = Transition::new(&state, action, reward, done, &state_);
                 self.add(t);
             }
             if done {
-                state = {
-                    let s = env.reset();
-                    Tensor::from_slice(&[
-                        s.cart_position,
-                        s.cart_velocity,
-                        s.pole_angle,
-                        s.pole_angular_velocity,
-                    ])
-                };
+                state = reset();
             } else {
                 state = state_;
             }
@@ -353,32 +384,12 @@ fn main() {
     let mut nepisodes = 0;
     let one: Tensor = Tensor::from(1.0);
 
-    let mut env = CartPoleEnv::default();
-    state = {
-        let s = env.reset();
-        Tensor::from_slice(&[
-            s.cart_position,
-            s.cart_velocity,
-            s.pole_angle,
-            s.pole_angular_velocity,
-        ])
-    };
+    gym_make("CartPole-v1");
+    state = reset();
     mem_replay.init();
     loop {
         action = epsilon_greedy(&mem_policy, &policy_net, epsilon, &state);
-        (state_, reward, done) = {
-            let (state_, reward, done) = env.step(action as usize).unwrap();
-            (
-                Tensor::from_slice(&[
-                    state_.cart_position,
-                    state_.cart_velocity,
-                    state_.pole_angle,
-                    state_.pole_angular_velocity,
-                ]),
-                reward,
-                done,
-            )
-        };
+        (state_, reward, done) = step(action);
         let t = Transition::new(&state, action, reward, done, &state_);
         mem_replay.add(t);
         ep_return += reward;
@@ -388,17 +399,9 @@ fn main() {
             nepisodes += 1;
             ep_returns.add(ep_return);
             ep_return = 0.0;
-            state = {
-                let s = env.reset();
-                Tensor::from_slice(&[
-                    s.cart_position,
-                    s.cart_velocity,
-                    s.pole_angle,
-                    s.pole_angular_velocity,
-                ])
-            };
+            state = reset();
 
-            let avg = ep_returns.average(); // sum() / 50.0;
+            let avg = ep_returns.average();
             if nepisodes % 100 == 0 {
                 println!(
                     "Episode: {}, Avg Return: {} Epsilon: {}",
