@@ -360,6 +360,8 @@ impl Compute for Policy {
 }
 
 fn main() {
+    tch::manual_seed(42);
+    tch::maybe_init_cuda();
     const MEM_SIZE: usize = 30000;
     const MIN_MEM_SIZE: usize = 5000;
     const GAMMA: f32 = 0.99;

@@ -312,8 +312,8 @@ struct Policy {
 
 impl Policy {
     fn new(mem: &mut Memory, nfeatures: i64, nactions: i64) -> Policy {
-        let l1 = Linear::new(mem, nfeatures, 128);
-        let l2 = Linear::new(mem, 128, nactions);
+        let l1 = Linear::new(mem, nfeatures, 256);
+        let l2 = Linear::new(mem, 256, nactions);
 
         Self { l1, l2 }
     }
@@ -329,12 +329,14 @@ impl Compute for Policy {
 }
 
 fn main() {
-    const MEM_SIZE: usize = 30000;
-    const MIN_MEM_SIZE: usize = 5000;
+    tch::manual_seed(42);
+    tch::maybe_init_cuda();
+    const MEM_SIZE: usize = 2000;
+    const MIN_MEM_SIZE: usize = 1000;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
-    const LEARNING_RATE: f32 = 0.00005;
-    let mut epsilon: f32 = 1.0;
+    const LEARNING_RATE: f32 = 0.005;
+    let mut epsilon: f32 = 0.5;
 
     let mut state: Tensor;
     let mut action: i64;
@@ -409,7 +411,7 @@ fn main() {
                 println!("Solved at episode {}", nepisodes);
                 break;
             }
-            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.5);
+            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.25);
         }
 
         let (b_state, b_action, b_reward, b_done, b_state_) = mem_replay.sample_batch(128);

@@ -6,6 +6,8 @@ use tch::{
     Device, Tensor,
 };
 
+const DEVICE: Device = Device::Cpu;
+
 pub struct ReplayBuffer {
     index: usize,
     pub size: usize,
@@ -32,13 +34,13 @@ impl ReplayBuffer {
             size: 0,
             capacity,
             states: Array2::zeros((capacity, obs_space)),
-            // actions: Array2::zeros((capacity, 1)),
             actions: Array1::zeros(capacity),
             rewards: Array1::zeros(capacity),
             next_states: Array2::zeros((capacity, obs_space)),
             dones: Array1::default(capacity),
         }
     }
+
     pub fn update(
         &mut self,
         state: Array1<f32>,
@@ -61,7 +63,6 @@ impl ReplayBuffer {
 
     pub fn sample(&self, batch_size: usize) -> BufferSample {
         let mut rng = rand::thread_rng();
-        // print!("sample {} {} {}", self.index, self.size, batch_size);
         let indexes = rand::seq::index::sample(&mut rng, self.size, batch_size).into_vec();
         (
             self.states.select(Axis(0), &indexes),
@@ -94,24 +95,26 @@ impl Clone for LinearNetwork {
 
 impl LinearNetwork {
     fn new(num_obs: usize, num_actions: usize, learning_rate: f32) -> Self {
-        let var_store = nn::VarStore::new(tch::Device::Cuda(0));
+        let var_store = nn::VarStore::new(DEVICE);
         let opt = nn::Adam::default()
             .build(&var_store, learning_rate.into())
             .unwrap();
         let p = &var_store.root();
         Self {
             network: nn::seq()
-                .add(nn::linear(p / "al1", num_obs as _, 400, Default::default()))
-                .add_fn(|xs| xs.relu())
-                .add(nn::linear(p / "al2", 400, 300, Default::default()))
-                .add_fn(|xs| xs.relu())
                 .add(nn::linear(
-                    p / "al3",
-                    300,
-                    num_actions as _,
+                    p / "al1",
+                    num_obs as i64,
+                    128,
                     Default::default(),
                 ))
-                .add_fn(|xs| xs.tanh()),
+                .add_fn(|xs| xs.tanh())
+                .add(nn::linear(
+                    p / "al2",
+                    128,
+                    num_actions as i64,
+                    Default::default(),
+                )),
             device: p.device(),
             num_obs,
             num_actions,
@@ -172,6 +175,7 @@ impl DeepQLearningAgent {
             training_error: vec![],
         }
     }
+
     pub fn act(&self, obs: &Tensor) -> usize {
         let mut action = 0;
         tch::no_grad(|| {
@@ -180,6 +184,7 @@ impl DeepQLearningAgent {
         });
         action
     }
+
     pub fn choose_action(&self, obs: &Tensor) -> usize {
         if rand::thread_rng().gen_range(0.0..1.0) < self.epsilon {
             rand::thread_rng().gen_range(0..self.action_space) as usize
@@ -187,6 +192,7 @@ impl DeepQLearningAgent {
             self.act(obs)
         }
     }
+
     pub fn remember(
         &mut self,
         state: Tensor,
@@ -205,6 +211,7 @@ impl DeepQLearningAgent {
             is_terminal,
         )
     }
+
     pub fn update(&mut self) {
         if self.batch_size * 10 > self.replay_buffer.size {
             return;
@@ -212,22 +219,20 @@ impl DeepQLearningAgent {
         let (states, actions, rewards, next_states, dones) =
             self.replay_buffer.sample(self.batch_size);
 
-        let states = Tensor::try_from(states).unwrap().to_device(Device::Cuda(0));
+        let states = Tensor::try_from(states).unwrap().to_device(DEVICE);
         let actions = Tensor::try_from(actions)
             .unwrap()
             .unsqueeze(-1)
-            .to_device(Device::Cuda(0));
+            .to_device(DEVICE);
         let rewards = Tensor::try_from(rewards)
             .unwrap()
             .unsqueeze(-1)
-            .to_device(Device::Cuda(0));
-        let next_states = Tensor::try_from(next_states)
-            .unwrap()
-            .to_device(Device::Cuda(0));
+            .to_device(DEVICE);
+        let next_states = Tensor::try_from(next_states).unwrap().to_device(DEVICE);
         let dones = Tensor::try_from(dones)
             .unwrap()
             .unsqueeze(-1)
-            .to_device(Device::Cuda(0));
+            .to_device(DEVICE);
 
         let q1 = self.network.forward(&states).gather(-1, &actions, false);
 
@@ -241,7 +246,6 @@ impl DeepQLearningAgent {
 
         let target = (rewards + (1 - dones)) * (self.discount_factor * q2);
         let temporal_difference_loss = q1.mse_loss(&target, tch::Reduction::Mean);
-        // println!("Training error: {:?}", temporal_difference_loss);
         self.training_error
             .push(temporal_difference_loss.double_value(&[]));
         self.network.opt.zero_grad();
@@ -249,20 +253,13 @@ impl DeepQLearningAgent {
         self.network.opt.step();
         self.sync();
     }
+
     pub fn decay_epsilon(&mut self) {
         self.epsilon = self.final_epsilon.max(self.epsilon - self.epsilon_decay)
     }
+
     fn sync(&mut self) {
         tch::no_grad(|| {
-            // for (dest, src) in self
-            //     .network
-            //     .var_store
-            //     .trainable_variables()
-            //     .iter_mut()
-            //     .zip(self.target_network.var_store.trainable_variables().iter())
-            // {
-            //     dest.copy_(&(0.005 * src + (1.0 - 0.005) * &*dest));
-            // }
             self.target_network = self.network.clone();
         });
     }
@@ -287,7 +284,7 @@ pub fn test_accurracy(
                 state.pole_angle,
                 state.pole_angular_velocity,
             ])
-            .to_device(Device::Cuda(0));
+            .to_device(DEVICE);
             let action = agent.act(&tensor);
 
             if let Ok((_state, reward, is_terminal)) = env.step(action) {
@@ -306,7 +303,7 @@ pub fn test_accurracy(
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    let learning_rate = 2.3e-3;
+    let learning_rate = 0.01;
     let start_epsilon = 0.5;
     let final_epsilon = 0.05;
     let nb_max_episodes = 2000;
@@ -347,7 +344,7 @@ fn main() {
                 state.pole_angle,
                 state.pole_angular_velocity,
             ])
-            .to_device(Device::Cuda(0));
+            .to_device(DEVICE);
             let action: usize = agent.choose_action(&tensor);
             if let Ok((next_state, reward, t)) = env.step(action) {
                 is_terminal = t;
@@ -357,7 +354,7 @@ fn main() {
                     next_state.pole_angle,
                     next_state.pole_angular_velocity,
                 ])
-                .to_device(Device::Cuda(0));
+                .to_device(DEVICE);
                 agent.remember(tensor, action as i64, reward, n_tensor, is_terminal);
                 agent.update();
                 state = next_state;

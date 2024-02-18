@@ -1,116 +1,12 @@
 use environments::{classic_control::CartPoleEnv, Env};
 use rand::Rng;
-use std::{collections::HashMap, collections::VecDeque};
-use tch::{Device, Kind, Tensor};
+use std::collections::VecDeque;
+use tch::{
+    nn::{self, Module, OptimizerConfig},
+    Device, Kind, Tensor,
+};
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// General Structures
-///
-
-pub trait Compute {
-    fn forward(&self, mem: &Memory, input: &Tensor) -> Tensor;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Tensor Memory
-
-pub struct Memory {
-    size: usize,
-    pub values: Vec<Tensor>,
-}
-
-impl Default for Memory {
-    fn default() -> Self {
-        let v = Vec::new();
-        Self { size: 0, values: v }
-    }
-}
-
-impl Memory {
-    pub fn copy(&mut self, sourcemem: &Memory) {
-        let cp = sourcemem
-            .values
-            .iter()
-            .map(|t| t.copy().set_requires_grad(false))
-            .collect();
-        self.values = cp;
-    }
-
-    fn push(&mut self, value: Tensor) -> usize {
-        self.values.push(value);
-        self.size += 1;
-        self.size - 1
-    }
-
-    fn new_push(&mut self, size: &[i64], requires_grad: bool) -> usize {
-        let t = Tensor::randn(size, (Kind::Float, Device::Cpu)).requires_grad_(requires_grad);
-        self.push(t)
-    }
-
-    pub fn get(&self, addr: &usize) -> &Tensor {
-        &self.values[*addr]
-    }
-
-    pub fn apply_grads_adam(&mut self, learning_rate: f32) {
-        let mut g = Tensor::new();
-        const BETA: f32 = 0.9;
-
-        let mut velocity = zeros(&[self.size as i64]).split(1, 0);
-        let mut mom = zeros(&[self.size as i64]).split(1, 0);
-        let mut vel_corr = zeros(&[self.size as i64]).split(1, 0);
-        let mut mom_corr = zeros(&[self.size as i64]).split(1, 0);
-        let mut counter = 0;
-
-        self.values.iter_mut().for_each(|t| {
-            if t.requires_grad() {
-                g = t.grad();
-                g = g.clamp(-1, 1);
-                mom[counter] = BETA * &mom[counter] + (1.0 - BETA) * &g;
-                velocity[counter] =
-                    BETA * &velocity[counter] + (1.0 - BETA) * (&g.pow(&Tensor::from(2)));
-                mom_corr[counter] =
-                    &mom[counter] / (Tensor::from(1.0 - BETA).pow(&Tensor::from(2)));
-                vel_corr[counter] =
-                    &velocity[counter] / (Tensor::from(1.0 - BETA).pow(&Tensor::from(2)));
-
-                t.set_data(
-                    &(t.data()
-                        - learning_rate
-                            * (&mom_corr[counter] / (&velocity[counter].sqrt() + 0.0000001))),
-                );
-                t.zero_grad();
-            }
-            counter += 1;
-        });
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Linear Model
-
-pub struct Linear {
-    params: HashMap<String, usize>,
-}
-
-impl Linear {
-    pub fn new(mem: &mut Memory, ninputs: i64, noutputs: i64) -> Self {
-        let mut p = HashMap::new();
-        p.insert("W".to_string(), mem.new_push(&[ninputs, noutputs], true));
-        p.insert("b".to_string(), mem.new_push(&[1, noutputs], true));
-        Self { params: p }
-    }
-}
-
-impl Compute for Linear {
-    fn forward(&self, mem: &Memory, input: &Tensor) -> Tensor {
-        let w = mem.get(self.params.get(&"W".to_string()).unwrap());
-        let b = mem.get(self.params.get(&"b".to_string()).unwrap());
-        input.matmul(w) + b
-    }
-}
+const DEVICE: Device = Device::Cpu;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
@@ -124,12 +20,12 @@ pub fn zeros(size: &[i64]) -> Tensor {
     Tensor::zeros(size, (Kind::Float, Device::Cpu))
 }
 
-pub fn epsilon_greedy(mem: &Memory, policy: &dyn Compute, epsilon: f32, obs: &Tensor) -> i64 {
+pub fn epsilon_greedy(policy: &nn::Sequential, epsilon: f32, obs: &Tensor) -> i64 {
     let mut rng = rand::thread_rng();
     let random_number: f32 = rng.gen::<f32>();
     if random_number > epsilon {
-        let value = tch::no_grad(|| policy.forward(mem, obs));
-        value.argmax(1, false).int64_value(&[])
+        let value = tch::no_grad(|| policy.forward(obs));
+        value.argmax(0, false).int64_value(&[])
     } else {
         rng.gen_range(0..2).into()
     }
@@ -305,37 +201,14 @@ impl ReplayMemory {
     }
 }
 
-struct Policy {
-    l1: Linear,
-    l2: Linear,
-}
-
-impl Policy {
-    fn new(mem: &mut Memory, nfeatures: i64, nactions: i64) -> Policy {
-        let l1 = Linear::new(mem, nfeatures, 128);
-        let l2 = Linear::new(mem, 128, nactions);
-
-        Self { l1, l2 }
-    }
-}
-
-impl Compute for Policy {
-    fn forward(&self, mem: &Memory, input: &Tensor) -> Tensor {
-        let mut o = self.l1.forward(mem, input);
-        o = o.tanh();
-        o = self.l2.forward(mem, &o);
-        o
-    }
-}
-
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    const MEM_SIZE: usize = 30000;
-    const MIN_MEM_SIZE: usize = 5000;
+    const MEM_SIZE: usize = 2000;
+    const MIN_MEM_SIZE: usize = 1000;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
-    const LEARNING_RATE: f32 = 0.00005;
+    const LEARNING_RATE: f64 = 0.005;
     let mut epsilon: f32 = 1.0;
 
     let mut state: Tensor;
@@ -345,11 +218,40 @@ fn main() {
     let mut state_: Tensor;
 
     let mut mem_replay = ReplayMemory::new(MEM_SIZE, MIN_MEM_SIZE);
-    let mut mem_policy = Memory::default();
-    let policy_net = Policy::new(&mut mem_policy, 4, 2);
-    let mut mem_target = Memory::default();
-    let target_net = Policy::new(&mut mem_target, 4, 2);
-    mem_target.copy(&mem_policy);
+    let mem_policy = nn::VarStore::new(DEVICE);
+    let policy_net = nn::seq()
+        .add(nn::linear(
+            &mem_policy.root() / "al1",
+            4,
+            256,
+            Default::default(),
+        ))
+        .add_fn(|xs| xs.tanh())
+        .add(nn::linear(
+            &mem_policy.root() / "al2",
+            256,
+            2,
+            Default::default(),
+        ));
+    let mut opt = nn::Adam::default()
+        .build(&mem_policy, LEARNING_RATE)
+        .unwrap();
+    let mut mem_target = nn::VarStore::new(DEVICE);
+    let target_net = nn::seq()
+        .add(nn::linear(
+            &mem_target.root() / "al1",
+            4,
+            256,
+            Default::default(),
+        ))
+        .add_fn(|xs| xs.tanh())
+        .add(nn::linear(
+            &mem_target.root() / "al2",
+            256,
+            2,
+            Default::default(),
+        ));
+    mem_target.copy(&mem_policy).unwrap();
     let mut ep_returns = RunningStat::<f32>::new(50);
     let mut ep_return: f32 = 0.0;
     let mut nepisodes = 0;
@@ -367,7 +269,7 @@ fn main() {
     };
     mem_replay.init();
     loop {
-        action = epsilon_greedy(&mem_policy, &policy_net, epsilon, &state);
+        action = epsilon_greedy(&policy_net, epsilon, &state);
         (state_, reward, done) = {
             let (state_, reward, done) = env.step(action as usize).unwrap();
             (
@@ -408,26 +310,28 @@ fn main() {
                 );
             }
             if avg >= 450.0 {
-                println!("Solved at episode {}", nepisodes);
+                println!("Solved at episode {} with avg of {}", nepisodes, avg);
                 break;
             }
-            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.5);
+            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.25);
         }
 
         let (b_state, b_action, b_reward, b_done, b_state_) = mem_replay.sample_batch(128);
-        let qvalues = policy_net
-            .forward(&mem_policy, &b_state)
-            .gather(1, &b_action, false);
+        let qvalues = policy_net.forward(&b_state).gather(1, &b_action, false);
 
-        let target_values: Tensor = tch::no_grad(|| target_net.forward(&mem_target, &b_state_));
+        let target_values: Tensor = tch::no_grad(|| target_net.forward(&b_state_));
         let max_target_values = target_values.max_dim(1, true).0;
         let expected_values = b_reward + GAMMA * (&one - &b_done) * (&max_target_values);
 
         let loss = mse(&qvalues, &expected_values);
+        opt.zero_grad();
         loss.backward();
-        mem_policy.apply_grads_adam(LEARNING_RATE);
+        opt.step();
         if nepisodes % UPDATE_FREQ == 0 {
-            mem_target.copy(&mem_policy);
+            let a = mem_target.copy(&mem_policy);
+            if a.is_err() {
+                println!("copy error")
+            };
         }
     }
 }
