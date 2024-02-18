@@ -1,5 +1,7 @@
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::EnvError::EnvNotReady;
@@ -36,6 +38,7 @@ pub struct CartPoleEnv {
     curr_step: u128,
     state: CartPoleObservation,
     dist: Uniform<f32>,
+    rng: StdRng,
 }
 
 impl CartPoleEnv {
@@ -50,31 +53,32 @@ impl CartPoleEnv {
     const THETA_THRESHOLD_RADIANS: f32 = std::f32::consts::PI / 15.0;
     const X_THRESHOLD: f32 = 2.4;
 
-    pub fn new(max_steps: u128) -> Self {
+    pub fn new(max_steps: u128, seed: u64) -> Self {
         let mut env: CartPoleEnv = Self {
             ready: false,
             curr_step: 0,
             max_steps,
             state: CartPoleObservation::default(),
             dist: Uniform::from(-0.05..0.05),
+            rng: rand::rngs::StdRng::seed_from_u64(seed),
         };
         env.state = env.initialize();
         env
     }
 
-    fn initialize(&self) -> CartPoleObservation {
+    fn initialize(&mut self) -> CartPoleObservation {
         CartPoleObservation {
-            cart_position: self.dist.sample(&mut rand::thread_rng()),
-            cart_velocity: self.dist.sample(&mut rand::thread_rng()),
-            pole_angle: self.dist.sample(&mut rand::thread_rng()),
-            pole_angular_velocity: self.dist.sample(&mut rand::thread_rng()),
+            cart_position: self.dist.sample(&mut self.rng),
+            cart_velocity: self.dist.sample(&mut self.rng),
+            pole_angle: self.dist.sample(&mut self.rng),
+            pole_angular_velocity: self.dist.sample(&mut self.rng),
         }
     }
 }
 
 impl Default for CartPoleEnv {
     fn default() -> Self {
-        Self::new(500)
+        Self::new(500, 0)
     }
 }
 

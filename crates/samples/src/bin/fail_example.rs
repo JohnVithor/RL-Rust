@@ -313,7 +313,7 @@ fn main() {
     let test_freq = 100;
 
     let mut total_steps = 0;
-    let mut env: CartPoleEnv = CartPoleEnv::new(100);
+    let mut env: CartPoleEnv = CartPoleEnv::default();
     let mut agent = DeepQLearningAgent::new(
         learning_rate,
         start_epsilon,

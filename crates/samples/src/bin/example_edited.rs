@@ -1,27 +1,22 @@
 use environments::{classic_control::CartPoleEnv, Env};
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::collections::VecDeque;
 use tch::{
     nn::{self, Module, OptimizerConfig},
-    Device, Kind, Tensor,
+    Device, Tensor,
 };
-
 const DEVICE: Device = Device::Cpu;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 /// General Functions
 
-pub fn mse(target: &Tensor, pred: &Tensor) -> Tensor {
-    pred.smooth_l1_loss(target, tch::Reduction::Mean, 0.0)
-}
-
-pub fn zeros(size: &[i64]) -> Tensor {
-    Tensor::zeros(size, (Kind::Float, Device::Cpu))
-}
-
-pub fn epsilon_greedy(policy: &nn::Sequential, epsilon: f32, obs: &Tensor) -> i64 {
-    let mut rng = rand::thread_rng();
+pub fn epsilon_greedy(
+    policy: &nn::Sequential,
+    epsilon: f32,
+    obs: &Tensor,
+    rng: &mut StdRng,
+) -> i64 {
     let random_number: f32 = rng.gen::<f32>();
     if random_number > epsilon {
         let value = tch::no_grad(|| policy.forward(obs));
@@ -127,9 +122,13 @@ impl ReplayMemory {
         }
     }
 
-    pub fn sample_batch(&self, size: usize) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
+    pub fn sample_batch(
+        &self,
+        size: usize,
+        rng: &mut StdRng,
+    ) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
         let index: Vec<usize> = (0..size)
-            .map(|_| rand::thread_rng().gen_range(0..self.transitions.len()))
+            .map(|_| rng.gen_range(0..self.transitions.len()))
             .collect();
         let mut states: Vec<Tensor> = Vec::new();
         let mut actions: Vec<i64> = Vec::new();
@@ -153,7 +152,7 @@ impl ReplayMemory {
         )
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self, rng: &mut StdRng) {
         let mut env = CartPoleEnv::default();
         let mut state = {
             let s = env.reset();
@@ -166,7 +165,7 @@ impl ReplayMemory {
         };
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
-            let action = rand::thread_rng().gen_range(0..2);
+            let action = rng.gen_range(0..2);
             let (state_, reward, done) = {
                 let (state_, reward, done) = env.step(action).unwrap();
                 (
@@ -204,11 +203,12 @@ impl ReplayMemory {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    const MEM_SIZE: usize = 2000;
-    const MIN_MEM_SIZE: usize = 1000;
+    let mut rng: StdRng = StdRng::seed_from_u64(0);
+    const MEM_SIZE: usize = 30000;
+    const MIN_MEM_SIZE: usize = 5000;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
-    const LEARNING_RATE: f64 = 0.005;
+    const LEARNING_RATE: f64 = 0.00005;
     let mut epsilon: f32 = 1.0;
 
     let mut state: Tensor;
@@ -223,13 +223,13 @@ fn main() {
         .add(nn::linear(
             &mem_policy.root() / "al1",
             4,
-            256,
+            128,
             Default::default(),
         ))
         .add_fn(|xs| xs.tanh())
         .add(nn::linear(
             &mem_policy.root() / "al2",
-            256,
+            128,
             2,
             Default::default(),
         ));
@@ -241,13 +241,13 @@ fn main() {
         .add(nn::linear(
             &mem_target.root() / "al1",
             4,
-            256,
+            128,
             Default::default(),
         ))
         .add_fn(|xs| xs.tanh())
         .add(nn::linear(
             &mem_target.root() / "al2",
-            256,
+            128,
             2,
             Default::default(),
         ));
@@ -267,9 +267,9 @@ fn main() {
             s.pole_angular_velocity,
         ])
     };
-    mem_replay.init();
+    mem_replay.init(&mut rng);
     loop {
-        action = epsilon_greedy(&policy_net, epsilon, &state);
+        action = epsilon_greedy(&policy_net, epsilon, &state, &mut rng);
         (state_, reward, done) = {
             let (state_, reward, done) = env.step(action as usize).unwrap();
             (
@@ -313,17 +313,17 @@ fn main() {
                 println!("Solved at episode {} with avg of {}", nepisodes, avg);
                 break;
             }
-            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.25);
+            epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.5);
         }
 
-        let (b_state, b_action, b_reward, b_done, b_state_) = mem_replay.sample_batch(128);
+        let (b_state, b_action, b_reward, b_done, b_state_) =
+            mem_replay.sample_batch(128, &mut rng);
         let qvalues = policy_net.forward(&b_state).gather(1, &b_action, false);
 
-        let target_values: Tensor = tch::no_grad(|| target_net.forward(&b_state_));
-        let max_target_values = target_values.max_dim(1, true).0;
+        let max_target_values: Tensor =
+            tch::no_grad(|| target_net.forward(&b_state_).max_dim(1, true).0);
         let expected_values = b_reward + GAMMA * (&one - &b_done) * (&max_target_values);
-
-        let loss = mse(&qvalues, &expected_values);
+        let loss = qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
         opt.zero_grad();
         loss.backward();
         opt.step();

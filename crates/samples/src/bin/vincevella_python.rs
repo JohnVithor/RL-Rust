@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{collections::HashMap, collections::VecDeque};
 use tch::{Device, Kind, Tensor};
 
@@ -184,8 +184,13 @@ pub fn step(action: i64) -> (Tensor, f32, bool) {
     (state, reward, done)
 }
 
-pub fn epsilon_greedy(mem: &Memory, policy: &dyn Compute, epsilon: f32, obs: &Tensor) -> i64 {
-    let mut rng = rand::thread_rng();
+pub fn epsilon_greedy(
+    mem: &Memory,
+    policy: &dyn Compute,
+    epsilon: f32,
+    obs: &Tensor,
+    rng: &mut StdRng,
+) -> i64 {
     let random_number: f32 = rng.gen::<f32>();
     if random_number > epsilon {
         let value = tch::no_grad(|| policy.forward(mem, obs));
@@ -291,9 +296,13 @@ impl ReplayMemory {
         }
     }
 
-    pub fn sample_batch(&self, size: usize) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
+    pub fn sample_batch(
+        &self,
+        size: usize,
+        rng: &mut StdRng,
+    ) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
         let index: Vec<usize> = (0..size)
-            .map(|_| rand::thread_rng().gen_range(0..self.transitions.len()))
+            .map(|_| rng.gen_range(0..self.transitions.len()))
             .collect();
         let mut states: Vec<Tensor> = Vec::new();
         let mut actions: Vec<i64> = Vec::new();
@@ -362,6 +371,8 @@ impl Compute for Policy {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
+    let mut rng: StdRng = StdRng::seed_from_u64(0);
+
     const MEM_SIZE: usize = 30000;
     const MIN_MEM_SIZE: usize = 5000;
     const GAMMA: f32 = 0.99;
@@ -390,7 +401,7 @@ fn main() {
     state = reset();
     mem_replay.init();
     loop {
-        action = epsilon_greedy(&mem_policy, &policy_net, epsilon, &state);
+        action = epsilon_greedy(&mem_policy, &policy_net, epsilon, &state, &mut rng);
         (state_, reward, done) = step(action);
         let t = Transition::new(&state, action, reward, done, &state_);
         mem_replay.add(t);
@@ -417,7 +428,8 @@ fn main() {
             epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.5);
         }
 
-        let (b_state, b_action, b_reward, b_done, b_state_) = mem_replay.sample_batch(128);
+        let (b_state, b_action, b_reward, b_done, b_state_) =
+            mem_replay.sample_batch(128, &mut rng);
         let qvalues = policy_net
             .forward(&mem_policy, &b_state)
             .gather(1, &b_action, false);
