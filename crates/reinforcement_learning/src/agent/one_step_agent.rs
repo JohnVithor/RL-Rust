@@ -1,11 +1,11 @@
 use ndarray::{Array, Array1};
 
-use crate::{action_selection::ActionSelection, agent::DiscreteAgent};
+use crate::{action_selection::DiscreteObsDiscreteActionSelection, agent::FullDiscreteAgent};
 
 use super::GetNextQValue;
 
 pub struct OneStepAgent {
-    action_selection: Box<dyn ActionSelection>,
+    action_selection: Box<dyn DiscreteObsDiscreteActionSelection>,
     next_value_function: GetNextQValue,
     learning_rate: f32,
     default_values: Array1<f32>,
@@ -16,7 +16,7 @@ pub struct OneStepAgent {
 
 impl OneStepAgent {
     pub fn new(
-        action_selection: Box<dyn ActionSelection>,
+        action_selection: Box<dyn DiscreteObsDiscreteActionSelection>,
         next_value_function: GetNextQValue,
         learning_rate: f32,
         default_value: f32,
@@ -34,7 +34,7 @@ impl OneStepAgent {
     }
 }
 
-impl DiscreteAgent for OneStepAgent {
+impl FullDiscreteAgent for OneStepAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize) {
         let v = Array::from_elem((n_actions,), self.default_value);
         self.policy = Array1::from_elem((n_obs,), v.clone());
@@ -61,8 +61,13 @@ impl DiscreteAgent for OneStepAgent {
         );
 
         let curr_q_values: &Array1<f32> = self.policy.get(curr_obs).unwrap_or(&self.default_values);
-        let temporal_difference: f32 =
-            reward + self.discount_factor * future_q_value - curr_q_values[curr_action];
+        let temporal_difference: f32 = reward
+            + if terminated {
+                0.0
+            } else {
+                self.discount_factor * future_q_value
+            }
+            - curr_q_values[curr_action];
 
         let value = self.policy.get(curr_obs).unwrap_or(&self.default_values)[curr_action];
         self.policy.get_mut(curr_obs).unwrap()[curr_action] =

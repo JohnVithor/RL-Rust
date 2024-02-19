@@ -5,11 +5,7 @@ use tch::{
     nn::{self, Module, OptimizerConfig},
     Device, Tensor,
 };
-const DEVICE: Device = Device::Cpu;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// General Functions
+const DEVICE: Device = Device::Cuda(0);
 
 pub fn epsilon_greedy(
     policy: &nn::Sequential,
@@ -61,7 +57,7 @@ impl Transition {
             state: state.shallow_clone(),
             action,
             reward,
-            done: Tensor::from(done as i32 as f32),
+            done: Tensor::from(done as i32 as f32).to_device(DEVICE),
             state_: state_.shallow_clone(),
         }
     }
@@ -144,11 +140,15 @@ impl ReplayMemory {
             states_.push(transition.state_.shallow_clone());
         });
         (
-            Tensor::stack(&states, 0),
-            Tensor::from_slice(actions.as_slice()).unsqueeze(1),
-            Tensor::from_slice(rewards.as_slice()).unsqueeze(1),
-            Tensor::stack(&dones, 0).unsqueeze(1),
-            Tensor::stack(&states_, 0),
+            Tensor::stack(&states, 0).to_device(DEVICE),
+            Tensor::from_slice(actions.as_slice())
+                .unsqueeze(1)
+                .to_device(DEVICE),
+            Tensor::from_slice(rewards.as_slice())
+                .unsqueeze(1)
+                .to_device(DEVICE),
+            Tensor::stack(&dones, 0).unsqueeze(1).to_device(DEVICE),
+            Tensor::stack(&states_, 0).to_device(DEVICE),
         )
     }
 
@@ -162,6 +162,7 @@ impl ReplayMemory {
                 s.pole_angle,
                 s.pole_angular_velocity,
             ])
+            .to_device(DEVICE)
         };
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
@@ -174,7 +175,8 @@ impl ReplayMemory {
                         state_.cart_velocity,
                         state_.pole_angle,
                         state_.pole_angular_velocity,
-                    ]),
+                    ])
+                    .to_device(DEVICE),
                     reward,
                     done,
                 )
@@ -192,6 +194,7 @@ impl ReplayMemory {
                         s.pole_angle,
                         s.pole_angular_velocity,
                     ])
+                    .to_device(DEVICE)
                 };
             } else {
                 state = state_;
@@ -266,6 +269,7 @@ fn main() {
             s.pole_angle,
             s.pole_angular_velocity,
         ])
+        .to_device(DEVICE)
     };
     mem_replay.init(&mut rng);
     loop {
@@ -278,7 +282,8 @@ fn main() {
                     state_.cart_velocity,
                     state_.pole_angle,
                     state_.pole_angular_velocity,
-                ]),
+                ])
+                .to_device(DEVICE),
                 reward,
                 done,
             )
@@ -300,6 +305,7 @@ fn main() {
                     s.pole_angle,
                     s.pole_angular_velocity,
                 ])
+                .to_device(DEVICE)
             };
 
             let avg = ep_returns.average();

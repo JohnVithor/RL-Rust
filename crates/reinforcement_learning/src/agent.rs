@@ -1,5 +1,6 @@
 mod elegibility_traces_agent;
 // mod internal_model_agent;
+mod double_deep_agent;
 mod one_step_agent;
 
 use ndarray::Array1;
@@ -38,7 +39,7 @@ pub fn expected_sarsa(
 }
 
 pub type TrainResults = (Vec<f32>, Vec<u128>, Vec<f32>, Vec<f32>, Vec<f32>);
-pub trait DiscreteAgent {
+pub trait FullDiscreteAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize);
 
     fn get_action(&mut self, obs: usize) -> usize;
@@ -56,19 +57,33 @@ pub trait DiscreteAgent {
     fn reset(&mut self);
 }
 
-pub trait ContinuousAgent {
-    fn prepare(&mut self, obs_dim: usize, n_actions: usize);
-
-    fn get_action(&mut self, obs: Array1<f32>) -> usize;
+pub trait ContinuousObsDiscreteActionAgent {
+    fn get_action(&mut self, obs: &Array1<f32>) -> usize;
 
     fn update(
         &mut self,
-        curr_obs: Array1<f32>,
+        curr_obs: &Array1<f32>,
         curr_actions: usize,
         reward: f32,
         terminated: bool,
-        next_obs: Array1<f32>,
+        next_obs: &Array1<f32>,
         next_actions: usize,
+    ) -> f32;
+
+    fn reset(&mut self);
+}
+
+pub trait FullContinuousAgent {
+    fn get_action(&mut self, obs: &Array1<f32>) -> Array1<f32>;
+
+    fn update(
+        &mut self,
+        curr_obs: &Array1<f32>,
+        curr_actions: &Array1<f32>,
+        reward: f32,
+        terminated: bool,
+        next_obs: &Array1<f32>,
+        next_actions: &Array1<f32>,
     ) -> f32;
 
     fn reset(&mut self);

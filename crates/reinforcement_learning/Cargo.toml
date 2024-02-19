@@ -18,3 +18,5 @@ utils = { path = "../utils" }
 rand = "0.8"
 ndarray = "0.15"
 ndarray-rand = "0.14"
+tch = "0.15"
+

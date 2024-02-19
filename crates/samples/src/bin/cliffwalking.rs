@@ -5,7 +5,7 @@ extern crate reinforcement_learning;
 extern crate structopt;
 
 use environments::toy_text::cliff_walking::{CliffWalkingAction, CliffWalkingEnv};
-use reinforcement_learning::trainer::DiscreteTrainer;
+use reinforcement_learning::trainer::FullDiscreteTrainer;
 use serde_json::json;
 use structopt::StructOpt;
 
@@ -30,7 +30,7 @@ fn main() {
 
     for (i, mut agent) in agents.into_iter().enumerate() {
         println!("{} has:", identifiers[i]);
-        let mut trainer = DiscreteTrainer::new(
+        let mut trainer = FullDiscreteTrainer::new(
             |repr: usize| -> CliffWalkingAction {
                 match repr {
                     0 => CliffWalkingAction::LEFT,

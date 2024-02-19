@@ -5,9 +5,16 @@ use ndarray::Array1;
 pub use uniform_epsilon_greed::UniformEpsilonGreed;
 pub use upper_confidence_bound::UpperConfidenceBound;
 
-pub trait ActionSelection {
+pub trait DiscreteObsDiscreteActionSelection {
     fn get_action(&mut self, obs: usize, values: &Array1<f32>) -> usize;
     fn update(&mut self);
     fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f32>) -> Array1<f32>;
+    fn reset(&mut self);
+}
+
+pub trait ContinuousObsDiscreteActionSelection {
+    fn get_action(&mut self, values: &Array1<f32>) -> usize;
+    fn update(&mut self);
+    fn get_exploration_probs(&mut self, values: &Array1<f32>) -> Array1<f32>;
     fn reset(&mut self);
 }

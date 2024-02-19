@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ndarray::Array1;
 use utils::argmax;
 
-use super::ActionSelection;
+use super::DiscreteObsDiscreteActionSelection;
 
 #[derive(Debug, Clone)]
 pub struct UpperConfidenceBound {
@@ -22,7 +22,7 @@ impl UpperConfidenceBound {
     }
 }
 
-impl ActionSelection for UpperConfidenceBound {
+impl DiscreteObsDiscreteActionSelection for UpperConfidenceBound {
     fn get_action(&mut self, obs: usize, values: &Array1<f32>) -> usize {
         let obs_actions = self
             .action_counter

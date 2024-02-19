@@ -2,17 +2,17 @@ use std::io::{self, BufRead};
 
 use environments::{env::Env, space::SpaceType};
 
-use crate::agent::DiscreteAgent;
+use crate::agent::FullDiscreteAgent;
 pub type TrainResults = (Vec<f32>, Vec<u128>, Vec<f32>, Vec<f32>, Vec<f32>);
 
-pub struct DiscreteTrainer<Obs, Action> {
+pub struct FullDiscreteTrainer<Obs, Action> {
     // action_to_repr: Rc<dyn Fn(&Action) -> usize>,
     pub repr_to_action: fn(usize) -> Action,
     pub obs_to_repr: fn(&Obs) -> usize,
     // repr_to_obs: Rc<dyn Fn(usize) -> Obs>,
 }
 
-impl<Obs, Action> DiscreteTrainer<Obs, Action> {
+impl<Obs, Action> FullDiscreteTrainer<Obs, Action> {
     pub fn new(repr_to_action: fn(usize) -> Action, obs_to_repr: fn(&Obs) -> usize) -> Self {
         Self {
             repr_to_action,
@@ -23,7 +23,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
     pub fn train(
         &mut self,
         env: &mut dyn Env<Obs, Action>,
-        agent: &mut dyn DiscreteAgent,
+        agent: &mut dyn FullDiscreteAgent,
         n_episodes: u128,
         eval_at: u128,
         eval_for: u128,
@@ -109,7 +109,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
     pub fn evaluate(
         &self,
         env: &mut dyn Env<Obs, Action>,
-        agent: &mut dyn DiscreteAgent,
+        agent: &mut dyn FullDiscreteAgent,
         n_episodes: u128,
     ) -> (Vec<f32>, Vec<u128>) {
         let mut reward_history: Vec<f32> = vec![];
@@ -138,7 +138,7 @@ impl<Obs, Action> DiscreteTrainer<Obs, Action> {
         (reward_history, episode_length)
     }
 
-    pub fn example(&mut self, env: &mut impl Env<Obs, Action>, agent: &mut impl DiscreteAgent) {
+    pub fn example(&mut self, env: &mut impl Env<Obs, Action>, agent: &mut impl FullDiscreteAgent) {
         let mut epi_reward = 0.0;
         let obs_repr = (self.obs_to_repr)(&env.reset());
         let action_repr: usize = agent.get_action(obs_repr);

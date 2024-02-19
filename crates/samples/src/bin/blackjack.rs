@@ -6,7 +6,7 @@ extern crate structopt;
 
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::Env;
-use reinforcement_learning::trainer::DiscreteTrainer;
+use reinforcement_learning::trainer::FullDiscreteTrainer;
 use serde_json::json;
 use structopt::StructOpt;
 
@@ -19,7 +19,7 @@ fn main() {
 
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = BlackJackEnv::default();
+    let mut env = BlackJackEnv::new(cli.seed);
 
     let (agents, identifiers) = get_agents(cli);
 
@@ -31,7 +31,7 @@ fn main() {
 
     for (i, mut agent) in agents.into_iter().enumerate() {
         println!("{} has:", identifiers[i]);
-        let mut trainer = DiscreteTrainer::new(
+        let mut trainer = FullDiscreteTrainer::new(
             |repr: usize| -> BlackJackAction {
                 match repr {
                     0 => BlackJackAction::HIT,

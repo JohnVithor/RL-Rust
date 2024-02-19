@@ -5,7 +5,7 @@ extern crate reinforcement_learning;
 extern crate structopt;
 
 use environments::toy_text::frozen_lake::{FrozenLakeAction, FrozenLakeEnv};
-use reinforcement_learning::trainer::DiscreteTrainer;
+use reinforcement_learning::trainer::FullDiscreteTrainer;
 use samples::{get_agents, moving_average, save_json, Cli};
 use serde_json::json;
 use structopt::StructOpt;
@@ -27,7 +27,7 @@ fn main() {
         },
         cli.stochastic_env,
         max_steps,
-        42,
+        cli.seed,
     );
 
     let mut train_rewards: Vec<Vec<f32>> = vec![];
@@ -40,7 +40,7 @@ fn main() {
 
     for (i, mut agent) in agents.into_iter().enumerate() {
         println!("{} has:", identifiers[i]);
-        let mut trainer = DiscreteTrainer::new(
+        let mut trainer = FullDiscreteTrainer::new(
             |repr: usize| -> FrozenLakeAction {
                 match repr {
                     0 => FrozenLakeAction::LEFT,

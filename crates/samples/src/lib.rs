@@ -1,7 +1,7 @@
 use reinforcement_learning::{
     action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
     agent::{
-        expected_sarsa, qlearning, sarsa, DiscreteAgent, ElegibilityTracesAgent, OneStepAgent,
+        expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, FullDiscreteAgent, OneStepAgent,
     },
 };
 use std::rc::Rc;
@@ -80,9 +80,13 @@ pub struct Cli {
     /// Moving average window to be used on the visualization of results
     #[structopt(long = "moving_average_window", default_value = "100")]
     pub moving_average_window: usize,
+
+    /// Seed for reproducibility
+    #[structopt(long = "seed", default_value = "42")]
+    pub seed: u64,
 }
 
-pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>) {
+pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static str>) {
     let greedy_sarsa_agent = OneStepAgent::new(
         Box::new(UniformEpsilonGreed::new(
             args.initial_epsilon,
@@ -90,6 +94,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         sarsa,
         args.learning_rate,
@@ -104,6 +109,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         qlearning,
         args.learning_rate,
@@ -118,6 +124,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         expected_sarsa,
         args.learning_rate,
@@ -156,6 +163,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         sarsa,
         args.learning_rate,
@@ -171,6 +179,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         qlearning,
         args.learning_rate,
@@ -186,6 +195,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
             }),
             args.final_epsilon,
+            args.seed,
         )),
         expected_sarsa,
         args.learning_rate,
@@ -220,7 +230,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn DiscreteAgent>>, Vec<&'static str>)
         args.discount_factor,
         args.lambda_factor,
     );
-    let agents: Vec<Box<dyn DiscreteAgent>> = vec![
+    let agents: Vec<Box<dyn FullDiscreteAgent>> = vec![
         Box::new(greedy_sarsa_agent),
         Box::new(greedy_qlearning_agent),
         Box::new(greedy_expected_sarsa_agent),
