@@ -19,7 +19,7 @@ fn main() {
 
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = BlackJackEnv::new();
+    let mut env = BlackJackEnv::default();
 
     let (agents, identifiers) = get_agents(cli);
 

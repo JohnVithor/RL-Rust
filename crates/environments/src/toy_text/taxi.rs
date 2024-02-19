@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use rand::{distributions::Uniform, prelude::Distribution};
+use rand::{distributions::Uniform, prelude::Distribution, rngs::StdRng, SeedableRng};
 use utils::categorical_sample;
 
 use crate::{
@@ -18,6 +18,7 @@ pub struct TaxiEnv {
     curr_obs: usize,
     max_steps: u128,
     curr_step: u128,
+    rng: StdRng,
 }
 
 impl TaxiEnv {
@@ -57,7 +58,7 @@ impl TaxiEnv {
         out
     }
 
-    pub fn new(max_steps: u128) -> Self {
+    pub fn new(max_steps: u128, seed: u64) -> Self {
         let mut initial_state_distrib: [f32; 500] = [0.0; 500];
         let mut obs: [[(usize, f32, bool); 6]; 500] = [[(0, 0.0, false); 6]; 500];
         let mut sum: f32 = 0.0;
@@ -130,6 +131,7 @@ impl TaxiEnv {
             curr_obs: 0,
             max_steps,
             curr_step: 0,
+            rng: StdRng::seed_from_u64(seed),
         }
     }
 }
@@ -137,7 +139,7 @@ impl TaxiEnv {
 impl Env<usize, usize> for TaxiEnv {
     fn reset(&mut self) -> usize {
         let dist: Uniform<f32> = Uniform::from(0.0..1.0);
-        let random: f32 = dist.sample(&mut rand::thread_rng());
+        let random: f32 = dist.sample(&mut self.rng);
         self.curr_obs = categorical_sample(self.initial_state_distrib.as_ref(), random);
         self.ready = true;
         self.curr_step = 0;

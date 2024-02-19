@@ -27,6 +27,7 @@ fn main() {
         },
         cli.stochastic_env,
         max_steps,
+        42,
     );
 
     let mut train_rewards: Vec<Vec<f32>> = vec![];

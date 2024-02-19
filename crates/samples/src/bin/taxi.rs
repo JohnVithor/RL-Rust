@@ -18,7 +18,7 @@ fn main() {
     let max_steps: u128 = cli.max_steps;
     let moving_average_window: usize = cli.moving_average_window;
 
-    let mut env = TaxiEnv::new(max_steps);
+    let mut env = TaxiEnv::new(max_steps, 42);
 
     let mut train_rewards: Vec<Vec<f32>> = vec![];
     let mut train_episodes_length: Vec<Vec<f32>> = vec![];

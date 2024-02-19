@@ -60,7 +60,7 @@ impl CartPoleEnv {
             max_steps,
             state: CartPoleObservation::default(),
             dist: Uniform::from(-0.05..0.05),
-            rng: rand::rngs::StdRng::seed_from_u64(seed),
+            rng: StdRng::seed_from_u64(seed),
         };
         env.state = env.initialize();
         env

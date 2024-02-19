@@ -6,7 +6,8 @@ use crate::EnvError;
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
-use rand::rngs::ThreadRng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 #[derive(Debug, Copy, Clone)]
 pub enum BlackJackAction {
@@ -40,12 +41,12 @@ pub struct BlackJackEnv {
     dealer_i: usize,
     player_has_ace: bool,
     dealer_has_ace: bool,
-    rng: ThreadRng,
     dist: Uniform<u8>,
+    rng: StdRng,
 }
 
 impl BlackJackEnv {
-    pub fn new() -> Self {
+    pub fn new(seed: u64) -> Self {
         let mut env: BlackJackEnv = Self {
             ready: false,
             player: [0; 16],
@@ -54,7 +55,7 @@ impl BlackJackEnv {
             dealer_i: 0,
             player_has_ace: false,
             dealer_has_ace: false,
-            rng: rand::thread_rng(),
+            rng: StdRng::seed_from_u64(seed),
             dist: Uniform::from(1..11),
         };
         env.initialize_hands();
@@ -104,7 +105,7 @@ impl BlackJackEnv {
 
 impl Default for BlackJackEnv {
     fn default() -> Self {
-        Self::new()
+        Self::new(42)
     }
 }
 

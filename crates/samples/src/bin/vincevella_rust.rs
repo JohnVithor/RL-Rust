@@ -340,7 +340,7 @@ impl Compute for Policy {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    let mut rng: StdRng = StdRng::seed_from_u64(0);
+    let mut rng: StdRng = StdRng::seed_from_u64(42);
 
     const MEM_SIZE: usize = 30000;
     const MIN_MEM_SIZE: usize = 5000;
