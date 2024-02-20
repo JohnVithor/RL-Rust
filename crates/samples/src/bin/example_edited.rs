@@ -1,14 +1,13 @@
 use environments::{classic_control::CartPoleEnv, Env};
 use reinforcement_learning::{
     action_selection::{AdaptativeEpsilon, ContinuousObsDiscreteActionSelection},
-    agent::{ReplayMemory, Transition},
+    experience_buffer::RandomExperienceBuffer,
 };
 use std::collections::VecDeque;
 use tch::{
     nn::{self, Module, OptimizerConfig, VarStore},
     Device, Tensor,
 };
-const DEVICE: Device = Device::Cpu;
 
 pub struct RunningStat<T> {
     values: VecDeque<T>,
@@ -65,11 +64,11 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    const MEM_SIZE: usize = 2048;
-    const MIN_MEM_SIZE: usize = 1024;
+    const MEM_SIZE: usize = 100_000;
+    const MIN_MEM_SIZE: usize = 10_000;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
-    const LEARNING_RATE: f64 = 0.005;
+    const LEARNING_RATE: f64 = 0.0005;
 
     let mut state: Tensor;
     let mut action: usize;
@@ -77,7 +76,7 @@ fn main() {
     let mut done: bool;
     let mut state_: Tensor;
 
-    let mut mem_replay = ReplayMemory::new(MEM_SIZE, MIN_MEM_SIZE, 42);
+    let mut mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, 42);
     let device = Device::cuda_if_available();
     let (policy, policy_vs) = generate_policy(device);
     let (target_policy, mut target_policy_vs) = generate_policy(device);
@@ -87,7 +86,7 @@ fn main() {
         .build(&policy_vs, LEARNING_RATE)
         .unwrap();
 
-    let mut eps = AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, 42);
+    let mut eps = AdaptativeEpsilon::new(0.0, 500.0, 0.0, 0.5, 42);
 
     let mut ep_returns = RunningStat::<f32>::new(50);
     let mut ep_return: f32 = 0.0;
@@ -103,7 +102,7 @@ fn main() {
             s.pole_angle,
             s.pole_angular_velocity,
         ])
-        .to_device(DEVICE)
+        .to_device(device)
     };
     loop {
         // begin get_action()
@@ -122,7 +121,7 @@ fn main() {
                     state_.pole_angle,
                     state_.pole_angular_velocity,
                 ])
-                .to_device(DEVICE),
+                .to_device(device),
                 reward,
                 done,
             )
@@ -130,8 +129,7 @@ fn main() {
         // update()
         ep_return += reward;
 
-        let t = Transition::new(&state, action as i64, reward, done, &state_, action as i64);
-        mem_replay.add(t);
+        mem_replay.add(&state, action as i64, reward, done, &state_, action as i64);
         state = state_;
 
         if done {
@@ -146,7 +144,7 @@ fn main() {
                     s.pole_angle,
                     s.pole_angular_velocity,
                 ])
-                .to_device(DEVICE)
+                .to_device(device)
             };
 
             let avg = ep_returns.average();
@@ -167,11 +165,20 @@ fn main() {
         }
 
         let (b_state, b_action, b_reward, b_done, b_state_, _) = mem_replay.sample_batch(128);
-        let qvalues = policy.forward(&b_state).gather(1, &b_action, false);
+        let qvalues = policy.forward(&b_state.to_device(device)).gather(
+            1,
+            &b_action.to_device(device),
+            false,
+        );
 
-        let max_target_values: Tensor =
-            tch::no_grad(|| target_policy.forward(&b_state_).max_dim(1, true).0);
-        let expected_values = b_reward + GAMMA * (&one - &b_done) * (&max_target_values);
+        let max_target_values: Tensor = tch::no_grad(|| {
+            target_policy
+                .forward(&b_state_.to_device(device))
+                .max_dim(1, true)
+                .0
+        });
+        let expected_values = b_reward.to_device(device)
+            + GAMMA * (&one - &b_done.to_device(device)) * (&max_target_values);
         let loss = qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
         opt.zero_grad();
         loss.backward();

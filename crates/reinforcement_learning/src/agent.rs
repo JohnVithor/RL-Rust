@@ -8,8 +8,6 @@ use ndarray::Array1;
 pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
 pub use double_deep_agent::DoubleDeepAgent;
-pub use double_deep_agent::ReplayMemory;
-pub use double_deep_agent::Transition;
 pub use one_step_agent::OneStepAgent;
 
 extern crate environments;

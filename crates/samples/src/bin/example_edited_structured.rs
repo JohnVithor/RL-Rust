@@ -2,7 +2,7 @@ use environments::{classic_control::CartPoleEnv, Env};
 use ndarray::Array1;
 use reinforcement_learning::{
     action_selection::AdaptativeEpsilon,
-    agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent, Transition},
+    agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent},
 };
 use std::collections::VecDeque;
 use tch::{
@@ -78,7 +78,7 @@ fn main() {
     let mut agent = DoubleDeepAgent::new(
         Box::new(AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, 42)),
         // qlearning,
-        0.005,
+        0.0005,
         0.99,
         50,
         generate_policy,
@@ -105,7 +105,7 @@ fn main() {
     };
     for steps in 0..100000 {
         // begin get_action()
-        action = agent.get_action(&state);
+        action = agent.get_action(&state) as usize;
         // end get_action()
 
         (state_, reward, done) = {
@@ -126,7 +126,7 @@ fn main() {
         let t_c_state = Tensor::try_from(&state).unwrap();
         let t_n_state = Tensor::try_from(&state_).unwrap();
 
-        let t = Transition::new(
+        agent.memory.add(
             &t_c_state,
             action as i64,
             reward,
@@ -134,7 +134,6 @@ fn main() {
             &t_n_state,
             action as i64,
         );
-        agent.memory.add(t);
         state = state_;
 
         if done {
@@ -173,11 +172,21 @@ fn main() {
         }
 
         let (b_state, b_action, b_reward, b_done, b_state_, _) = agent.memory.sample_batch(128);
-        let qvalues = agent.policy.forward(&b_state).gather(1, &b_action, false);
+        let qvalues = agent.policy.forward(&b_state.to_device(device)).gather(
+            1,
+            &b_action.to_device(device),
+            false,
+        );
 
-        let max_target_values: Tensor =
-            tch::no_grad(|| agent.target_policy.forward(&b_state_).max_dim(1, true).0);
-        let expected_values = b_reward + GAMMA * (&one - &b_done) * (&max_target_values);
+        let max_target_values: Tensor = tch::no_grad(|| {
+            agent
+                .target_policy
+                .forward(&b_state_.to_device(device))
+                .max_dim(1, true)
+                .0
+        });
+        let expected_values = b_reward.to_device(device)
+            + GAMMA * (&one - &b_done.to_device(device)) * (&max_target_values);
         let loss = qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
         agent.optimizer.zero_grad();
         loss.backward();

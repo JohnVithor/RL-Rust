@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    io::{self, BufRead},
-};
+use std::collections::VecDeque;
 
 use environments::{classic_control::CartPoleEnv, Env};
 use ndarray::Array1;
@@ -9,8 +6,6 @@ use reinforcement_learning::{
     action_selection::AdaptativeEpsilon,
     agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent},
 };
-use samples::Cli;
-use structopt::StructOpt;
 use tch::{
     nn::{self, Adam, Module, VarStore},
     Device,
@@ -69,86 +64,91 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
 }
 
 fn main() {
-    tch::manual_seed(42);
+    let seed: u64 = 42;
+    tch::manual_seed(seed as i64);
     tch::maybe_init_cuda();
-    let debug = false;
-    let cli: Cli = Cli::from_args();
+    const MEM_SIZE: usize = 10_000;
+    const MIN_MEM_SIZE: usize = 1_000;
+    const GAMMA: f32 = 0.95;
+    const UPDATE_FREQ: usize = 10;
+    const LEARNING_RATE: f64 = 0.0005;
 
-    let n_episodes: u128 = cli.n_episodes;
-    let max_steps: u128 = cli.max_steps;
-
-    let mut env = CartPoleEnv::new(max_steps, cli.seed);
-    let device = Device::Cpu;
+    let device = Device::cuda_if_available();
 
     let mut agent = DoubleDeepAgent::new(
-        Box::new(AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, 42)),
+        Box::new(AdaptativeEpsilon::new(0.0, 500.0, 0.0, 0.5, seed + 1)),
         // qlearning,
-        0.005,
-        0.99,
-        50,
+        LEARNING_RATE,
+        GAMMA,
+        UPDATE_FREQ,
         generate_policy,
         device,
         Adam::default(),
-        2048,
-        1024,
-        42,
+        MEM_SIZE,
+        MIN_MEM_SIZE,
+        seed - 1,
     );
 
-    let eval_at = 100;
+    let mut env = CartPoleEnv::default();
 
-    let mut training_reward = RunningStat::<f32>::new(50);
+    let mut ep_returns = RunningStat::<f32>::new(50);
+    let mut ep_tds = RunningStat::<f32>::new(50);
+    let mut ep_return: f32 = 0.0;
+    let mut ep_td: f32 = 0.0;
 
-    for episode in 0..n_episodes {
-        let mut epi_reward: f32 = 0.0;
-        let curr_obs = env.reset();
-        let mut curr_obs_repr = Array1::from_vec(vec![
-            curr_obs.cart_position,
-            curr_obs.cart_velocity,
-            curr_obs.pole_angle,
-            curr_obs.pole_angular_velocity,
+    for epi in 1..10000 {
+        let state = env.reset();
+        let mut state = Array1::from_vec(vec![
+            state.cart_position,
+            state.cart_velocity,
+            state.pole_angle,
+            state.pole_angular_velocity,
         ]);
-        let mut curr_action_repr: usize = agent.get_action(&curr_obs_repr);
-
+        let mut action = agent.get_action(&state) as usize;
         loop {
-            let (next_obs, reward, terminated) = env.step(curr_action_repr).unwrap();
-            if debug {
-                println!("{}", env.render());
-                let mut line = String::new();
-                let stdin = io::stdin();
-                stdin.lock().read_line(&mut line).unwrap();
-            }
-            let next_obs_repr = Array1::from_vec(vec![
-                next_obs.cart_position,
-                next_obs.cart_velocity,
-                next_obs.pole_angle,
-                next_obs.pole_angular_velocity,
-            ]);
-            let next_action_repr: usize = agent.get_action(&next_obs_repr);
-            let _td = agent.update(
-                &curr_obs_repr,
-                curr_action_repr,
-                reward,
-                terminated,
-                &next_obs_repr,
-                next_action_repr,
-            );
-            curr_obs_repr = next_obs_repr;
-            curr_action_repr = next_action_repr;
-            epi_reward += reward;
-            if terminated {
-                if debug {
-                    println!("{}", env.render());
+            let (state_, reward, done) = {
+                let (state_, reward, done) = env.step(action).unwrap();
+                (
+                    Array1::from_vec(vec![
+                        state_.cart_position,
+                        state_.cart_velocity,
+                        state_.pole_angle,
+                        state_.pole_angular_velocity,
+                    ]),
+                    reward,
+                    done,
+                )
+            };
+            ep_return += reward;
+
+            let next_action_repr = agent.get_action(&state) as usize;
+            let td = agent.update(&state, action, reward, done, &state_, next_action_repr);
+            ep_td += td;
+            state = state_;
+            action = next_action_repr;
+            if done {
+                ep_returns.add(ep_return);
+                ep_return = 0.0;
+                ep_tds.add(ep_td);
+                ep_td = 0.0;
+
+                let r_avg = ep_returns.average();
+                let td_avg = ep_tds.average();
+                if epi % 100 == 0 {
+                    println!(
+                        "Episode: {}, Avg Return: {}, Avg TD: {} ",
+                        epi, r_avg, td_avg
+                    );
                 }
-                training_reward.add(epi_reward);
+                if r_avg >= 450.0 {
+                    println!(
+                        "Solved at episode {}, with avg return of {} and avg td of {}",
+                        epi, r_avg, td_avg
+                    );
+                    return;
+                }
                 break;
             }
-        }
-        if episode % eval_at == 0 {
-            println!(
-                "Episode: {} Mean Rewards: {}",
-                episode,
-                training_reward.average(),
-            );
         }
     }
 }
