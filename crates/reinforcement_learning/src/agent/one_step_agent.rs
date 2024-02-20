@@ -12,6 +12,8 @@ pub struct OneStepAgent {
     default_value: f32,
     discount_factor: f32,
     policy: Array1<Array1<f32>>,
+    reward_sum: f32,
+    step_counter: u32,
 }
 
 impl OneStepAgent {
@@ -30,6 +32,8 @@ impl OneStepAgent {
             default_value,
             discount_factor,
             policy: Array1::default(0),
+            reward_sum: 0.0,
+            step_counter: 0,
         }
     }
 }
@@ -50,6 +54,8 @@ impl FullDiscreteAgent for OneStepAgent {
         next_obs: usize,
         next_action: usize,
     ) -> f32 {
+        self.reward_sum += reward;
+        self.step_counter += 1;
         let next_q_values: &Array1<f32> = self.policy.get(next_obs).unwrap_or(&self.default_values);
 
         let future_q_value: f32 = (self.next_value_function)(
@@ -74,7 +80,10 @@ impl FullDiscreteAgent for OneStepAgent {
             value + self.learning_rate * temporal_difference;
 
         if terminated {
-            self.action_selection.update();
+            self.action_selection
+                .update(self.reward_sum / self.step_counter as f32);
+            self.reward_sum = 0.0;
+            self.step_counter = 0;
         }
         temporal_difference
     }

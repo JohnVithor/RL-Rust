@@ -1,25 +1,23 @@
-use std::collections::VecDeque;
-
-use ndarray::{Array1, Axis};
+use crate::{
+    action_selection::ContinuousObsDiscreteActionSelection, agent::ContinuousObsDiscreteActionAgent,
+};
+use ndarray::Array1;
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use std::collections::VecDeque;
 use tch::{
     nn::{Module, Optimizer, OptimizerConfig, VarStore},
     Device, Tensor,
 };
 
-use crate::{
-    action_selection::ContinuousObsDiscreteActionSelection, agent::ContinuousObsDiscreteActionAgent,
-};
-
-use super::GetNextQValue;
+// use super::GetNextQValue;
 
 pub struct Transition {
-    curr_obs: Tensor,
-    curr_action: i64,
-    reward: f32,
-    done: Tensor,
-    next_obs: Tensor,
-    next_action: i64,
+    pub curr_obs: Tensor,
+    pub curr_action: i64,
+    pub reward: f32,
+    pub done: Tensor,
+    pub next_obs: Tensor,
+    pub next_action: i64,
 }
 
 impl Transition {
@@ -103,51 +101,86 @@ impl ReplayMemory {
     }
 }
 
+pub struct RunningStat<T> {
+    values: VecDeque<T>,
+    capacity: usize,
+}
+
+impl<T> RunningStat<T> {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            values: VecDeque::new(),
+            capacity,
+        }
+    }
+
+    pub fn add(&mut self, val: T) {
+        self.values.push_back(val);
+        if self.values.len() > self.capacity {
+            self.values.pop_front();
+        }
+    }
+
+    pub fn average(&self) -> f32
+    where
+        T: std::iter::Sum,
+        T: std::ops::Div<f32, Output = T>,
+        T: Clone,
+        T: Into<f32>,
+        f32: std::iter::Sum<T>,
+    {
+        let sum: f32 = self.values.iter().cloned().sum();
+        sum / (self.capacity as f32)
+    }
+}
+
 pub struct DoubleDeepAgent {
-    action_selection: Box<dyn ContinuousObsDiscreteActionSelection>,
-    next_value_function: GetNextQValue,
-    learning_rate: f64,
-    default_values: Array1<f32>,
-    default_value: f32,
-    discount_factor: f32,
-    optimizer: Optimizer,
-    policy: Box<dyn Module>,
-    target_policy: Box<dyn Module>,
-    policy_vs: VarStore,
-    target_policy_vs: VarStore,
-    memory: ReplayMemory,
+    pub action_selection: Box<dyn ContinuousObsDiscreteActionSelection>,
+    // next_value_function: GetNextQValue,
+    pub discount_factor: f32,
+    pub optimizer: Optimizer,
+    pub policy: Box<dyn Module>,
+    pub target_policy: Box<dyn Module>,
+    pub policy_vs: VarStore,
+    pub target_policy_vs: VarStore,
+    pub memory: ReplayMemory,
+    pub target_update: usize,
+    pub episode_counter: usize,
+    pub reward_sum: f32,
+    pub stat: RunningStat<f32>,
 }
 
 impl DoubleDeepAgent {
     pub fn new(
         action_selection: Box<dyn ContinuousObsDiscreteActionSelection>,
-        next_value_function: GetNextQValue,
+        // next_value_function: GetNextQValue,
         learning_rate: f64,
-        default_value: f32,
         discount_factor: f32,
-        policy: impl Module + 'static + std::clone::Clone,
-        policy_vs: VarStore,
+        target_update: usize,
+        policy_fn: fn(Device) -> (Box<dyn Module>, VarStore),
         device: Device,
         optimizer: impl OptimizerConfig,
         memory_capacity: usize,
         min_memory_size: usize,
         seed: u64,
     ) -> Self {
-        let mut target_policy_vs = VarStore::new(device);
+        let (policy, policy_vs) = policy_fn(device);
+        let (target_policy, mut target_policy_vs) = policy_fn(device);
         target_policy_vs.copy(&policy_vs).unwrap();
         Self {
             action_selection,
-            next_value_function,
-            learning_rate,
-            default_values: Array1::default(0),
-            default_value,
+            // next_value_function,
             discount_factor,
+            episode_counter: 0,
+            target_update,
             optimizer: optimizer.build(&policy_vs, learning_rate).unwrap(),
-            target_policy: Box::new(policy.clone()),
-            policy: Box::new(policy),
+            target_policy,
+            policy,
             policy_vs,
             target_policy_vs,
             memory: ReplayMemory::new(memory_capacity, min_memory_size, seed),
+            reward_sum: 0.0,
+            stat: RunningStat::new(50),
         }
     }
 }
@@ -162,9 +195,7 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
         next_obs: &Array1<f32>,
         next_action: usize,
     ) -> f32 {
-        if !self.memory.ready() {
-            return 0.0;
-        }
+        self.reward_sum += reward;
         let curr_state = Tensor::try_from(curr_obs).unwrap();
         let next_state = Tensor::try_from(next_obs).unwrap();
         let transition = Transition::new(
@@ -176,36 +207,44 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
             next_action as i64,
         );
         self.memory.add(transition);
-        let (b_curr_obs, b_curr_action, b_reward, b_dones, b_next_obs, b_next_action) =
-            self.memory.sample_batch(128);
-        let qvalues = self
-            .policy
-            .forward(&b_curr_obs)
-            .gather(1, &b_curr_action, false);
-        let next_q_values: Tensor = tch::no_grad(|| self.target_policy.forward(&b_next_obs));
-        let next_q_values: ndarray::ArrayD<f32> = (&next_q_values).try_into().unwrap();
-        let b_next_action: ndarray::ArrayD<f32> = (&b_next_action).try_into().unwrap();
-        let future_q_value = next_q_values.axis_iter(Axis(0)).map(|x| {
-            let a = 3;
-            3.0
-        });
-        // next_q_values.apply(m)
-        // next_q_values.iter().unwrap().map(|| -> {
-        //     (self.next_value_function)()
-        // })
-        // TODO
         if terminated {
-            self.action_selection.update();
+            self.episode_counter += 1;
+            if self.episode_counter % self.target_update == 0 {
+                self.episode_counter = 0;
+                self.target_policy_vs.copy(&self.policy_vs).unwrap();
+            }
+            self.stat.add(self.reward_sum);
+            self.reward_sum = 0.0;
+            self.action_selection.update(self.stat.average());
+            // println!("reward: {}", self.stat.average());
         }
-        //temporal_difference
+        if self.memory.ready() {
+            let (b_curr_obs, b_curr_action, b_reward, b_dones, b_next_obs, _b_next_action) =
+                self.memory.sample_batch(128);
+            let qvalues = self
+                .policy
+                .forward(&b_curr_obs)
+                .gather(1, &b_curr_action, false);
+            let future_q_value: Tensor =
+                tch::no_grad(|| self.target_policy.forward(&b_next_obs).max_dim(1, true).0);
+            let temporal_difference = b_reward
+                + self.discount_factor * (&Tensor::from(1.0) - &b_dones) * (&future_q_value);
+            let loss = qvalues.mse_loss(&temporal_difference, tch::Reduction::Mean);
+            self.optimizer.zero_grad();
+            loss.backward();
+            self.optimizer.step();
+        }
+
+        // temporal_difference
         0.0
     }
 
     fn get_action(&mut self, obs: &Array1<f32>) -> usize {
         let values = tch::no_grad(|| self.policy.forward(&Tensor::try_from(obs).unwrap()));
         let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
+        let values_len: usize = values.len();
         self.action_selection
-            .get_action(&values.into_shape(1).unwrap())
+            .get_action(&values.into_shape(values_len).unwrap())
     }
 
     fn reset(&mut self) {

@@ -7,6 +7,9 @@ use ndarray::Array1;
 
 pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
+pub use double_deep_agent::DoubleDeepAgent;
+pub use double_deep_agent::ReplayMemory;
+pub use double_deep_agent::Transition;
 pub use one_step_agent::OneStepAgent;
 
 extern crate environments;
@@ -58,6 +61,8 @@ pub trait FullDiscreteAgent {
 }
 
 pub trait ContinuousObsDiscreteActionAgent {
+    // fn prepare(&mut self, n_obs: usize, n_actions: usize);
+
     fn get_action(&mut self, obs: &Array1<f32>) -> usize;
 
     fn update(
@@ -74,6 +79,8 @@ pub trait ContinuousObsDiscreteActionAgent {
 }
 
 pub trait FullContinuousAgent {
+    // fn prepare(&mut self, n_obs: usize, n_actions: usize);
+
     fn get_action(&mut self, obs: &Array1<f32>) -> Array1<f32>;
 
     fn update(

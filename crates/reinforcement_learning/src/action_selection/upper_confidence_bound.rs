@@ -40,7 +40,7 @@ impl DiscreteObsDiscreteActionSelection for UpperConfidenceBound {
         action
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self, _reward: f32) {}
 
     fn get_exploration_probs(&mut self, obs: usize, values: &Array1<f32>) -> Array1<f32> {
         let obs_actions = self

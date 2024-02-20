@@ -14,6 +14,8 @@ pub struct ElegibilityTracesAgent {
     lambda_factor: f32,
     trace: Vec<(usize, Array1<f32>)>,
     policy: Array1<Array1<f32>>,
+    reward_sum: f32,
+    step_counter: u32,
 }
 
 impl ElegibilityTracesAgent {
@@ -35,6 +37,8 @@ impl ElegibilityTracesAgent {
             lambda_factor,
             trace: Vec::default(),
             policy: Array1::default(0),
+            reward_sum: 0.0,
+            step_counter: 0,
         }
     }
 }
@@ -55,6 +59,8 @@ impl FullDiscreteAgent for ElegibilityTracesAgent {
         next_obs: usize,
         next_action: usize,
     ) -> f32 {
+        self.reward_sum += reward;
+        self.step_counter += 1;
         let next_q_values: &Array1<f32> = self.policy.get(next_obs).unwrap_or(&self.default_values);
 
         let future_q_value: f32 = (self.next_value_function)(
@@ -98,7 +104,10 @@ impl FullDiscreteAgent for ElegibilityTracesAgent {
         }
 
         if terminated {
-            self.action_selection.update();
+            self.action_selection
+                .update(self.reward_sum / self.step_counter as f32);
+            self.reward_sum = 0.0;
+            self.step_counter = 0;
             self.trace.clear();
         }
         temporal_difference

@@ -1,5 +1,5 @@
 use reinforcement_learning::{
-    action_selection::{UniformEpsilonGreed, UpperConfidenceBound},
+    action_selection::{EpsilonDecreasing, UpperConfidenceBound},
     agent::{
         expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, FullDiscreteAgent, OneStepAgent,
     },
@@ -88,7 +88,7 @@ pub struct Cli {
 
 pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static str>) {
     let greedy_sarsa_agent = OneStepAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
@@ -103,7 +103,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_qlearning_agent = OneStepAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
@@ -118,7 +118,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_expected_sarsa_agent = OneStepAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
@@ -157,7 +157,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_sarsa_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
@@ -173,7 +173,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_qlearning_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
@@ -189,7 +189,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_expected_sarsa_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(UniformEpsilonGreed::new(
+        Box::new(EpsilonDecreasing::new(
             args.initial_epsilon,
             Rc::new(move |a| {
                 a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
