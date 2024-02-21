@@ -52,7 +52,7 @@ fn main() {
             training_error,
             _evaluation_reward,
             _evaluation_length,
-        ) = trainer.train(
+        ) = trainer.train_by_episode(
             &mut env,
             agent.as_mut(),
             n_episodes,

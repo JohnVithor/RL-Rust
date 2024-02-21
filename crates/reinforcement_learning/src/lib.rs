@@ -7,5 +7,3 @@ pub mod agent;
 pub mod experience_buffer;
 
 pub mod trainer;
-
-pub type Float = f32;
