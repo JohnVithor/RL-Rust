@@ -8,6 +8,7 @@ use tch::{
     nn::{Module, Optimizer, OptimizerConfig, VarStore},
     Device, Kind, Tensor,
 };
+use utils::argmax;
 
 // use super::GetNextQValue;
 
@@ -141,10 +142,10 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
             let temporal_difference = temporal_difference
                 .to_kind(Kind::Float)
                 .to_device(self.device);
-            let loss = qvalues.huber_loss(
+            let loss = qvalues.mse_loss(
                 &temporal_difference.to_device(self.device),
                 tch::Reduction::Mean,
-                1.0,
+                // 1.0,
             );
             self.optimizer.zero_grad();
             loss.backward();
@@ -175,6 +176,15 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
         let values_len: usize = values.len();
         self.action_selection
             .get_action(&values.into_shape(values_len).unwrap())
+    }
+
+    fn get_best_action(&mut self, obs: &Array1<f32>) -> usize {
+        let values = tch::no_grad(|| {
+            self.policy
+                .forward(&Tensor::try_from(obs).unwrap().to_device(self.device))
+        });
+        let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
+        argmax(values.iter())
     }
 
     fn reset(&mut self) {

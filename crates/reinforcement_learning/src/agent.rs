@@ -63,6 +63,8 @@ pub trait ContinuousObsDiscreteActionAgent {
 
     fn get_action(&mut self, obs: &Array1<f32>) -> usize;
 
+    fn get_best_action(&mut self, obs: &Array1<f32>) -> usize;
+
     fn update(
         &mut self,
         curr_obs: &Array1<f32>,

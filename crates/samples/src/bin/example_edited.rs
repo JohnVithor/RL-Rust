@@ -6,7 +6,7 @@ use reinforcement_learning::{
 use std::collections::VecDeque;
 use tch::{
     nn::{self, Module, OptimizerConfig, VarStore},
-    Device, Tensor,
+    Device, Kind, Tensor,
 };
 
 pub struct RunningStat<T> {
@@ -179,6 +179,7 @@ fn main() {
         });
         let expected_values = b_reward.to_device(device)
             + GAMMA * (&one - &b_done.to_device(device)) * (&max_target_values);
+        let expected_values = expected_values.to_kind(Kind::Float).to_device(device);
         let loss = qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
         opt.zero_grad();
         loss.backward();
