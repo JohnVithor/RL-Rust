@@ -12,7 +12,6 @@ include = ["src/**/*"]
 # codegen-units = 1
 
 [dependencies]
-serde = "1.0"
 environments = { path = "../environments" }
 utils = { path = "../utils" }
 rand = "0.8"

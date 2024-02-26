@@ -6,7 +6,7 @@ use crate::EnvError;
 
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
 #[derive(Debug, Copy, Clone)]
@@ -42,7 +42,7 @@ pub struct BlackJackEnv {
     player_has_ace: bool,
     dealer_has_ace: bool,
     dist: Uniform<u8>,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl BlackJackEnv {
@@ -55,7 +55,7 @@ impl BlackJackEnv {
             dealer_i: 0,
             player_has_ace: false,
             dealer_has_ace: false,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
             dist: Uniform::from(1..11),
         };
         env.initialize_hands();

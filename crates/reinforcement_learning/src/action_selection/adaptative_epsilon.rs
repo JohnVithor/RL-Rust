@@ -1,11 +1,11 @@
 use super::{ContinuousObsDiscreteActionSelection, DiscreteObsDiscreteActionSelection};
 use ndarray::{Array, Array1};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use utils::argmax;
 
 #[derive(Clone)]
 pub struct AdaptativeEpsilon {
-    rng: StdRng,
+    rng: SmallRng,
     min_reward: f32,
     max_reward: f32,
     min_epsilon: f32,
@@ -26,7 +26,7 @@ impl AdaptativeEpsilon {
             max_reward,
             min_epsilon,
             max_epsilon,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
             epsilon: max_epsilon,
         }
     }

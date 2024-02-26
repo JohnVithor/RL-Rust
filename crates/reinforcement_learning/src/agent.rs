@@ -48,11 +48,11 @@ pub trait FullDiscreteAgent {
     fn update(
         &mut self,
         curr_obs: usize,
-        curr_actions: usize,
+        curr_action: usize,
         reward: f32,
         terminated: bool,
         next_obs: usize,
-        next_actions: usize,
+        next_action: usize,
     ) -> f32;
 
     fn reset(&mut self);
@@ -68,11 +68,11 @@ pub trait ContinuousObsDiscreteActionAgent {
     fn update(
         &mut self,
         curr_obs: &Array1<f32>,
-        curr_actions: usize,
+        curr_action: usize,
         reward: f32,
         terminated: bool,
         next_obs: &Array1<f32>,
-        next_actions: usize,
+        next_action: usize,
     ) -> f32;
 
     fn reset(&mut self);
@@ -86,11 +86,11 @@ pub trait FullContinuousAgent {
     fn update(
         &mut self,
         curr_obs: &Array1<f32>,
-        curr_actions: &Array1<f32>,
+        curr_action: &Array1<f32>,
         reward: f32,
         terminated: bool,
         next_obs: &Array1<f32>,
-        next_actions: &Array1<f32>,
+        next_action: &Array1<f32>,
     ) -> f32;
 
     fn reset(&mut self);

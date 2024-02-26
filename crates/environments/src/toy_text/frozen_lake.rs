@@ -4,15 +4,13 @@ use crate::env::{Env, EnvError};
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::utils::{from_2d_to_1d, inc};
 
-use num_enum::IntoPrimitive;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use utils::categorical_sample;
 
-#[derive(Debug, Copy, Clone, IntoPrimitive)]
-#[repr(usize)]
+#[derive(Debug, Copy, Clone)]
 pub enum FrozenLakeAction {
     LEFT,
     DOWN,
@@ -45,7 +43,7 @@ pub struct FrozenLakeEnv {
     max_steps: u128,
     curr_step: u128,
     map: String,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl FrozenLakeEnv {
@@ -127,7 +125,7 @@ impl FrozenLakeEnv {
             max_steps,
             curr_step: 0,
             map: map.join("\n"),
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 }

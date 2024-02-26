@@ -6,16 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0"
-structopt = "0.3"
 reinforcement_learning = { path = "../reinforcement_learning" }
 environments = { path = "../environments" }
-tch = "0.15"
+structopt = "0.3"
 ndarray = "0.15"
-rand = "0.8"
-ndarray-rand = "0.14"
-cpython = "0.7"
-pyo3 = {version = "0.20", features=["auto-initialize"]}
-
-[dev-dependencies]
-torch-sys = "0.15"
+tch = "0.15"

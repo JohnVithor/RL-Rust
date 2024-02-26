@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use rand::{distributions::Uniform, prelude::Distribution, rngs::StdRng, SeedableRng};
+use rand::{distributions::Uniform, prelude::Distribution, rngs::SmallRng, SeedableRng};
 use utils::categorical_sample;
 
 use crate::{
@@ -18,7 +18,7 @@ pub struct TaxiEnv {
     curr_obs: usize,
     max_steps: u128,
     curr_step: u128,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl TaxiEnv {
@@ -131,7 +131,7 @@ impl TaxiEnv {
             curr_obs: 0,
             max_steps,
             curr_step: 0,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 }

@@ -1,12 +1,12 @@
 use super::{ContinuousObsDiscreteActionSelection, DiscreteObsDiscreteActionSelection};
 use ndarray::{Array, Array1};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use utils::argmax;
 
 #[derive(Clone)]
 pub struct EpsilonGreedy {
     epsilon: f32,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl Default for EpsilonGreedy {
@@ -19,7 +19,7 @@ impl EpsilonGreedy {
     pub fn new(epsilon: f32, seed: u64) -> Self {
         Self {
             epsilon,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 

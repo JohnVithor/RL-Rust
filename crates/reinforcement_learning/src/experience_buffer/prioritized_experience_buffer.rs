@@ -1,7 +1,5 @@
-use std::collections::VecDeque;
-
 use ndarray::Array1;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use tch::Tensor;
 
 pub struct PrioritizedExperienceBuffer {
@@ -10,11 +8,15 @@ pub struct PrioritizedExperienceBuffer {
     priority_sum: Array1<f64>,
     priority_min: Array1<f64>,
     max_priority: f64,
-
-    transitions: Array1<Transition>,
+    curr_states: Array1<Tensor>,
+    curr_actions: Array1<Tensor>,
+    rewards: Array1<Tensor>,
+    next_states: Array1<Tensor>,
+    next_actions: Array1<Tensor>,
+    dones: Array1<Tensor>,
     next_idx: usize,
     size: usize,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl PrioritizedExperienceBuffer {
@@ -25,15 +27,20 @@ impl PrioritizedExperienceBuffer {
             priority_sum: Array1::zeros(2 * capacity),
             priority_min: Array1::from_elem(2 * capacity, f64::INFINITY),
             max_priority: 1.0,
-            transitions: Array1::default(capacity),
+            curr_states: Array1::default(capacity),
+            curr_actions: Array1::default(capacity),
+            rewards: Array1::default(capacity),
+            next_states: Array1::default(capacity),
+            next_actions: Array1::default(capacity),
+            dones: Array1::default(capacity),
             next_idx: 0,
             size: 0,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 
     pub fn ready(&self) -> bool {
-        self.transitions.len() == self.capacity
+        self.size == self.capacity
     }
 
     fn set_priority_min(&mut self, idx: usize, priority_alpha: f64) {
@@ -66,13 +73,26 @@ impl PrioritizedExperienceBuffer {
             self.priority_sum[idx] = self.priority_sum[2 * idx] + self.priority_sum[2 * idx + 1];
         }
     }
-    pub fn add(&mut self, transition: Transition) {
-        self.transitions[self.next_idx] = transition;
-        self.size = self.capacity.min(self.size + 1);
+    pub fn add(
+        &mut self,
+        curr_state: &Tensor,
+        curr_action: i64,
+        reward: f32,
+        done: bool,
+        next_state: &Tensor,
+        next_action: i64,
+    ) {
+        self.curr_states[self.next_idx] = curr_state.shallow_clone();
+        self.curr_actions[self.next_idx] = Tensor::from(curr_action);
+        self.rewards[self.next_idx] = Tensor::from(reward);
+        self.dones[self.next_idx] = Tensor::from(done as i64);
+        self.next_states[self.next_idx] = next_state.shallow_clone();
+        self.next_actions[self.next_idx] = Tensor::from(next_action);
         let priority_alpha = self.max_priority.powf(self.alpha);
         self.set_priority_min(self.next_idx, priority_alpha);
         self.set_priority_sum(self.next_idx, priority_alpha);
         self.next_idx = (self.next_idx + 1) % self.capacity;
+        self.size = self.capacity.min(self.size + 1);
     }
 
     pub fn find_prefix_sum_idx(&self, prefix_sum: f64) -> usize {
@@ -116,6 +136,57 @@ impl PrioritizedExperienceBuffer {
     pub fn sample_batch(
         &mut self,
         size: usize,
-    ) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) {
+        beta: f64,
+    ) -> (
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+    ) {
+        let mut indexes = Array1::zeros(size);
+        let mut weights = Array1::zeros(size);
+        for i in 0..size {
+            let p = self.rng.gen_range(0.0..1.0) * self.priority_sum[1];
+            let idx = self.find_prefix_sum_idx(p);
+            indexes[i] = idx;
+        }
+        let prob_min = self.priority_min[1] / self.priority_sum[1];
+        let max_weight = (prob_min * self.size as f64).powf(-beta);
+
+        for i in 0..size {
+            let idx = indexes[i];
+            let prob = self.priority_sum[idx + self.capacity] / self.priority_sum[1];
+            let weight = (prob * self.size as f64).powf(-beta);
+            weights[i] = weight / max_weight;
+        }
+        let mut curr_obs: Vec<Tensor> = Vec::new();
+        let mut curr_actions: Vec<Tensor> = Vec::new();
+        let mut rewards: Vec<Tensor> = Vec::new();
+        let mut dones: Vec<Tensor> = Vec::new();
+        let mut next_obs: Vec<Tensor> = Vec::new();
+        let mut next_actions: Vec<Tensor> = Vec::new();
+        indexes.iter().for_each(|i| {
+            curr_obs.push(self.curr_states[*i].shallow_clone());
+            curr_actions.push(self.curr_actions[*i].shallow_clone());
+            rewards.push(self.rewards[*i].shallow_clone());
+            dones.push(self.dones[*i].shallow_clone());
+            next_obs.push(self.next_states[*i].shallow_clone());
+            next_actions.push(self.next_actions[*i].shallow_clone());
+        });
+        let indexes: Vec<i64> = indexes.iter().map(|x| *x as i64).collect();
+        (
+            Tensor::stack(&curr_obs, 0),
+            Tensor::stack(&curr_actions, 0).reshape([-1, 1]),
+            Tensor::stack(&rewards, 0).reshape([-1, 1]),
+            Tensor::stack(&dones, 0).reshape([-1, 1]),
+            Tensor::stack(&next_obs, 0),
+            Tensor::stack(&next_actions, 0).reshape([-1, 1]),
+            Tensor::from_slice(&indexes).reshape([-1, 1]),
+            Tensor::from_slice(weights.as_slice().unwrap()).reshape([-1, 1]),
+        )
     }
 }

@@ -1,6 +1,7 @@
 use crate::{
     action_selection::ContinuousObsDiscreteActionSelection,
-    agent::ContinuousObsDiscreteActionAgent, experience_buffer::RandomExperienceBuffer,
+    agent::ContinuousObsDiscreteActionAgent,
+    experience_buffer::{PrioritizedExperienceBuffer, RandomExperienceBuffer},
 };
 use ndarray::Array1;
 use std::collections::VecDeque;
@@ -54,7 +55,8 @@ pub struct DoubleDeepAgent {
     pub target_policy: Box<dyn Module>,
     pub policy_vs: VarStore,
     pub target_policy_vs: VarStore,
-    pub memory: RandomExperienceBuffer,
+    pub memory: PrioritizedExperienceBuffer,
+    pub beta: f64,
     pub target_update: usize,
     pub episode_counter: usize,
     pub reward_sum: f32,
@@ -90,7 +92,8 @@ impl DoubleDeepAgent {
             policy,
             policy_vs,
             target_policy_vs,
-            memory: RandomExperienceBuffer::new(memory_capacity, min_memory_size, seed),
+            memory: PrioritizedExperienceBuffer::new(memory_capacity, 0.6, seed),
+            beta: 0.4,
             reward_sum: 0.0,
             stat: RunningStat::new(50),
             device,
@@ -121,8 +124,16 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
             next_action as i64,
         );
         let temporal_difference = if self.memory.ready() {
-            let (b_curr_obs, b_curr_action, b_reward, b_dones, b_next_obs, _b_next_action) =
-                self.memory.sample_batch(128);
+            let (
+                b_curr_obs,
+                b_curr_action,
+                b_reward,
+                b_dones,
+                b_next_obs,
+                _b_next_action,
+                indexes,
+                weights,
+            ) = self.memory.sample_batch(128, self.beta);
             let qvalues = self
                 .policy
                 .forward(&b_curr_obs.to_device(self.device))
@@ -142,11 +153,13 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
             let temporal_difference = temporal_difference
                 .to_kind(Kind::Float)
                 .to_device(self.device);
-            let loss = qvalues.mse_loss(
+            let losses = qvalues.huber_loss(
                 &temporal_difference.to_device(self.device),
-                tch::Reduction::Mean,
-                // 1.0,
+                tch::Reduction::None,
+                1.0,
             );
+            let _raw_error = &qvalues - &temporal_difference;
+            let loss = (losses * weights).mean(Kind::Float);
             self.optimizer.zero_grad();
             loss.backward();
             self.optimizer.step();

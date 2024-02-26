@@ -1,6 +1,6 @@
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
 use crate::space::{SpaceInfo, SpaceTypeBounds};
@@ -38,7 +38,7 @@ pub struct CartPoleEnv {
     curr_step: u128,
     state: CartPoleObservation,
     dist: Uniform<f32>,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl CartPoleEnv {
@@ -60,7 +60,7 @@ impl CartPoleEnv {
             max_steps,
             state: CartPoleObservation::default(),
             dist: Uniform::from(-0.05..0.05),
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         };
         env.state = env.initialize();
         env

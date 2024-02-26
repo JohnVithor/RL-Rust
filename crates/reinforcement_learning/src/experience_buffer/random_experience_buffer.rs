@@ -1,5 +1,5 @@
 use ndarray::Array1;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use tch::Tensor;
 
 pub struct RandomExperienceBuffer {
@@ -13,7 +13,7 @@ pub struct RandomExperienceBuffer {
     next_idx: usize,
     capacity: usize,
     minsize: usize,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl RandomExperienceBuffer {
@@ -29,7 +29,7 @@ impl RandomExperienceBuffer {
             next_idx: 0,
             size: 0,
             minsize,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 

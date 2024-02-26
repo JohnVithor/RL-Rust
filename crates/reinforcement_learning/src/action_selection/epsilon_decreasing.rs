@@ -1,6 +1,6 @@
 use super::{ContinuousObsDiscreteActionSelection, DiscreteObsDiscreteActionSelection};
 use ndarray::{Array, Array1};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use std::rc::Rc;
 use utils::argmax;
 
@@ -10,7 +10,7 @@ pub struct EpsilonDecreasing {
     epsilon: f32,
     epsilon_decay: Rc<dyn Fn(f32) -> f32>,
     final_epsilon: f32,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl Default for EpsilonDecreasing {
@@ -31,7 +31,7 @@ impl EpsilonDecreasing {
             epsilon,
             epsilon_decay,
             final_epsilon,
-            rng: StdRng::seed_from_u64(seed),
+            rng: SmallRng::seed_from_u64(seed),
         }
     }
 

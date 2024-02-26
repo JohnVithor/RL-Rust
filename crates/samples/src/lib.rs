@@ -7,11 +7,11 @@ use reinforcement_learning::{
 use std::rc::Rc;
 use structopt::StructOpt;
 
-pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
-    let mut file = std::fs::File::create(path)?;
-    serde_json::to_writer(&mut file, &data)?;
-    Ok(())
-}
+// pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
+//     let mut file = std::fs::File::create(path)?;
+//     serde_json::to_writer(&mut file, &data)?;
+//     Ok(())
+// }
 
 pub fn moving_average(window: usize, vector: &[f32]) -> Vec<f32> {
     let mut aux: usize = 0;
