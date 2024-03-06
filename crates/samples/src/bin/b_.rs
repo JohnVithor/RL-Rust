@@ -204,10 +204,10 @@ fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
     let mut rng: StdRng = StdRng::seed_from_u64(42);
-    const MEM_SIZE: usize = 2000;
-    const MIN_MEM_SIZE: usize = 1000;
-    const GAMMA: f32 = 0.95;
-    const UPDATE_FREQ: i64 = 20;
+    const MEM_SIZE: usize = 10_000;
+    const MIN_MEM_SIZE: usize = 2000;
+    const GAMMA: f32 = 0.99;
+    const UPDATE_FREQ: i64 = 5;
     const LEARNING_RATE: f64 = 0.00005;
     let mut epsilon: f32 = 1.0;
 
@@ -320,7 +320,7 @@ fn main() {
                 println!("Solved at episode {} with avg of {}", nepisodes, avg);
                 break;
             }
-            epsilon = epsilon_update(epsilon, 0.001, 0.05);
+            epsilon = epsilon_update(epsilon, 0.001, 0.00);
         }
 
         if mem_replay.len() >= MIN_MEM_SIZE {

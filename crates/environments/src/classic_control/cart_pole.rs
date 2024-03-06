@@ -94,7 +94,7 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
         if !self.ready {
             return Err(EnvNotReady);
         }
-        if self.curr_step >= self.max_steps {
+        if self.curr_step > self.max_steps {
             self.ready = false;
             return Ok((self.state.clone(), -1.0, true));
         }
