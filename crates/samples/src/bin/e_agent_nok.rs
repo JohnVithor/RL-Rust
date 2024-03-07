@@ -7,7 +7,7 @@ use reinforcement_learning::{
 use std::collections::VecDeque;
 use tch::{
     nn::{self, Adam, Module, VarStore},
-    Device, Tensor,Kind
+    Device, Kind, Tensor,
 };
 
 pub struct RunningStat<T> {
@@ -171,7 +171,8 @@ fn main() {
             continue;
         }
 
-        let (b_state, b_action, b_reward, b_done, b_state_, _) = agent.memory.sample_batch(128);
+        let (b_state, b_action, b_reward, b_done, b_state_, _, _, _) =
+            agent.memory.sample_batch(128, 1.0);
         let qvalues = agent.policy.forward(&b_state.to_device(device)).gather(
             1,
             &b_action.to_device(device),

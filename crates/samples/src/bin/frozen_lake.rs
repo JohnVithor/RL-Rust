@@ -6,8 +6,7 @@ extern crate structopt;
 
 use environments::toy_text::frozen_lake::{FrozenLakeAction, FrozenLakeEnv};
 use reinforcement_learning::trainer::FullDiscreteTrainer;
-use samples::{get_agents, moving_average, save_json, Cli};
-use serde_json::json;
+use samples::{get_agents, moving_average, Cli};
 use structopt::StructOpt;
 
 fn main() {
@@ -109,22 +108,4 @@ fn main() {
         println!(" - mean reward of {:.2?}", mean_reward);
         agent.reset();
     }
-    match save_json(
-        "results.json",
-        json!({
-            "train_rewards": &train_rewards,
-            "train_episodes_length": &train_episodes_length,
-            "train_errors": &train_errors,
-            "test_rewards": &test_rewards,
-            "test_episodes_length": &test_episodes_length,
-            "identifiers": &identifiers
-        }),
-    ) {
-        Ok(_) => {
-            println!("OK")
-        }
-        Err(_) => {
-            println!("ERROR")
-        }
-    };
 }

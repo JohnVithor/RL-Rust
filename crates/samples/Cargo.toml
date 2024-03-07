@@ -11,3 +11,5 @@ environments = { path = "../environments" }
 structopt = "0.3"
 ndarray = "0.15"
 tch = "0.15"
+rand = "0.8"
+pyo3 = "0.20"

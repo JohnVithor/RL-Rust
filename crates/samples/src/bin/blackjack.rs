@@ -7,10 +7,9 @@ extern crate structopt;
 use environments::toy_text::blackjack::{BlackJackAction, BlackJackEnv, BlackJackObservation};
 use environments::Env;
 use reinforcement_learning::trainer::FullDiscreteTrainer;
-use serde_json::json;
 use structopt::StructOpt;
 
-use samples::{get_agents, moving_average, save_json, Cli};
+use samples::{get_agents, moving_average, Cli};
 
 fn main() {
     let cli: Cli = Cli::from_args();
@@ -134,22 +133,4 @@ fn main() {
         mean_reward /= n_episodes as f32;
         println!(" - mean reward of {:.2?}", mean_reward);
     }
-    match save_json(
-        "results.json",
-        json!({
-            "train_rewards": &train_rewards,
-            "train_episodes_length": &train_episodes_length,
-            "train_errors": &train_errors,
-            "test_rewards": &test_rewards,
-            "test_episodes_length": &test_episodes_length,
-            "identifiers": &identifiers
-        }),
-    ) {
-        Ok(_) => {
-            println!("OK")
-        }
-        Err(_) => {
-            println!("ERROR")
-        }
-    };
 }
