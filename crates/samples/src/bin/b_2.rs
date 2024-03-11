@@ -7,6 +7,7 @@ use tch::{
 };
 
 const DEVICE: Device = Device::Cpu;
+// const DEVICE: Device = Device::Cuda(0);
 
 pub fn epsilon_greedy(
     policy: &nn::Sequential,
@@ -204,8 +205,8 @@ fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
     let mut rng: StdRng = StdRng::seed_from_u64(42);
-    const MEM_SIZE: usize = 5_000;
-    const MIN_MEM_SIZE: usize = 1000;
+    const MEM_SIZE: usize = 2_500;
+    const MIN_MEM_SIZE: usize = 500;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 5;
     const LEARNING_RATE: f64 = 0.00005;
@@ -325,7 +326,7 @@ fn main() {
 
         if mem_replay.len() >= MIN_MEM_SIZE {
             let (b_state, b_action, b_reward, b_done, b_state_) =
-                mem_replay.sample_batch(128, &mut rng);
+                mem_replay.sample_batch(32, &mut rng);
             let qvalues = policy_net.forward(&b_state).gather(1, &b_action, false);
 
             let max_target_values: Tensor =

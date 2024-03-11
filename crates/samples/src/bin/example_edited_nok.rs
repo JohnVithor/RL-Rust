@@ -76,8 +76,8 @@ fn main() {
     let mut done: bool;
     let mut state_: Tensor;
 
-    let mut mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, 42);
     let device = Device::cuda_if_available();
+    let mut mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, 42, device);
     let (policy, policy_vs) = generate_policy(device);
     let (target_policy, mut target_policy_vs) = generate_policy(device);
     target_policy_vs.copy(&policy_vs).unwrap();

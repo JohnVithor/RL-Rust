@@ -65,6 +65,10 @@ impl EpsilonDecreasing {
     fn reset(&mut self) {
         self.epsilon = self.initial_epsilon;
     }
+
+    pub fn get_epsilon(&self) -> f32 {
+        self.epsilon
+    }
 }
 
 impl DiscreteObsDiscreteActionSelection for EpsilonDecreasing {

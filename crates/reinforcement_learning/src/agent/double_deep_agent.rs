@@ -55,7 +55,7 @@ pub struct DoubleDeepAgent {
     pub target_policy: Box<dyn Module>,
     pub policy_vs: VarStore,
     pub target_policy_vs: VarStore,
-    pub memory: PrioritizedExperienceBuffer,
+    pub memory: RandomExperienceBuffer,
     pub beta: f64,
     pub target_update: usize,
     pub episode_counter: usize,
@@ -92,12 +92,40 @@ impl DoubleDeepAgent {
             policy,
             policy_vs,
             target_policy_vs,
-            memory: PrioritizedExperienceBuffer::new(memory_capacity, 0.6, seed),
+            memory: RandomExperienceBuffer::new(memory_capacity, min_memory_size, seed, device),
             beta: 0.4,
             reward_sum: 0.0,
             stat: RunningStat::new(50),
             device,
         }
+    }
+
+    pub fn memorize(
+        &mut self,
+        curr_obs: &Array1<f32>,
+        curr_action: usize,
+        reward: f32,
+        terminated: bool,
+        next_obs: &Array1<f32>,
+        next_action: usize,
+    ) {
+        let curr_state = Tensor::try_from(curr_obs).unwrap();
+        let next_state = Tensor::try_from(next_obs).unwrap();
+
+        self.memory.add(
+            &curr_state,
+            curr_action as i64,
+            reward,
+            terminated,
+            &next_state,
+            next_action as i64,
+        );
+    }
+
+    pub fn optimize(&mut self, loss: Tensor) {
+        self.optimizer.zero_grad();
+        loss.backward();
+        self.optimizer.step();
     }
 }
 
@@ -112,17 +140,7 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
         next_action: usize,
     ) -> f32 {
         self.reward_sum += reward;
-        let curr_state = Tensor::try_from(curr_obs).unwrap();
-        let next_state = Tensor::try_from(next_obs).unwrap();
 
-        self.memory.add(
-            &curr_state,
-            curr_action as i64,
-            reward,
-            terminated,
-            &next_state,
-            next_action as i64,
-        );
         let temporal_difference = if self.memory.ready() {
             let (
                 b_curr_obs,
@@ -131,9 +149,9 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
                 b_dones,
                 b_next_obs,
                 _b_next_action,
-                indexes,
-                weights,
-            ) = self.memory.sample_batch(128, self.beta);
+                // indexes,
+                // weights,
+            ) = self.memory.sample_batch(128);
             let qvalues = self
                 .policy
                 .forward(&b_curr_obs.to_device(self.device))
@@ -159,7 +177,7 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
                 1.0,
             );
             let _raw_error = &qvalues - &temporal_difference;
-            let loss = (losses * weights).mean(Kind::Float);
+            let loss = (losses).mean(Kind::Float);
             self.optimizer.zero_grad();
             loss.backward();
             self.optimizer.step();
@@ -168,14 +186,14 @@ impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
             0.0
         };
         if terminated {
-            self.episode_counter += 1;
-            if self.episode_counter % self.target_update == 0 {
-                self.episode_counter = 0;
-                self.target_policy_vs.copy(&self.policy_vs).unwrap();
-            }
-            self.stat.add(self.reward_sum);
-            self.reward_sum = 0.0;
-            self.action_selection.update(self.stat.average());
+            // self.episode_counter += 1;
+            // if self.episode_counter % self.target_update == 0 {
+            //     self.episode_counter = 0;
+            //     self.target_policy_vs.copy(&self.policy_vs).unwrap();
+            // }
+            // self.stat.add(self.reward_sum);
+            // self.reward_sum = 0.0;
+            // self.action_selection.update(self.stat.average());
         }
         temporal_difference
     }

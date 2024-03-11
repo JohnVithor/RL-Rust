@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 reinforcement_learning = { path = "../reinforcement_learning" }
 environments = { path = "../environments" }
+utils = { path = "../utils" }
 structopt = "0.3"
 ndarray = "0.15"
 tch = "0.15"
