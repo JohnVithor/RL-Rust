@@ -1,7 +1,6 @@
 use crate::{
     action_selection::ContinuousObsDiscreteActionSelection,
-    agent::ContinuousObsDiscreteActionAgent,
-    experience_buffer::{PrioritizedExperienceBuffer, RandomExperienceBuffer},
+    agent::ContinuousObsDiscreteActionAgent, experience_buffer::RandomExperienceBuffer,
 };
 use ndarray::Array1;
 use std::collections::VecDeque;
@@ -132,12 +131,12 @@ impl DoubleDeepAgent {
 impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
     fn update(
         &mut self,
-        curr_obs: &Array1<f32>,
-        curr_action: usize,
+        _curr_obs: &Array1<f32>,
+        _curr_action: usize,
         reward: f32,
         terminated: bool,
-        next_obs: &Array1<f32>,
-        next_action: usize,
+        _next_obs: &Array1<f32>,
+        _next_action: usize,
     ) -> f32 {
         self.reward_sum += reward;
 

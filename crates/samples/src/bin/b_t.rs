@@ -4,80 +4,12 @@ use reinforcement_learning::{
     action_selection::{ContinuousObsDiscreteActionSelection, EpsilonDecreasing},
     experience_buffer::RandomExperienceBuffer,
 };
-use std::{collections::VecDeque, rc::Rc, time::Instant};
+use std::{rc::Rc, time::Instant};
 use tch::{
-    nn::{self, Module, Optimizer, OptimizerConfig, VarStore},
+    nn::{self, Module, OptimizerConfig, VarStore},
     Device, Kind, Tensor,
 };
 use utils::argmax;
-
-pub struct RunningStat<T> {
-    values: VecDeque<T>,
-    capacity: usize,
-}
-
-impl<T> RunningStat<T> {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            values: VecDeque::new(),
-            capacity,
-        }
-    }
-
-    pub fn add(&mut self, val: T) {
-        self.values.push_back(val);
-        if self.values.len() > self.capacity {
-            self.values.pop_front();
-        }
-    }
-
-    pub fn average(&self) -> f32
-    where
-        T: std::iter::Sum,
-        T: std::ops::Div<f32, Output = T>,
-        T: Clone,
-        T: Into<f32>,
-        f32: std::iter::Sum<T>,
-    {
-        let sum: f32 = self.values.iter().cloned().sum();
-        sum / (self.capacity as f32)
-    }
-}
-
-pub struct DoubleDeepAgent {
-    pub action_selection: EpsilonDecreasing,
-    pub discount_factor: f32,
-    pub optimizer: Optimizer,
-    pub policy: Box<dyn Module>,
-    pub target_policy: Box<dyn Module>,
-    pub policy_vs: VarStore,
-    pub target_policy_vs: VarStore,
-    pub memory: RandomExperienceBuffer,
-    pub target_update: usize,
-    pub device: Device,
-}
-
-fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
-    const NEURONS: i64 = 128;
-
-    let mem_policy = nn::VarStore::new(device);
-    let policy_net = nn::seq()
-        .add(nn::linear(
-            &mem_policy.root() / "al1",
-            4,
-            NEURONS,
-            Default::default(),
-        ))
-        .add_fn(|xs| xs.gelu("none"))
-        .add(nn::linear(
-            &mem_policy.root() / "al2",
-            NEURONS,
-            2,
-            Default::default(),
-        ))
-        .add_fn(|xs| xs.softmax(0, Kind::Float));
-    (Box::new(policy_net), mem_policy)
-}
 
 pub fn evaluate(
     env: &mut CartPoleEnv,
@@ -130,15 +62,41 @@ pub fn evaluate(
     (reward_history, episode_length)
 }
 
+fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
+    const NEURONS: i64 = 128;
+
+    let mem_policy = nn::VarStore::new(device);
+    let policy_net = nn::seq()
+        .add(nn::linear(
+            &mem_policy.root() / "al1",
+            4,
+            NEURONS,
+            Default::default(),
+        ))
+        .add_fn(|xs| xs.gelu("none"))
+        // .add_fn(|xs| xs.tanh())
+        .add(nn::linear(
+            &mem_policy.root() / "al2",
+            NEURONS,
+            2,
+            Default::default(),
+        ))
+        .add_fn(|xs| xs.softmax(0, Kind::Float));
+    (Box::new(policy_net), mem_policy)
+}
+
 fn main() {
     let mut rng: StdRng = StdRng::seed_from_u64(0);
     tch::manual_seed(rng.next_u64() as i64);
     tch::maybe_init_cuda();
     const MEM_SIZE: usize = 5_000;
     const MIN_MEM_SIZE: usize = 1_000;
-    const GAMMA: f32 = 0.99;
+    const GAMMA: f32 = 0.9;
     const UPDATE_FREQ: i64 = 10;
     const LEARNING_RATE: f64 = 0.0005;
+    const EPSILON_DECAY: f32 = 0.0005;
+    const MAX_STEPS_PER_EPI: u128 = 500;
+    const START_EPSILON: f32 = 1.0;
     let device: Device = Device::Cpu;
 
     let mut state: Tensor;
@@ -158,14 +116,12 @@ fn main() {
 
     mem_target.copy(&mem_policy).unwrap();
 
-    let mut ep_returns = RunningStat::<f32>::new(50);
-    let mut ep_return: f32 = 0.0;
     let mut nepisodes = 0;
 
     let one: Tensor = Tensor::from(1.0);
 
-    let mut train_env = CartPoleEnv::new(500, rng.next_u64());
-    let mut eval_env = CartPoleEnv::new(500, rng.next_u64());
+    let mut train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
+    let mut eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
     state = {
         let s = train_env.reset();
         Tensor::from_slice(&[
@@ -179,8 +135,12 @@ fn main() {
 
     let start = Instant::now();
 
-    let mut epsilon_greedy =
-        EpsilonDecreasing::new(1.0, Rc::new(|x| x - 0.0005), 0.0, rng.next_u64());
+    let mut epsilon_greedy = EpsilonDecreasing::new(
+        START_EPSILON,
+        Rc::new(|x| x - EPSILON_DECAY),
+        0.0,
+        rng.next_u64(),
+    );
 
     loop {
         let values = tch::no_grad(|| policy_net.forward(&state));
@@ -203,39 +163,7 @@ fn main() {
             )
         };
         mem_replay.add(&state, action, reward, done, &state_, action);
-        ep_return += reward;
         state = state_;
-
-        if done {
-            if nepisodes % 50 == 0 {
-                let (r, _l) = evaluate(&mut eval_env, policy_net.as_ref(), 100, device);
-                let avg = (r.iter().cloned().sum::<f32>()) / (r.len() as f32);
-                println!(
-                    "Episode: {}, Avg Return: {:.3} Epsilon: {:.3}",
-                    nepisodes,
-                    avg,
-                    epsilon_greedy.get_epsilon()
-                );
-                if avg == 500.0 {
-                    println!("Solved at episode {} with avg of {}", nepisodes, avg);
-                    break;
-                }
-            }
-            nepisodes += 1;
-            ep_returns.add(ep_return);
-            ep_return = 0.0;
-            state = {
-                let s = train_env.reset();
-                Tensor::from_slice(&[
-                    s.cart_position,
-                    s.cart_velocity,
-                    s.pole_angle,
-                    s.pole_angular_velocity,
-                ])
-                .to_device(device)
-            };
-            epsilon_greedy.update(0.0);
-        }
 
         if mem_replay.ready() {
             let (b_state, b_action, b_reward, b_done, b_state_, _) = mem_replay.sample_batch(32);
@@ -248,12 +176,41 @@ fn main() {
             opt.zero_grad();
             loss.backward();
             opt.step();
+        }
+
+        if done {
             if nepisodes % UPDATE_FREQ == 0 {
                 let a = mem_target.copy(&mem_policy);
                 if a.is_err() {
                     println!("copy error")
                 };
             }
+            if nepisodes % 50 == 0 {
+                let (r, _l) = evaluate(&mut eval_env, policy_net.as_ref(), 100, device);
+                let avg = (r.iter().sum::<f32>()) / (r.len() as f32);
+                println!(
+                    "Episode: {}, Avg Return: {:.3} Epsilon: {:.3}",
+                    nepisodes,
+                    avg,
+                    epsilon_greedy.get_epsilon()
+                );
+                if avg == MAX_STEPS_PER_EPI as f32 {
+                    println!("Solved at episode {} with avg of {}", nepisodes, avg);
+                    break;
+                }
+            }
+            nepisodes += 1;
+            state = {
+                let s = train_env.reset();
+                Tensor::from_slice(&[
+                    s.cart_position,
+                    s.cart_velocity,
+                    s.pole_angle,
+                    s.pole_angular_velocity,
+                ])
+                .to_device(device)
+            };
+            epsilon_greedy.update(0.0);
         }
     }
     let elapsed = start.elapsed();
