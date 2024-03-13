@@ -126,14 +126,9 @@ fn main() {
         let t_c_state = Tensor::try_from(&state).unwrap();
         let t_n_state = Tensor::try_from(&state_).unwrap();
 
-        agent.memory.add(
-            &t_c_state,
-            action as i64,
-            reward,
-            done,
-            &t_n_state,
-            action as i64,
-        );
+        agent
+            .memory
+            .add(&t_c_state, action, reward, done, &t_n_state, action);
         state = state_;
 
         if done {

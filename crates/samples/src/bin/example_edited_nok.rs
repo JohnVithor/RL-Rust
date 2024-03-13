@@ -129,7 +129,7 @@ fn main() {
         // update()
         ep_return += reward;
 
-        mem_replay.add(&state, action as i64, reward, done, &state_, action as i64);
+        mem_replay.add(&state, action, reward, done, &state_, action);
         state = state_;
 
         if done {

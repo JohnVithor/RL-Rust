@@ -42,18 +42,18 @@ impl RandomExperienceBuffer {
     pub fn add(
         &mut self,
         curr_state: &Tensor,
-        curr_action: i64,
+        curr_action: usize,
         reward: f32,
         done: bool,
         next_state: &Tensor,
-        next_action: i64,
+        next_action: usize,
     ) {
         self.curr_states[self.next_idx] = curr_state.shallow_clone();
-        self.curr_actions[self.next_idx] = Tensor::from(curr_action);
+        self.curr_actions[self.next_idx] = Tensor::from(curr_action as i64);
         self.rewards[self.next_idx] = Tensor::from(reward);
         self.dones[self.next_idx] = Tensor::from(done as i64);
         self.next_states[self.next_idx] = next_state.shallow_clone();
-        self.next_actions[self.next_idx] = Tensor::from(next_action);
+        self.next_actions[self.next_idx] = Tensor::from(next_action as i64);
 
         self.next_idx = (self.next_idx + 1) % self.capacity;
         self.size = self.capacity.min(self.size + 1);

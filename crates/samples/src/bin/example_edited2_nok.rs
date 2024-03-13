@@ -129,14 +129,7 @@ fn main() {
             let values_len = values.len();
             let n_action = eps.get_action(&values.into_shape(values_len).unwrap());
 
-            mem_replay.add(
-                &state,
-                action as i64,
-                reward,
-                done,
-                &state_,
-                n_action as i64,
-            );
+            mem_replay.add(&state, action, reward, done, &state_, n_action);
 
             if mem_replay.ready() {
                 let (b_state, b_action, b_reward, b_done, b_state_, _) =

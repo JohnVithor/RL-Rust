@@ -6,14 +6,13 @@ use reinforcement_learning::{
 };
 use std::{rc::Rc, time::Instant};
 use tch::{
-    nn::{self, Module, OptimizerConfig, VarStore},
-    Device, Kind, Tensor,
+    nn::{self, Adam, AdamW, Module, Optimizer, OptimizerConfig, RmsProp, Sgd, VarStore},
+    COptimizer, Device, Kind, TchError, Tensor,
 };
-use utils::argmax;
 
-pub fn evaluate(
+fn evaluate(
     env: &mut CartPoleEnv,
-    policy_net: &dyn Module,
+    agent: &Agent,
     n_episodes: u128,
     device: Device,
 ) -> (Vec<f32>, Vec<u128>) {
@@ -32,9 +31,7 @@ pub fn evaluate(
             ])
             .to_device(device)
         };
-        let values = tch::no_grad(|| policy_net.forward(&state));
-        let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
-        let mut curr_action = argmax(values.iter());
+        let mut curr_action = agent.get_best_action(&state);
         loop {
             action_counter += 1;
             let (obs, reward, terminated) = env.step(curr_action).unwrap();
@@ -47,10 +44,7 @@ pub fn evaluate(
                 ])
                 .to_device(device)
             };
-            let values = tch::no_grad(|| policy_net.forward(&state));
-            let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
-            let next_action = argmax(values.iter());
-            curr_action = next_action;
+            curr_action = agent.get_best_action(&state);
             epi_reward += reward;
             if terminated {
                 reward_history.push(epi_reward);
@@ -85,8 +79,130 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
     (Box::new(policy_net), mem_policy)
 }
 
+enum OptimizerEnum {
+    Adam(Adam),
+    Sgd(Sgd),
+    RmsProp(RmsProp),
+    AdamW(AdamW),
+}
+
+impl OptimizerConfig for OptimizerEnum {
+    fn build_copt(&self, lr: f64) -> Result<COptimizer, TchError> {
+        match self {
+            OptimizerEnum::Adam(opt) => opt.build_copt(lr),
+            OptimizerEnum::Sgd(opt) => opt.build_copt(lr),
+            OptimizerEnum::RmsProp(opt) => opt.build_copt(lr),
+            OptimizerEnum::AdamW(opt) => opt.build_copt(lr),
+        }
+    }
+}
+
+struct Agent {
+    epsilon_greedy: EpsilonDecreasing,
+    mem_replay: RandomExperienceBuffer,
+    policy_net: Box<dyn Module>,
+    mem_policy: VarStore,
+    target_net: Box<dyn Module>,
+    mem_target: VarStore,
+    opt: Optimizer,
+    discount_factor: f32,
+}
+
+impl Agent {
+    pub fn new(
+        epsilon_greedy: EpsilonDecreasing,
+        mem_replay: RandomExperienceBuffer,
+        generate_policy: fn(device: Device) -> (Box<dyn Module>, VarStore),
+        opt: OptimizerEnum,
+        lr: f64,
+        discount_factor: f32,
+        device: Device,
+    ) -> Self {
+        let (policy_net, mem_policy) = generate_policy(device);
+        let (target_net, mut mem_target) = generate_policy(device);
+        mem_target.copy(&mem_policy).unwrap();
+        Self {
+            opt: opt.build(&mem_policy, lr).unwrap(),
+            epsilon_greedy,
+            mem_replay,
+            policy_net,
+            mem_policy,
+            target_net,
+            mem_target,
+            discount_factor,
+        }
+    }
+
+    fn get_action(&mut self, state: &Tensor) -> usize {
+        let values = tch::no_grad(|| self.policy_net.forward(state));
+        let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
+        let len = values.len();
+        self.epsilon_greedy
+            .get_action(&values.into_shape(len).unwrap()) as usize
+    }
+
+    fn get_best_action(&self, state: &Tensor) -> usize {
+        let values = tch::no_grad(|| self.policy_net.forward(state));
+        let a: i32 = values.argmax(0, true).try_into().unwrap();
+        a as usize
+    }
+
+    fn add_transition(
+        &mut self,
+        curr_state: &Tensor,
+        curr_action: usize,
+        reward: f32,
+        done: bool,
+        next_state: &Tensor,
+        next_action: usize,
+    ) {
+        self.mem_replay.add(
+            curr_state,
+            curr_action,
+            reward,
+            done,
+            next_state,
+            next_action,
+        );
+    }
+
+    fn update_networks(&mut self) -> Result<(), TchError> {
+        self.mem_target.copy(&self.mem_policy)
+    }
+
+    fn get_batch(&mut self, size: usize) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) {
+        self.mem_replay.sample_batch(size)
+    }
+
+    fn batch_qvalues(&self, b_states: &Tensor, b_actions: &Tensor) -> Tensor {
+        self.policy_net
+            .forward(b_states)
+            .gather(1, b_actions, false)
+    }
+
+    fn batch_expected_values(
+        &self,
+        b_state_: &Tensor,
+        b_reward: &Tensor,
+        b_done: &Tensor,
+    ) -> Tensor {
+        let best_target_qvalues =
+            tch::no_grad(|| self.target_net.forward(b_state_).max_dim(1, true).0);
+        b_reward + self.discount_factor * (&Tensor::from(1.0) - b_done) * (&best_target_qvalues)
+    }
+
+    fn optimize(&mut self, loss: &Tensor) {
+        self.opt.zero_grad();
+        loss.backward();
+        self.opt.step();
+    }
+}
+
 fn main() {
+    // Lucky: 4,
+    // Unlucky: 6
     let mut rng: StdRng = StdRng::seed_from_u64(0);
+
     tch::manual_seed(rng.next_u64() as i64);
     tch::maybe_init_cuda();
     const MEM_SIZE: usize = 5_000;
@@ -99,29 +215,36 @@ fn main() {
     const START_EPSILON: f32 = 1.0;
     let device: Device = Device::Cpu;
 
+    let mut train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
+    let mut eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
+
+    let mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.next_u64(), device);
+
+    let epsilon_greedy = EpsilonDecreasing::new(
+        START_EPSILON,
+        Rc::new(|x| x - EPSILON_DECAY),
+        0.0,
+        rng.next_u64(),
+    );
+
+    let mut agent = Agent::new(
+        epsilon_greedy,
+        mem_replay,
+        generate_policy,
+        OptimizerEnum::Adam(nn::Adam::default()),
+        LEARNING_RATE,
+        GAMMA,
+        device,
+    );
+
+    let mut nepisodes = 0;
+
     let mut state: Tensor;
-    let mut action: i64;
+    let mut action: usize;
     let mut reward: f32;
     let mut done: bool;
     let mut state_: Tensor;
 
-    let mut mem_replay =
-        RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.next_u64(), device);
-
-    let (policy_net, mem_policy) = generate_policy(device);
-    let (target_net, mut mem_target) = generate_policy(device);
-    let mut opt = nn::Adam::default()
-        .build(&mem_policy, LEARNING_RATE)
-        .unwrap();
-
-    mem_target.copy(&mem_policy).unwrap();
-
-    let mut nepisodes = 0;
-
-    let one: Tensor = Tensor::from(1.0);
-
-    let mut train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
-    let mut eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
     state = {
         let s = train_env.reset();
         Tensor::from_slice(&[
@@ -135,21 +258,11 @@ fn main() {
 
     let start = Instant::now();
 
-    let mut epsilon_greedy = EpsilonDecreasing::new(
-        START_EPSILON,
-        Rc::new(|x| x - EPSILON_DECAY),
-        0.0,
-        rng.next_u64(),
-    );
-
     loop {
-        let values = tch::no_grad(|| policy_net.forward(&state));
-        let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();
-        let len = values.len();
-        action = epsilon_greedy.get_action(&values.into_shape(len).unwrap()) as i64;
+        action = agent.get_action(&state);
 
         (state_, reward, done) = {
-            let (state_, reward, done) = train_env.step(action as usize).unwrap();
+            let (state_, reward, done) = train_env.step(action).unwrap();
             (
                 Tensor::from_slice(&[
                     state_.cart_position,
@@ -162,37 +275,30 @@ fn main() {
                 done,
             )
         };
-        mem_replay.add(&state, action, reward, done, &state_, action);
+        agent.add_transition(&state, action, reward, done, &state_, action);
+
         state = state_;
 
-        if mem_replay.ready() {
-            let (b_state, b_action, b_reward, b_done, b_state_, _) = mem_replay.sample_batch(32);
-            let qvalues = policy_net.forward(&b_state).gather(1, &b_action, false);
-
-            let max_target_values: Tensor =
-                tch::no_grad(|| target_net.forward(&b_state_).max_dim(1, true).0);
-            let expected_values = b_reward + GAMMA * (&one - &b_done) * (&max_target_values);
-            let loss = qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
-            opt.zero_grad();
-            loss.backward();
-            opt.step();
+        if agent.mem_replay.ready() {
+            let (b_state, b_action, b_reward, b_done, b_state_, _) = agent.get_batch(32);
+            let policy_qvalues = agent.batch_qvalues(&b_state, &b_action);
+            let expected_values = agent.batch_expected_values(&b_state_, &b_reward, &b_done);
+            let loss = policy_qvalues.mse_loss(&expected_values, tch::Reduction::Mean);
+            agent.optimize(&loss);
         }
 
         if done {
-            if nepisodes % UPDATE_FREQ == 0 {
-                let a = mem_target.copy(&mem_policy);
-                if a.is_err() {
-                    println!("copy error")
-                };
+            if nepisodes % UPDATE_FREQ == 0 && agent.update_networks().is_err() {
+                println!("copy error")
             }
             if nepisodes % 50 == 0 {
-                let (r, _l) = evaluate(&mut eval_env, policy_net.as_ref(), 100, device);
+                let (r, _l) = evaluate(&mut eval_env, &agent, 100, device);
                 let avg = (r.iter().sum::<f32>()) / (r.len() as f32);
                 println!(
                     "Episode: {}, Avg Return: {:.3} Epsilon: {:.3}",
                     nepisodes,
                     avg,
-                    epsilon_greedy.get_epsilon()
+                    agent.epsilon_greedy.get_epsilon()
                 );
                 if avg == MAX_STEPS_PER_EPI as f32 {
                     println!("Solved at episode {} with avg of {}", nepisodes, avg);
@@ -210,7 +316,7 @@ fn main() {
                 ])
                 .to_device(device)
             };
-            epsilon_greedy.update(0.0);
+            agent.epsilon_greedy.update(0.0);
         }
     }
     let elapsed = start.elapsed();

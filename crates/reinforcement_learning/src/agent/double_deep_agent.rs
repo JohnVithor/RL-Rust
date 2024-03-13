@@ -113,11 +113,11 @@ impl DoubleDeepAgent {
 
         self.memory.add(
             &curr_state,
-            curr_action as i64,
+            curr_action,
             reward,
             terminated,
             &next_state,
-            next_action as i64,
+            next_action,
         );
     }
 
