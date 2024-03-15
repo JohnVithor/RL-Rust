@@ -1,9 +1,11 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, rc::Rc};
 
 use environments::{classic_control::CartPoleEnv, Env};
 use ndarray::Array1;
 use reinforcement_learning::{
-    action_selection::AdaptativeEpsilon,
+    action_selection::epsilon_greedy::{
+        AdaptativeEpsilon, EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy,
+    },
     agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent},
 };
 use tch::{
@@ -75,8 +77,14 @@ fn main() {
 
     let device = Device::cuda_if_available();
 
+    let epsilon_decreasing = AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5);
+
     let mut agent = DoubleDeepAgent::new(
-        Box::new(AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, seed)),
+        Box::new(EpsilonGreedy::new(
+            1.0,
+            seed,
+            EpsilonUpdateStrategy::AdaptativeEpsilon(epsilon_decreasing),
+        )),
         // qlearning,
         LEARNING_RATE,
         GAMMA,

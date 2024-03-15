@@ -1,5 +1,10 @@
 use reinforcement_learning::{
-    action_selection::{EpsilonDecreasing, UpperConfidenceBound},
+    action_selection::{
+        epsilon_greedy::{
+            AdaptativeEpsilon, EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy,
+        },
+        UpperConfidenceBound,
+    },
     agent::{
         expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, FullDiscreteAgent, OneStepAgent,
     },
@@ -87,14 +92,17 @@ pub struct Cli {
 }
 
 pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static str>) {
+    let epsilon_decreasing = EpsilonDecreasing::new(
+        0.0,
+        Rc::new(move |a| {
+            a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+        }),
+    );
     let greedy_sarsa_agent = OneStepAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         sarsa,
         args.learning_rate,
@@ -103,13 +111,10 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_qlearning_agent = OneStepAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         qlearning,
         args.learning_rate,
@@ -118,13 +123,10 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_expected_sarsa_agent = OneStepAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         expected_sarsa,
         args.learning_rate,
@@ -157,13 +159,10 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_sarsa_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         sarsa,
         args.learning_rate,
@@ -173,13 +172,10 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_qlearning_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         qlearning,
         args.learning_rate,
@@ -189,13 +185,10 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
     );
 
     let greedy_expected_sarsa_trace_agent: ElegibilityTracesAgent = ElegibilityTracesAgent::new(
-        Box::new(EpsilonDecreasing::new(
+        Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
-            Rc::new(move |a| {
-                a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-            }),
-            args.final_epsilon,
             args.seed,
+            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
         )),
         expected_sarsa,
         args.learning_rate,

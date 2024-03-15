@@ -8,7 +8,9 @@ use ndarray::Array1;
 pub use elegibility_traces_agent::ElegibilityTracesAgent;
 // pub use internal_model_agent::InternalModelAgent;
 pub use double_deep_agent::DoubleDeepAgent;
+pub use double_deep_agent::OptimizerEnum;
 pub use one_step_agent::OneStepAgent;
+use tch::{TchError, Tensor};
 
 extern crate environments;
 
@@ -59,21 +61,40 @@ pub trait FullDiscreteAgent {
 }
 
 pub trait ContinuousObsDiscreteActionAgent {
-    // fn prepare(&mut self, n_obs: usize, n_actions: usize);
+    fn get_action(&mut self, state: &Tensor) -> usize;
 
-    fn get_action(&mut self, obs: &Array1<f32>) -> usize;
+    fn action_selection_update(&mut self, epi_reward: f32);
 
-    fn get_best_action(&mut self, obs: &Array1<f32>) -> usize;
+    fn get_best_action(&self, state: &Tensor) -> usize;
 
-    fn update(
+    fn add_transition(
         &mut self,
-        curr_obs: &Array1<f32>,
+        curr_state: &Tensor,
         curr_action: usize,
         reward: f32,
-        terminated: bool,
-        next_obs: &Array1<f32>,
+        done: bool,
+        next_state: &Tensor,
         next_action: usize,
-    ) -> f32;
+    );
+
+    fn update_networks(&mut self) -> Result<(), TchError>;
+
+    fn get_batch(&mut self, size: usize) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor);
+
+    fn batch_qvalues(&self, b_states: &Tensor, b_actions: &Tensor) -> Tensor;
+
+    fn batch_expected_values(
+        &self,
+        b_state_: &Tensor,
+        b_reward: &Tensor,
+        b_done: &Tensor,
+    ) -> Tensor;
+
+    fn episode_end_hook(&mut self) {}
+
+    fn optimize(&mut self, loss: &Tensor);
+
+    fn update(&mut self) -> Option<f32>;
 
     fn reset(&mut self);
 }
