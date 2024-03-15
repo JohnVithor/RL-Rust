@@ -113,12 +113,14 @@ fn main() {
     let trainer = ContinuousObsDiscreteTrainer::new(
         |repr: usize| -> usize { repr },
         |repr: &CartPoleObservation| -> Tensor {
-            Array1::from_vec(vec![
-                repr.cart_position,
-                repr.cart_velocity,
-                repr.pole_angle,
-                repr.pole_angular_velocity,
-            ])
+            Tensor(
+                vec![
+                    repr.cart_position,
+                    repr.cart_velocity,
+                    repr.pole_angle,
+                    repr.pole_angular_velocity,
+                ],
+            )
         },
     );
 
