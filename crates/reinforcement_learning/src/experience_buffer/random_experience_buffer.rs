@@ -1,5 +1,5 @@
+use fastrand::Rng;
 use ndarray::Array1;
-use rand::{rngs::SmallRng, Rng, SeedableRng};
 use tch::{Device, Tensor};
 
 pub struct RandomExperienceBuffer {
@@ -13,7 +13,7 @@ pub struct RandomExperienceBuffer {
     next_idx: usize,
     capacity: usize,
     minsize: usize,
-    rng: SmallRng,
+    rng: Rng,
     device: Device,
 }
 
@@ -30,7 +30,7 @@ impl RandomExperienceBuffer {
             next_idx: 0,
             size: 0,
             minsize,
-            rng: SmallRng::seed_from_u64(seed),
+            rng: Rng::with_seed(seed),
             device,
         }
     }
@@ -63,9 +63,7 @@ impl RandomExperienceBuffer {
         &mut self,
         size: usize,
     ) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) {
-        let index: Vec<usize> = (0..size)
-            .map(|_| self.rng.gen_range(0..self.size))
-            .collect();
+        let index: Vec<usize> = (0..size).map(|_| self.rng.usize(0..self.size)).collect();
         let mut curr_obs: Vec<Tensor> = Vec::new();
         let mut curr_actions: Vec<Tensor> = Vec::new();
         let mut rewards: Vec<Tensor> = Vec::new();

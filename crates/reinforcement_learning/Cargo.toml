@@ -14,7 +14,7 @@ include = ["src/**/*"]
 [dependencies]
 environments = { path = "../environments" }
 utils = { path = "../utils" }
-rand = "0.8"
+fastrand = "2.0.1"
 ndarray = "0.15"
 ndarray-rand = "0.14"
 tch = "0.15"

@@ -1,13 +1,10 @@
 use std::cmp::Ordering;
 
+use fastrand::Rng;
+
 use crate::env::Env;
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::EnvError;
-
-use rand::distributions::Uniform;
-use rand::prelude::Distribution;
-use rand::rngs::SmallRng;
-use rand::SeedableRng;
 
 #[derive(Debug, Copy, Clone)]
 pub enum BlackJackAction {
@@ -41,8 +38,7 @@ pub struct BlackJackEnv {
     dealer_i: usize,
     player_has_ace: bool,
     dealer_has_ace: bool,
-    dist: Uniform<u8>,
-    rng: SmallRng,
+    rng: Rng,
 }
 
 impl BlackJackEnv {
@@ -55,8 +51,7 @@ impl BlackJackEnv {
             dealer_i: 0,
             player_has_ace: false,
             dealer_has_ace: false,
-            rng: SmallRng::seed_from_u64(seed),
-            dist: Uniform::from(1..11),
+            rng: Rng::with_seed(seed),
         };
         env.initialize_hands();
         env
@@ -81,7 +76,7 @@ impl BlackJackEnv {
     }
 
     fn get_new_card(&mut self) -> u8 {
-        self.dist.sample(&mut self.rng)
+        self.rng.u8(1..11)
     }
 
     fn compute_player_score(&self) -> u8 {

@@ -4,10 +4,7 @@ use crate::env::{Env, EnvError};
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::utils::{from_2d_to_1d, inc};
 
-use rand::distributions::Uniform;
-use rand::prelude::Distribution;
-use rand::rngs::SmallRng;
-use rand::SeedableRng;
+use fastrand::Rng;
 use utils::categorical_sample;
 
 #[derive(Debug, Copy, Clone)]
@@ -39,11 +36,10 @@ pub struct FrozenLakeEnv {
     initial_state_distrib: Vec<f32>,
     probs: Vec<[[Transition; 3]; 4]>,
     player_pos: usize,
-    dist: Uniform<f32>,
     max_steps: u128,
     curr_step: u128,
     map: String,
-    rng: SmallRng,
+    rng: Rng,
 }
 
 impl FrozenLakeEnv {
@@ -121,18 +117,17 @@ impl FrozenLakeEnv {
             initial_state_distrib,
             probs,
             player_pos: 0,
-            dist: Uniform::from(0.0..1.0),
             max_steps,
             curr_step: 0,
             map: map.join("\n"),
-            rng: SmallRng::seed_from_u64(seed),
+            rng: Rng::with_seed(seed),
         }
     }
 }
 
 impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
     fn reset(&mut self) -> usize {
-        let random: f32 = self.dist.sample(&mut self.rng);
+        let random: f32 = self.rng.f32();
         self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
         self.curr_step = 0;
@@ -158,7 +153,7 @@ impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
         self.curr_step += 1;
         let transitions = self.probs[self.player_pos][action as usize];
         let t_probs = transitions.map(|a| a.0);
-        let random: f32 = self.dist.sample(&mut self.rng);
+        let random: f32 = self.rng.f32();
         let i = categorical_sample(t_probs.as_ref(), random);
         let (_p, s, r, t) = transitions[i];
         self.player_pos = s;

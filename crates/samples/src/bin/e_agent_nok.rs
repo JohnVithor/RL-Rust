@@ -1,12 +1,12 @@
 use environments::{classic_control::CartPoleEnv, Env};
-use ndarray::Array1;
 use reinforcement_learning::{
-    action_selection::AdaptativeEpsilon,
-    agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent},
+    action_selection::epsilon_greedy::{EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy},
+    agent::{ContinuousObsDiscreteActionAgent, DoubleDeepAgent, OptimizerEnum},
+    experience_buffer::RandomExperienceBuffer,
 };
-use std::collections::VecDeque;
+use std::{collections::VecDeque, rc::Rc};
 use tch::{
-    nn::{self, Adam, Module, VarStore},
+    nn::{self, Module, VarStore},
     Device, Kind, Tensor,
 };
 
@@ -68,25 +68,30 @@ fn main() {
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
 
-    let mut state: Array1<f32>;
+    let mut state: Tensor;
     let mut action: usize;
     let mut reward: f32;
     let mut done: bool;
-    let mut state_: Array1<f32>;
+    let mut state_: Tensor;
 
     let device = Device::cuda_if_available();
-    let mut agent = DoubleDeepAgent::new(
-        Box::new(AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, 42)),
-        // qlearning,
-        0.0005,
-        0.99,
-        50,
-        generate_policy,
-        device,
-        Adam::default(),
-        2048,
-        1024,
+    let mem_replay = RandomExperienceBuffer::new(1_000, 500, 42, device);
+
+    let epsilon_decreasing = EpsilonDecreasing::new(0.0, Rc::new(move |a| a - 0.001));
+    let epsilon_greedy = EpsilonGreedy::new(
+        1.0,
         42,
+        EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing),
+    );
+
+    let mut agent = DoubleDeepAgent::new(
+        Box::new(epsilon_greedy),
+        mem_replay,
+        generate_policy,
+        OptimizerEnum::Adam(nn::Adam::default()),
+        0.0005,
+        GAMMA,
+        device,
     );
     let mut ep_returns = RunningStat::<f32>::new(50);
     let mut ep_return: f32 = 0.0;
@@ -96,7 +101,7 @@ fn main() {
     let mut env = CartPoleEnv::default();
     state = {
         let s = env.reset();
-        Array1::from_vec(vec![
+        Tensor::from_slice(&[
             s.cart_position,
             s.cart_velocity,
             s.pole_angle,
@@ -111,7 +116,7 @@ fn main() {
         (state_, reward, done) = {
             let (state_, reward, done) = env.step(action).unwrap();
             (
-                Array1::from_vec(vec![
+                Tensor::from_slice(&[
                     state_.cart_position,
                     state_.cart_velocity,
                     state_.pole_angle,
@@ -123,12 +128,10 @@ fn main() {
         };
         // update()
         ep_return += reward;
-        let t_c_state = Tensor::try_from(&state).unwrap();
-        let t_n_state = Tensor::try_from(&state_).unwrap();
 
         agent
             .memory
-            .add(&t_c_state, action, reward, done, &t_n_state, action);
+            .add(&state, action, reward, done, &state_, action);
         state = state_;
 
         if done {
@@ -137,7 +140,7 @@ fn main() {
             ep_return = 0.0;
             state = {
                 let s = env.reset();
-                Array1::from_vec(vec![
+                Tensor::from_slice(&[
                     s.cart_position,
                     s.cart_velocity,
                     s.pole_angle,

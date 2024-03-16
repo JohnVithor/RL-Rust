@@ -12,5 +12,5 @@ utils = { path = "../utils" }
 structopt = "0.3"
 ndarray = "0.15"
 tch = "0.15"
-rand = "0.8"
+fastrand = "2.0.1"
 pyo3 = "0.20"

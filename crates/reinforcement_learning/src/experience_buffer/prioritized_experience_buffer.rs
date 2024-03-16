@@ -1,5 +1,5 @@
+use fastrand::Rng;
 use ndarray::Array1;
-use rand::{rngs::SmallRng, Rng, SeedableRng};
 use tch::Tensor;
 
 pub struct PrioritizedExperienceBuffer {
@@ -16,7 +16,7 @@ pub struct PrioritizedExperienceBuffer {
     dones: Array1<Tensor>,
     next_idx: usize,
     size: usize,
-    rng: SmallRng,
+    rng: Rng,
 }
 
 impl PrioritizedExperienceBuffer {
@@ -35,7 +35,7 @@ impl PrioritizedExperienceBuffer {
             dones: Array1::default(capacity),
             next_idx: 0,
             size: 0,
-            rng: SmallRng::seed_from_u64(seed),
+            rng: Rng::with_seed(seed),
         }
     }
 
@@ -150,7 +150,7 @@ impl PrioritizedExperienceBuffer {
         let mut indexes = Array1::zeros(size);
         let mut weights = Array1::zeros(size);
         for i in 0..size {
-            let p = self.rng.gen_range(0.0..1.0) * self.priority_sum[1];
+            let p = self.rng.f64() * self.priority_sum[1];
             let idx = self.find_prefix_sum_idx(p);
             indexes[i] = idx;
         }

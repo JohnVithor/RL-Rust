@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use super::{ContinuousObsDiscreteActionSelection, DiscreteObsDiscreteActionSelection};
+use fastrand::Rng;
 use ndarray::{Array, Array1};
-use rand::{rngs::SmallRng, Rng, SeedableRng};
 use utils::argmax;
 
 #[derive(Clone)]
@@ -80,7 +80,7 @@ impl EpsilonUpdateStrategy {
 
 pub struct EpsilonGreedy {
     epsilon: f32,
-    rng: SmallRng,
+    rng: Rng,
     update_strategy: EpsilonUpdateStrategy,
 }
 
@@ -94,17 +94,17 @@ impl EpsilonGreedy {
     pub fn new(epsilon: f32, seed: u64, update_strategy: EpsilonUpdateStrategy) -> Self {
         Self {
             epsilon,
-            rng: SmallRng::seed_from_u64(seed),
+            rng: Rng::with_seed(seed),
             update_strategy,
         }
     }
 
     fn should_explore(&mut self) -> bool {
-        self.epsilon != 0.0 && self.rng.gen_range(0.0..1.0) <= self.epsilon
+        self.epsilon != 0.0 && self.rng.f32() <= self.epsilon
     }
     fn get_action(&mut self, values: &Array1<f32>) -> usize {
         if self.should_explore() {
-            self.rng.gen_range(0..values.len())
+            self.rng.usize(0..values.len())
         } else {
             argmax(values.iter())
         }

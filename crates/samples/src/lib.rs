@@ -1,8 +1,6 @@
 use reinforcement_learning::{
     action_selection::{
-        epsilon_greedy::{
-            AdaptativeEpsilon, EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy,
-        },
+        epsilon_greedy::{EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy},
         UpperConfidenceBound,
     },
     agent::{

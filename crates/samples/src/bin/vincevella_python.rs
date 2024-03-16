@@ -1,5 +1,5 @@
+use fastrand::Rng;
 use pyo3::prelude::*;
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{collections::HashMap, collections::VecDeque};
 use tch::{Device, Kind, Tensor};
 
@@ -189,9 +189,9 @@ pub fn epsilon_greedy(
     policy: &dyn Compute,
     epsilon: f32,
     obs: &Tensor,
-    rng: &mut StdRng,
+    rng: &mut Rng,
 ) -> i64 {
-    let random_number: f32 = rng.gen::<f32>();
+    let random_number: f32 = rng.f32();
     if random_number > epsilon {
         let value = tch::no_grad(|| policy.forward(mem, obs));
         value.argmax(1, false).int64_value(&[])
@@ -299,10 +299,10 @@ impl ReplayMemory {
     pub fn sample_batch(
         &self,
         size: usize,
-        rng: &mut StdRng,
+        rng: &mut Rng,
     ) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
         let index: Vec<usize> = (0..size)
-            .map(|_| rng.gen_range(0..self.transitions.len()))
+            .map(|_| rng.usize(0..self.transitions.len()))
             .collect();
         let mut states: Vec<Tensor> = Vec::new();
         let mut actions: Vec<i64> = Vec::new();
@@ -371,7 +371,7 @@ impl Compute for Policy {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    let mut rng: StdRng = StdRng::seed_from_u64(0);
+    let mut rng: Rng = Rng::with_seed(0);
 
     const MEM_SIZE: usize = 30000;
     const MIN_MEM_SIZE: usize = 5000;

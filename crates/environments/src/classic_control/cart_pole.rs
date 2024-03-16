@@ -1,7 +1,4 @@
-use rand::distributions::Uniform;
-use rand::prelude::Distribution;
-use rand::rngs::SmallRng;
-use rand::SeedableRng;
+use fastrand::Rng;
 
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::EnvError::EnvNotReady;
@@ -37,8 +34,7 @@ pub struct CartPoleEnv {
     max_steps: u128,
     curr_step: u128,
     state: CartPoleObservation,
-    dist: Uniform<f32>,
-    rng: SmallRng,
+    rng: Rng,
 }
 
 impl CartPoleEnv {
@@ -59,20 +55,21 @@ impl CartPoleEnv {
             curr_step: 0,
             max_steps,
             state: CartPoleObservation::default(),
-            dist: Uniform::from(-0.05..0.05),
-            rng: SmallRng::seed_from_u64(seed),
+            rng: Rng::with_seed(seed),
         };
         env.state = env.initialize();
         env
     }
-
     fn initialize(&mut self) -> CartPoleObservation {
         CartPoleObservation {
-            cart_position: self.dist.sample(&mut self.rng),
-            cart_velocity: self.dist.sample(&mut self.rng),
-            pole_angle: self.dist.sample(&mut self.rng),
-            pole_angular_velocity: self.dist.sample(&mut self.rng),
+            cart_position: self.get_in_range(),
+            cart_velocity: self.get_in_range(),
+            pole_angle: self.get_in_range(),
+            pole_angular_velocity: self.get_in_range(),
         }
+    }
+    fn get_in_range(&mut self) -> f32 {
+        ((self.rng.f32()) * -0.1) + -0.05
     }
 }
 

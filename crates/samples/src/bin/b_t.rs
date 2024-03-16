@@ -1,5 +1,5 @@
 use environments::{classic_control::CartPoleEnv, Env};
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use fastrand::Rng;
 use reinforcement_learning::{
     action_selection::{
         epsilon_greedy::{EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy},
@@ -202,9 +202,9 @@ impl Agent {
 fn main() {
     // Lucky: 4,
     // Unlucky: 6
-    let mut rng: StdRng = StdRng::seed_from_u64(4);
+    let mut rng: Rng = Rng::with_seed(42);
 
-    tch::manual_seed(rng.next_u64() as i64);
+    tch::manual_seed(rng.i64(..));
     tch::maybe_init_cuda();
     const MEM_SIZE: usize = 5_000;
     const MIN_MEM_SIZE: usize = 1_000;
@@ -216,15 +216,15 @@ fn main() {
     const START_EPSILON: f32 = 1.0;
     let device: Device = Device::Cpu;
 
-    let mut train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
-    let mut eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
+    let mut train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.u64(..));
+    let mut eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.u64(..));
 
-    let mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.next_u64(), device);
+    let mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.u64(..), device);
 
     let epsilon_decreasing = EpsilonDecreasing::new(0.0, Rc::new(move |a| a - EPSILON_DECAY));
     let epsilon_greedy = EpsilonGreedy::new(
         START_EPSILON,
-        rng.next_u64(),
+        rng.u64(..),
         EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing),
     );
 

@@ -1,5 +1,5 @@
 use environments::{classic_control::CartPoleEnv, Env};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fastrand::Rng;
 use std::{collections::HashMap, collections::VecDeque};
 use tch::{Device, Kind, Tensor};
 
@@ -129,14 +129,14 @@ pub fn epsilon_greedy(
     policy: &dyn Compute,
     epsilon: f32,
     obs: &Tensor,
-    rng: &mut StdRng,
+    rng: &mut Rng,
 ) -> i64 {
-    let random_number: f32 = rng.gen::<f32>();
+    let random_number: f32 = rng.f32();
     if random_number > epsilon {
         let value = tch::no_grad(|| policy.forward(mem, obs));
         value.argmax(1, false).int64_value(&[])
     } else {
-        rng.gen_range(0..2).into()
+        rng.i64(0..2)
     }
 }
 
@@ -239,10 +239,10 @@ impl ReplayMemory {
     pub fn sample_batch(
         &self,
         size: usize,
-        rng: &mut StdRng,
+        rng: &mut Rng,
     ) -> (Tensor, Tensor, Tensor, Tensor, Tensor) {
         let index: Vec<usize> = (0..size)
-            .map(|_| rng.gen_range(0..self.transitions.len()))
+            .map(|_| rng.usize(0..self.transitions.len()))
             .collect();
         let mut states: Vec<Tensor> = Vec::new();
         let mut actions: Vec<i64> = Vec::new();
@@ -266,7 +266,7 @@ impl ReplayMemory {
         )
     }
 
-    pub fn init(&mut self, rng: &mut StdRng) {
+    pub fn init(&mut self, rng: &mut Rng) {
         let mut env = CartPoleEnv::default();
         let mut state = {
             let s = env.reset();
@@ -279,7 +279,7 @@ impl ReplayMemory {
         };
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
-            let action = rng.gen_range(0..2);
+            let action = rng.usize(0..2);
             let (state_, reward, done) = {
                 let (state_, reward, done) = env.step(action).unwrap();
                 (
@@ -340,7 +340,7 @@ impl Compute for Policy {
 fn main() {
     tch::manual_seed(42);
     tch::maybe_init_cuda();
-    let mut rng: StdRng = StdRng::seed_from_u64(42);
+    let mut rng: Rng = Rng::with_seed(42);
 
     const MEM_SIZE: usize = 30000;
     const MIN_MEM_SIZE: usize = 5000;

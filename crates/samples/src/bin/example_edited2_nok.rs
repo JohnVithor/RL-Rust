@@ -1,6 +1,7 @@
 use environments::{classic_control::CartPoleEnv, Env};
+use reinforcement_learning::action_selection::ContinuousObsDiscreteActionSelection;
 use reinforcement_learning::{
-    action_selection::{AdaptativeEpsilon, ContinuousObsDiscreteActionSelection},
+    action_selection::epsilon_greedy::{AdaptativeEpsilon, EpsilonGreedy, EpsilonUpdateStrategy},
     experience_buffer::RandomExperienceBuffer,
 };
 use std::collections::VecDeque;
@@ -8,7 +9,6 @@ use tch::{
     nn::{self, Module, OptimizerConfig, VarStore},
     Device, Kind, Tensor,
 };
-
 pub struct RunningStat<T> {
     values: VecDeque<T>,
     capacity: usize,
@@ -85,7 +85,11 @@ fn main() {
         .build(&policy_vs, LEARNING_RATE)
         .unwrap();
 
-    let mut eps = AdaptativeEpsilon::new(0.0, 450.0, 0.0, 0.5, 42);
+    let mut eps = EpsilonGreedy::new(
+        1.0,
+        42,
+        EpsilonUpdateStrategy::AdaptativeEpsilon(AdaptativeEpsilon::new(0.0, 1.0, 0.0, 500.0)),
+    );
 
     let mut ep_returns = RunningStat::<f32>::new(50);
     let mut ep_return: f32 = 0.0;
@@ -177,7 +181,9 @@ fn main() {
                 if epi % 100 == 0 {
                     println!(
                         "Episode: {}, Avg Return: {} Epsilon: {}",
-                        epi, avg, eps.epsilon
+                        epi,
+                        avg,
+                        eps.get_epsilon()
                     );
                 }
                 if avg >= 450.0 {
