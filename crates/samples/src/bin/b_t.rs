@@ -2,7 +2,7 @@ use environments::{classic_control::CartPoleEnv, Env};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use reinforcement_learning::{
     action_selection::{
-        epsilon_greedy::{EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy},
+        epsilon_greedy::{EpsilonGreedy, EpsilonUpdateStrategy},
         ContinuousObsDiscreteActionSelection,
     },
     experience_buffer::RandomExperienceBuffer,
@@ -221,11 +221,13 @@ fn main() {
 
     let mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.next_u64(), device);
 
-    let epsilon_decreasing = EpsilonDecreasing::new(0.0, Rc::new(move |a| a - EPSILON_DECAY));
     let epsilon_greedy = EpsilonGreedy::new(
         START_EPSILON,
         rng.next_u64(),
-        EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing),
+        EpsilonUpdateStrategy::EpsilonDecreasing {
+            final_epsilon: 0.0,
+            epsilon_decay: Box::new(move |a| a - EPSILON_DECAY),
+        },
     );
 
     let mut agent = Agent::new(
@@ -293,7 +295,7 @@ fn main() {
                 println!("copy error")
             }
             if nepisodes % 50 == 0 {
-                let (r, _l) = evaluate(&mut eval_env, &agent, 100, device);
+                let (r, _l) = evaluate(&mut eval_env, &agent, 10, device);
                 let avg = (r.iter().sum::<f32>()) / (r.len() as f32);
                 println!(
                     "Episode: {}, Avg Return: {:.3} Epsilon: {:.3}",

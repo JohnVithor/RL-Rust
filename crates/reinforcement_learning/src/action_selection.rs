@@ -11,7 +11,7 @@ pub trait DiscreteObsDiscreteActionSelection {
     fn reset(&mut self);
 }
 
-pub trait ContinuousObsDiscreteActionSelection {
+pub trait ContinuousObsDiscreteActionSelection: std::marker::Send {
     fn get_action(&mut self, values: &Array1<f32>) -> usize;
     fn get_exploration_probs(&mut self, values: &Array1<f32>) -> Array1<f32>;
     fn update(&mut self, epi_reward: f32);

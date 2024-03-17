@@ -17,6 +17,25 @@ pub struct RandomExperienceBuffer {
     device: Device,
 }
 
+impl Default for RandomExperienceBuffer {
+    fn default() -> Self {
+        Self {
+            curr_states: Array1::default(10_000),
+            curr_actions: Array1::default(10_000),
+            rewards: Array1::default(10_000),
+            next_states: Array1::default(10_000),
+            next_actions: Array1::default(10_000),
+            dones: Array1::default(10_000),
+            size: 0,
+            next_idx: 0,
+            capacity: 10_000,
+            minsize: 1_000,
+            rng: SmallRng::seed_from_u64(42),
+            device: Device::cuda_if_available(),
+        }
+    }
+}
+
 impl RandomExperienceBuffer {
     pub fn new(capacity: usize, minsize: usize, seed: u64, device: Device) -> Self {
         Self {

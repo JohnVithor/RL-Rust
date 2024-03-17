@@ -342,11 +342,11 @@ fn main() {
     tch::maybe_init_cuda();
     let mut rng: StdRng = StdRng::seed_from_u64(42);
 
-    const MEM_SIZE: usize = 30000;
-    const MIN_MEM_SIZE: usize = 5000;
+    const MEM_SIZE: usize = 50_000;
+    const MIN_MEM_SIZE: usize = 10_000;
     const GAMMA: f32 = 0.99;
     const UPDATE_FREQ: i64 = 50;
-    const LEARNING_RATE: f32 = 0.00005;
+    const LEARNING_RATE: f32 = 0.0005;
     let mut epsilon: f32 = 1.0;
 
     let mut state: Tensor;
@@ -418,15 +418,14 @@ fn main() {
                     nepisodes, avg, epsilon
                 );
             }
-            if avg >= 450.0 {
+            if avg >= 500.0 {
                 println!("Solved at episode {}", nepisodes);
                 break;
             }
             epsilon = epsilon_update(avg, 0.0, 500.0, 0.05, 0.5);
         }
 
-        let (b_state, b_action, b_reward, b_done, b_state_) =
-            mem_replay.sample_batch(128, &mut rng);
+        let (b_state, b_action, b_reward, b_done, b_state_) = mem_replay.sample_batch(32, &mut rng);
         let qvalues = policy_net
             .forward(&mem_policy, &b_state)
             .gather(1, &b_action, false);

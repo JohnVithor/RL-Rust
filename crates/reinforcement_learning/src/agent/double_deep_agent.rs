@@ -1,10 +1,10 @@
 use crate::{
-    action_selection::ContinuousObsDiscreteActionSelection,
-    agent::ContinuousObsDiscreteActionAgent, experience_buffer::RandomExperienceBuffer,
+    action_selection::{epsilon_greedy::EpsilonGreedy, ContinuousObsDiscreteActionSelection},
+    agent::ContinuousObsDiscreteActionAgent,
+    experience_buffer::RandomExperienceBuffer,
 };
-use ndarray::Array1;
 use tch::{
-    nn::{Adam, AdamW, Module, Optimizer, OptimizerConfig, RmsProp, Sgd, VarStore},
+    nn::{linear, seq, Adam, AdamW, Module, Optimizer, OptimizerConfig, RmsProp, Sgd, VarStore},
     COptimizer, Device, Kind, TchError, Tensor,
 };
 
@@ -37,6 +37,25 @@ pub struct DoubleDeepAgent {
     pub discount_factor: f32,
 }
 
+impl Default for DoubleDeepAgent {
+    fn default() -> Self {
+        let device = Device::cuda_if_available();
+        let (policy, policy_vs) = DoubleDeepAgent::generate_policy(device);
+        let (target_policy, mut target_policy_vs) = DoubleDeepAgent::generate_policy(device);
+        target_policy_vs.copy(&policy_vs).unwrap();
+        Self {
+            action_selection: Box::<EpsilonGreedy>::default(),
+            policy,
+            target_policy,
+            optimizer: Adam::default().build(&policy_vs, 0.0005).unwrap(),
+            policy_vs,
+            target_policy_vs,
+            memory: RandomExperienceBuffer::default(),
+            discount_factor: Default::default(),
+        }
+    }
+}
+
 impl DoubleDeepAgent {
     pub fn new(
         action_selector: Box<dyn ContinuousObsDiscreteActionSelection>,
@@ -62,26 +81,27 @@ impl DoubleDeepAgent {
         }
     }
 
-    pub fn memorize(
-        &mut self,
-        curr_obs: &Array1<f32>,
-        curr_action: usize,
-        reward: f32,
-        terminated: bool,
-        next_obs: &Array1<f32>,
-        next_action: usize,
-    ) {
-        let curr_state = Tensor::try_from(curr_obs).unwrap();
-        let next_state = Tensor::try_from(next_obs).unwrap();
+    fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
+        const NEURONS: i64 = 128;
 
-        self.memory.add(
-            &curr_state,
-            curr_action,
-            reward,
-            terminated,
-            &next_state,
-            next_action,
-        );
+        let mem_policy = VarStore::new(device);
+        let policy_net = seq()
+            .add(linear(
+                &mem_policy.root() / "al1",
+                4,
+                NEURONS,
+                Default::default(),
+            ))
+            .add_fn(|xs| xs.gelu("none"))
+            // .add_fn(|xs| xs.tanh())
+            .add(linear(
+                &mem_policy.root() / "al2",
+                NEURONS,
+                2,
+                Default::default(),
+            ))
+            .add_fn(|xs| xs.softmax(0, Kind::Float));
+        (Box::new(policy_net), mem_policy)
     }
 
     pub fn optimize(&mut self, loss: Tensor) {

@@ -1,15 +1,12 @@
 use reinforcement_learning::{
     action_selection::{
-        epsilon_greedy::{
-            AdaptativeEpsilon, EpsilonDecreasing, EpsilonGreedy, EpsilonUpdateStrategy,
-        },
+        epsilon_greedy::{EpsilonGreedy, EpsilonUpdateStrategy},
         UpperConfidenceBound,
     },
     agent::{
         expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, FullDiscreteAgent, OneStepAgent,
     },
 };
-use std::rc::Rc;
 use structopt::StructOpt;
 
 // pub fn save_json(path: &str, data: serde_json::Value) -> std::io::Result<()> {
@@ -92,17 +89,16 @@ pub struct Cli {
 }
 
 pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static str>) {
-    let epsilon_decreasing = EpsilonDecreasing::new(
-        0.0,
-        Rc::new(move |a| {
-            a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
-        }),
-    );
     let greedy_sarsa_agent = OneStepAgent::new(
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         sarsa,
         args.learning_rate,
@@ -114,7 +110,12 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         qlearning,
         args.learning_rate,
@@ -126,7 +127,12 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         expected_sarsa,
         args.learning_rate,
@@ -162,7 +168,12 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         sarsa,
         args.learning_rate,
@@ -175,7 +186,12 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         qlearning,
         args.learning_rate,
@@ -188,7 +204,12 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
             args.seed,
-            EpsilonUpdateStrategy::EpsilonDecreasing(epsilon_decreasing.clone()),
+            EpsilonUpdateStrategy::EpsilonDecreasing {
+                final_epsilon: 0.0,
+                epsilon_decay: Box::new(move |a| {
+                    a - args.initial_epsilon / (args.exploration_time * args.n_episodes as f32)
+                }),
+            },
         )),
         expected_sarsa,
         args.learning_rate,
