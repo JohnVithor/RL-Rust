@@ -12,7 +12,7 @@ pub struct ContinuousObsDiscreteTrainer<Obs, Action> {
     eval_env: Box<dyn Env<Obs, Action>>,
     pub repr_to_action: fn(usize) -> Action,
     pub obs_to_repr: fn(&Obs) -> Tensor,
-    // reward_observers: Vec<Box<dyn Subscriber<f32>>>,
+    pub early_stop: Option<Box<dyn Fn(f32) -> bool>>,
 }
 
 impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
@@ -39,7 +39,7 @@ impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
             eval_env,
             repr_to_action,
             obs_to_repr,
-            // reward_observers: vec![],
+            early_stop: None,
         }
     }
 
@@ -100,13 +100,11 @@ impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
             if let Some(td) = agent.update() {
                 training_error.push(td)
             }
-
             if terminated {
                 if debug {
                     println!("{}", self.train_env.render());
                 }
                 training_reward.push(epi_reward);
-                // self.emit_reward_signal(epi_reward);
 
                 if n_episodes % update_freq == 0 && agent.update_networks().is_err() {
                     println!("copy error")
@@ -119,6 +117,13 @@ impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
                     println!("Episode: {}, Avg Return: {:.3} ", n_episodes, reward_avg,);
                     evaluation_reward.push(reward_avg);
                     evaluation_length.push(eval_lengths_avg);
+                    if let Some(s) = &self.early_stop {
+                        println!("has check");
+                        if (s)(reward_avg) {
+                            println!("end!");
+                            break;
+                        };
+                    }
                 }
                 curr_obs = (self.obs_to_repr)(&self.train_env.reset());
                 agent.action_selection_update(epi_reward);
@@ -169,7 +174,7 @@ impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
                 .step((self.repr_to_action)(curr_action))
                 .unwrap();
             let next_obs = (self.obs_to_repr)(&next_obs);
-
+            epi_reward += reward;
             agent.add_transition(
                 &curr_obs,
                 curr_action,
@@ -201,10 +206,14 @@ impl<Obs, Action> ContinuousObsDiscreteTrainer<Obs, Action> {
                     println!("Episode: {}, Avg Return: {:.3} ", n_episodes, reward_avg,);
                     evaluation_reward.push(reward_avg);
                     evaluation_length.push(eval_lengths_avg);
+                    if let Some(s) = &self.early_stop {
+                        if (s)(reward_avg) {
+                            break;
+                        };
+                    }
                 }
                 curr_obs = (self.obs_to_repr)(&self.train_env.reset());
                 agent.action_selection_update(epi_reward);
-
                 n_episodes += 1;
                 epi_reward = 0.0;
                 action_counter = 0;

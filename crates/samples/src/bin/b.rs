@@ -6,7 +6,7 @@ use reinforcement_learning::{
     experience_buffer::RandomExperienceBuffer,
     trainer::ContinuousObsDiscreteTrainer,
 };
-use std::{rc::Rc, time::Instant};
+use std::time::Instant;
 use tch::{
     nn::{self, Module, VarStore},
     Device, Kind, Tensor,
@@ -23,8 +23,8 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
             NEURONS,
             Default::default(),
         ))
-        .add_fn(|xs| xs.gelu("none"))
-        // .add_fn(|xs| xs.tanh())
+        // .add_fn(|xs| xs.gelu("none"))
+        .add_fn(|xs| xs.tanh())
         .add(nn::linear(
             &mem_policy.root() / "al2",
             NEURONS,
@@ -38,7 +38,7 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
 fn main() {
     // Lucky: 4,
     // Unlucky: 6
-    let mut rng: StdRng = StdRng::seed_from_u64(4);
+    let mut rng: StdRng = StdRng::seed_from_u64(6);
 
     tch::manual_seed(rng.next_u64() as i64);
     tch::maybe_init_cuda();
@@ -89,11 +89,12 @@ fn main() {
             ])
         },
     );
+    trainer.early_stop = Some(Box::new(|reward| reward >= 500.0));
 
     let start = Instant::now();
 
     trainer.train_by_steps2(&mut agent, 200_000, UPDATE_FREQ, 50, 10, false);
 
     let elapsed = start.elapsed();
-    println!("Debug: {:?}", elapsed);
+    println!("Elapsed time: {:?}", elapsed);
 }

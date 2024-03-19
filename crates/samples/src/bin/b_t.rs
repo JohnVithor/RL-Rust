@@ -7,7 +7,7 @@ use reinforcement_learning::{
     },
     experience_buffer::RandomExperienceBuffer,
 };
-use std::{rc::Rc, time::Instant};
+use std::time::Instant;
 use tch::{
     nn::{self, Adam, AdamW, Module, Optimizer, OptimizerConfig, RmsProp, Sgd, VarStore},
     COptimizer, Device, Kind, TchError, Tensor,
