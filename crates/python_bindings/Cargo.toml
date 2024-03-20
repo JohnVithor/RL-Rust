@@ -9,5 +9,9 @@ name = "rust_drl"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.20.0"
+environments = { path = "../environments" }
 reinforcement_learning = { path = "../reinforcement_learning" }
+tch = { version = "0.15.0", features = ["python-extension"] }
+torch-sys = { version = "0.15.0", features = ["python-extension"] }
+pyo3 = { version = "0.20.3", features = ["extension-module"] }
+numpy = "0.20"
