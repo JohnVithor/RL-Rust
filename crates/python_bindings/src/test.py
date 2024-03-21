@@ -11,6 +11,4 @@ r = test(env)
 print(r)
 r = test(env)
 print(r)
-r = test(env)
-print(r)
 
