@@ -1,9 +1,8 @@
-use std::ops::Index;
-
-use crate::env::{Env, EnvError};
+use crate::env::DiscreteActionEnv;
 use crate::space::{SpaceInfo, SpaceTypeBounds};
 use crate::utils::{from_2d_to_1d, inc};
 
+use ndarray::{Array1, ArrayD};
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
@@ -11,24 +10,9 @@ use rand::SeedableRng;
 use utils::categorical_sample;
 
 #[derive(Debug, Copy, Clone)]
-pub enum FrozenLakeAction {
-    LEFT,
-    DOWN,
-    RIGHT,
-    UP,
-}
-
-impl Index<FrozenLakeAction> for [(usize, f32, bool); 4] {
-    type Output = (usize, f32, bool);
-
-    fn index(&self, index: FrozenLakeAction) -> &Self::Output {
-        match index {
-            FrozenLakeAction::LEFT => &self[0],
-            FrozenLakeAction::DOWN => &self[1],
-            FrozenLakeAction::RIGHT => &self[2],
-            FrozenLakeAction::UP => &self[3],
-        }
-    }
+pub enum FrozenLakeError {
+    NotReady,
+    InvalidAction,
 }
 
 type Transition = (f32, usize, f32, bool);
@@ -130,13 +114,14 @@ impl FrozenLakeEnv {
     }
 }
 
-impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
-    fn reset(&mut self) -> usize {
+impl DiscreteActionEnv for FrozenLakeEnv {
+    type Error = FrozenLakeError;
+    fn reset(&mut self) -> Result<ArrayD<f32>, FrozenLakeError> {
         let random: f32 = self.dist.sample(&mut self.rng);
         self.player_pos = categorical_sample(&self.initial_state_distrib, random);
         self.ready = true;
         self.curr_step = 0;
-        self.player_pos
+        Ok(Array1::from_elem(1, self.player_pos as f32).into_dyn())
     }
 
     fn observation_space(&self) -> SpaceInfo {
@@ -147,25 +132,27 @@ impl Env<usize, FrozenLakeAction> for FrozenLakeEnv {
         SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
-    fn step(&mut self, action: FrozenLakeAction) -> Result<(usize, f32, bool), EnvError> {
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), FrozenLakeError> {
         if !self.ready {
-            return Err(EnvError::EnvNotReady);
+            return Err(FrozenLakeError::NotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, 0.0, true));
+            let state = Array1::from_elem(1, 0.0).into_dyn();
+            return Ok((state, 0.0, true));
         }
         self.curr_step += 1;
-        let transitions = self.probs[self.player_pos][action as usize];
+        let transitions = self.probs[self.player_pos][action];
         let t_probs = transitions.map(|a| a.0);
         let random: f32 = self.dist.sample(&mut self.rng);
         let i = categorical_sample(t_probs.as_ref(), random);
-        let (_p, s, r, t) = transitions[i];
-        self.player_pos = s;
-        if t {
+        let (_p, state, reward, terminated) = transitions[i];
+        self.player_pos = state;
+        if terminated {
             self.ready = false;
         }
-        Ok((s, r, t))
+        let state = Array1::from_elem(1, state as f32).into_dyn();
+        Ok((state, reward, terminated))
     }
 
     fn render(&self) -> String {

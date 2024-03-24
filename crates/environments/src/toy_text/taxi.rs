@@ -1,14 +1,19 @@
 use std::cmp::{max, min};
 
+use ndarray::{Array1, ArrayD};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::SmallRng, SeedableRng};
 use utils::categorical_sample;
 
 use crate::{
-    env::EnvError::EnvNotReady,
     space::{SpaceInfo, SpaceTypeBounds},
     utils::from_2d_to_1d,
-    Env,
+    DiscreteActionEnv,
 };
+
+pub enum TaxiError {
+    NotReady,
+    InvalidAction,
+}
 
 #[derive(Debug, Clone)]
 pub struct TaxiEnv {
@@ -136,31 +141,34 @@ impl TaxiEnv {
     }
 }
 
-impl Env<usize, usize> for TaxiEnv {
-    fn reset(&mut self) -> usize {
+impl DiscreteActionEnv for TaxiEnv {
+    type Error = TaxiError;
+    fn reset(&mut self) -> Result<ArrayD<f32>, TaxiError> {
         let dist: Uniform<f32> = Uniform::from(0.0..1.0);
         let random: f32 = dist.sample(&mut self.rng);
         self.curr_obs = categorical_sample(self.initial_state_distrib.as_ref(), random);
         self.ready = true;
         self.curr_step = 0;
-        self.curr_obs
+        Ok(Array1::from_elem(1, self.curr_obs as f32).into_dyn())
     }
 
-    fn step(&mut self, action: usize) -> Result<(usize, f32, bool), crate::EnvError> {
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), TaxiError> {
         if !self.ready {
-            return Err(EnvNotReady);
+            return Err(TaxiError::NotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, 0.0, true));
+            let state = Array1::from_elem(1, 0.0).into_dyn();
+            return Ok((state, 0.0, true));
         }
         self.curr_step += 1;
-        let obs: (usize, f32, bool) = self.obs[self.curr_obs][action];
-        self.curr_obs = obs.0;
-        if obs.2 {
+        let (state, reward, terminated): (usize, f32, bool) = self.obs[self.curr_obs][action];
+        self.curr_obs = state;
+        if terminated {
             self.ready = false;
         }
-        Ok(obs)
+        let state = Array1::from_elem(1, state as f32).into_dyn();
+        Ok((state, reward, terminated))
     }
 
     fn render(&self) -> String {

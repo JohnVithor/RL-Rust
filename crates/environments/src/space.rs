@@ -1,15 +1,17 @@
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum SpaceType {
     Discrete,
     Continuous,
     Mixed,
 }
 
+#[derive(Debug)]
 pub enum SpaceTypeBounds {
     Discrete(usize),
     Continuous(f32, f32),
 }
 
+#[derive(Debug)]
 pub struct SpaceInfo {
     pub data: Vec<SpaceTypeBounds>,
 }

@@ -1,8 +1,8 @@
 use ndarray::{Array, Array1};
 
-use crate::{action_selection::DiscreteObsDiscreteActionSelection, agent::FullDiscreteAgent};
+use crate::action_selection::DiscreteObsDiscreteActionSelection;
 
-use super::GetNextQValue;
+use super::{DDAgent, GetNextQValue};
 
 pub struct OneStepAgent {
     action_selection: Box<dyn DiscreteObsDiscreteActionSelection>,
@@ -38,7 +38,7 @@ impl OneStepAgent {
     }
 }
 
-impl FullDiscreteAgent for OneStepAgent {
+impl DDAgent for OneStepAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize) {
         let v = Array::from_elem((n_actions,), self.default_value);
         self.policy = Array1::from_elem((n_obs,), v.clone());

@@ -1,6 +1,6 @@
 use crate::{
     action_selection::{epsilon_greedy::EpsilonGreedy, ContinuousObsDiscreteActionSelection},
-    agent::ContinuousObsDiscreteActionAgent,
+    agent::CDAgent,
     experience_buffer::RandomExperienceBuffer,
 };
 use tch::{
@@ -111,7 +111,7 @@ impl DoubleDeepAgent {
     }
 }
 
-impl ContinuousObsDiscreteActionAgent for DoubleDeepAgent {
+impl CDAgent for DoubleDeepAgent {
     fn get_action(&mut self, state: &Tensor) -> usize {
         let values = tch::no_grad(|| self.policy.forward(state));
         let values: ndarray::ArrayD<f32> = (&values).try_into().unwrap();

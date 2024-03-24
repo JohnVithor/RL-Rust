@@ -1,4 +1,7 @@
-use pyo3::{pymodule, types::PyModule, wrap_pyfunction, PyResult, Python};
+use pyo3::{
+    create_exception, exceptions::PyException, pymodule, types::PyModule, wrap_pyfunction,
+    PyResult, Python,
+};
 use test::PyCounter;
 
 mod agent;
@@ -12,5 +15,6 @@ fn rust_drl(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<agent::DQNAgent>()?;
     m.add_class::<PyCounter>()?;
     m.add_function(wrap_pyfunction!(env::test, m)?).unwrap();
+    create_exception!(m, PyEnvErr, PyException);
     Ok(())
 }

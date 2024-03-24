@@ -1,30 +1,14 @@
-use std::ops::Index;
+use ndarray::{Array1, ArrayD};
 
 use crate::{
-    env::{Env, EnvError},
+    env::DiscreteActionEnv,
     space::{SpaceInfo, SpaceTypeBounds},
     utils::{from_2d_to_1d, inc},
 };
 
-#[derive(Debug, Copy, Clone)]
-pub enum CliffWalkingAction {
-    LEFT,
-    DOWN,
-    RIGHT,
-    UP,
-}
-
-impl Index<CliffWalkingAction> for [(usize, f32, bool); 4] {
-    type Output = (usize, f32, bool);
-
-    fn index(&self, index: CliffWalkingAction) -> &Self::Output {
-        match index {
-            CliffWalkingAction::LEFT => &self[0],
-            CliffWalkingAction::DOWN => &self[1],
-            CliffWalkingAction::RIGHT => &self[2],
-            CliffWalkingAction::UP => &self[3],
-        }
-    }
+pub enum CliffWalkingError {
+    NotReady,
+    InvalidAction,
 }
 
 #[derive(Debug, Clone)]
@@ -79,12 +63,13 @@ impl CliffWalkingEnv {
     }
 }
 
-impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
-    fn reset(&mut self) -> usize {
+impl DiscreteActionEnv for CliffWalkingEnv {
+    type Error = CliffWalkingError;
+    fn reset(&mut self) -> Result<ArrayD<f32>, CliffWalkingError> {
         self.player_pos = Self::START_POSITION;
         self.ready = true;
         self.curr_step = 0;
-        self.player_pos
+        Ok(Array1::from_elem(1, self.player_pos as f32).into_dyn())
     }
 
     fn observation_space(&self) -> SpaceInfo {
@@ -95,21 +80,23 @@ impl Env<usize, CliffWalkingAction> for CliffWalkingEnv {
         SpaceInfo::new(vec![SpaceTypeBounds::Discrete(4)])
     }
 
-    fn step(&mut self, action: CliffWalkingAction) -> Result<(usize, f32, bool), EnvError> {
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), CliffWalkingError> {
         if !self.ready {
-            return Err(EnvError::EnvNotReady);
+            return Err(CliffWalkingError::NotReady);
         }
         if self.curr_step >= self.max_steps {
             self.ready = false;
-            return Ok((0, -100.0, true));
+            let state = Array1::from_elem(1, 0.0).into_dyn();
+            return Ok((state, -100.0, true));
         }
         self.curr_step += 1;
-        let obs: (usize, f32, bool) = self.obs[self.player_pos][action];
-        self.player_pos = obs.0;
-        if obs.2 {
+        let (state, reward, terminated): (usize, f32, bool) = self.obs[self.player_pos][action];
+        self.player_pos = state;
+        if terminated {
             self.ready = false;
         }
-        Ok(obs)
+        let state = Array1::from_elem(1, state as f32).into_dyn();
+        Ok((state, reward, terminated))
     }
 
     fn render(&self) -> String {

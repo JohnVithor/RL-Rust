@@ -1,4 +1,4 @@
-use environments::{classic_control::CartPoleEnv, Env};
+use environments::{classic_control::CartPoleEnv, DiscreteActionEnv};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{collections::VecDeque, time::Instant};
 use tch::{
@@ -153,13 +153,7 @@ impl ReplayMemory {
         let mut env = CartPoleEnv::default();
         let mut state = {
             let s = env.reset();
-            Tensor::from_slice(&[
-                s.cart_position,
-                s.cart_velocity,
-                s.pole_angle,
-                s.pole_angular_velocity,
-            ])
-            .to_device(DEVICE)
+            Tensor::from_slice(s.unwrap().as_slice().unwrap()).to_device(DEVICE)
         };
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
@@ -167,13 +161,7 @@ impl ReplayMemory {
             let (state_, reward, done) = {
                 let (state_, reward, done) = env.step(action).unwrap();
                 (
-                    Tensor::from_slice(&[
-                        state_.cart_position,
-                        state_.cart_velocity,
-                        state_.pole_angle,
-                        state_.pole_angular_velocity,
-                    ])
-                    .to_device(DEVICE),
+                    Tensor::from_slice(state_.as_slice().unwrap()).to_device(DEVICE),
                     reward,
                     done,
                 )
@@ -185,13 +173,7 @@ impl ReplayMemory {
             if done {
                 state = {
                     let s = env.reset();
-                    Tensor::from_slice(&[
-                        s.cart_position,
-                        s.cart_velocity,
-                        s.pole_angle,
-                        s.pole_angular_velocity,
-                    ])
-                    .to_device(DEVICE)
+                    Tensor::from_slice(s.unwrap().as_slice().unwrap()).to_device(DEVICE)
                 };
             } else {
                 state = state_;
@@ -263,13 +245,7 @@ fn main() {
     let mut env = CartPoleEnv::default();
     state = {
         let s = env.reset();
-        Tensor::from_slice(&[
-            s.cart_position,
-            s.cart_velocity,
-            s.pole_angle,
-            s.pole_angular_velocity,
-        ])
-        .to_device(DEVICE)
+        Tensor::from_slice(s.unwrap().as_slice().unwrap()).to_device(DEVICE)
     };
     // mem_replay.init(&mut rng);
     let start = Instant::now();
@@ -278,13 +254,7 @@ fn main() {
         (state_, reward, done) = {
             let (state_, reward, done) = env.step(action as usize).unwrap();
             (
-                Tensor::from_slice(&[
-                    state_.cart_position,
-                    state_.cart_velocity,
-                    state_.pole_angle,
-                    state_.pole_angular_velocity,
-                ])
-                .to_device(DEVICE),
+                Tensor::from_slice(state_.as_slice().unwrap()).to_device(DEVICE),
                 reward,
                 done,
             )
@@ -300,13 +270,7 @@ fn main() {
             ep_return = 0.0;
             state = {
                 let s = env.reset();
-                Tensor::from_slice(&[
-                    s.cart_position,
-                    s.cart_velocity,
-                    s.pole_angle,
-                    s.pole_angular_velocity,
-                ])
-                .to_device(DEVICE)
+                Tensor::from_slice(s.unwrap().as_slice().unwrap()).to_device(DEVICE)
             };
 
             let avg = ep_returns.average();

@@ -42,7 +42,7 @@ pub fn expected_sarsa(
 }
 
 pub type TrainResults = (Vec<f32>, Vec<u128>, Vec<f32>, Vec<f32>, Vec<f32>);
-pub trait FullDiscreteAgent {
+pub trait DDAgent {
     fn prepare(&mut self, n_obs: usize, n_actions: usize);
 
     fn get_action(&mut self, obs: usize) -> usize;
@@ -60,7 +60,7 @@ pub trait FullDiscreteAgent {
     fn reset(&mut self);
 }
 
-pub trait ContinuousObsDiscreteActionAgent {
+pub trait CDAgent {
     fn get_action(&mut self, state: &Tensor) -> usize;
 
     fn action_selection_update(&mut self, epi_reward: f32);
@@ -95,24 +95,6 @@ pub trait ContinuousObsDiscreteActionAgent {
     fn optimize(&mut self, loss: &Tensor);
 
     fn update(&mut self) -> Option<f32>;
-
-    fn reset(&mut self);
-}
-
-pub trait FullContinuousAgent {
-    // fn prepare(&mut self, n_obs: usize, n_actions: usize);
-
-    fn get_action(&mut self, obs: &Array1<f32>) -> Array1<f32>;
-
-    fn update(
-        &mut self,
-        curr_obs: &Array1<f32>,
-        curr_action: &Array1<f32>,
-        reward: f32,
-        terminated: bool,
-        next_obs: &Array1<f32>,
-        next_action: &Array1<f32>,
-    ) -> f32;
 
     fn reset(&mut self);
 }

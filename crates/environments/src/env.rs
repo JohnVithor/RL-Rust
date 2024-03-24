@@ -1,15 +1,20 @@
-use std::fmt::Debug;
+use ndarray::ArrayD;
 
 use crate::space::SpaceInfo;
 
-#[derive(Debug, Clone)]
-pub enum EnvError {
-    EnvNotReady,
+pub trait DiscreteActionEnv {
+    type Error;
+    fn reset(&mut self) -> Result<ArrayD<f32>, Self::Error>;
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), Self::Error>;
+    fn render(&self) -> String;
+    fn observation_space(&self) -> SpaceInfo;
+    fn action_space(&self) -> SpaceInfo;
 }
 
-pub trait Env<T, A> {
-    fn reset(&mut self) -> T;
-    fn step(&mut self, action: A) -> Result<(T, f32, bool), EnvError>;
+pub trait ContinuousActionEnv {
+    type Error;
+    fn reset(&mut self) -> Result<ArrayD<f32>, Self::Error>;
+    fn step(&mut self, action: ArrayD<f32>) -> Result<(ArrayD<f32>, f32, bool), Self::Error>;
     fn render(&self) -> String;
     fn observation_space(&self) -> SpaceInfo;
     fn action_space(&self) -> SpaceInfo;

@@ -1,15 +1,15 @@
-use environments::classic_control::{cart_pole::CartPoleObservation, CartPoleEnv};
+use environments::classic_control::CartPoleEnv;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use reinforcement_learning::{
     action_selection::epsilon_greedy::{EpsilonGreedy, EpsilonUpdateStrategy},
     agent::{DoubleDeepAgent, OptimizerEnum},
     experience_buffer::RandomExperienceBuffer,
-    trainer::ContinuousObsDiscreteTrainer,
+    trainer::CDTrainer,
 };
 use std::time::Instant;
 use tch::{
     nn::{self, Module, VarStore},
-    Device, Kind, Tensor,
+    Device, Kind,
 };
 
 fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
@@ -38,7 +38,7 @@ fn generate_policy(device: Device) -> (Box<dyn Module>, VarStore) {
 fn main() {
     // Lucky: 4,
     // Unlucky: 6
-    let mut rng: StdRng = StdRng::seed_from_u64(6);
+    let mut rng: StdRng = StdRng::seed_from_u64(4);
 
     tch::manual_seed(rng.next_u64() as i64);
     tch::maybe_init_cuda();
@@ -52,8 +52,7 @@ fn main() {
     const START_EPSILON: f32 = 1.0;
     let device: Device = Device::Cpu;
 
-    let train_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
-    let eval_env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
+    let env = CartPoleEnv::new(MAX_STEPS_PER_EPI, rng.next_u64());
 
     let mem_replay = RandomExperienceBuffer::new(MEM_SIZE, MIN_MEM_SIZE, rng.next_u64(), device);
 
@@ -76,24 +75,12 @@ fn main() {
         device,
     );
 
-    let mut trainer = ContinuousObsDiscreteTrainer::new(
-        Box::new(train_env),
-        Box::new(eval_env),
-        |repr: usize| -> usize { repr },
-        |repr: &CartPoleObservation| -> Tensor {
-            Tensor::from_slice(&[
-                repr.cart_position,
-                repr.cart_velocity,
-                repr.pole_angle,
-                repr.pole_angular_velocity,
-            ])
-        },
-    );
+    let mut trainer = CDTrainer::new(Box::new(env));
     trainer.early_stop = Some(Box::new(|reward| reward >= 500.0));
 
     let start = Instant::now();
 
-    trainer.train_by_steps2(&mut agent, 200_000, UPDATE_FREQ, 50, 10, false);
+    let _r = trainer.train_by_steps2(&mut agent, 200_000, UPDATE_FREQ, 50, 10, false);
 
     let elapsed = start.elapsed();
     println!("Elapsed time: {:?}", elapsed);

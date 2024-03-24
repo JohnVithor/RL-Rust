@@ -3,9 +3,7 @@ use reinforcement_learning::{
         epsilon_greedy::{EpsilonGreedy, EpsilonUpdateStrategy},
         UpperConfidenceBound,
     },
-    agent::{
-        expected_sarsa, qlearning, sarsa, ElegibilityTracesAgent, FullDiscreteAgent, OneStepAgent,
-    },
+    agent::{expected_sarsa, qlearning, sarsa, DDAgent, ElegibilityTracesAgent, OneStepAgent},
 };
 use structopt::StructOpt;
 
@@ -88,7 +86,7 @@ pub struct Cli {
     pub seed: u64,
 }
 
-pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static str>) {
+pub fn get_agents(args: Cli) -> (Vec<Box<dyn DDAgent>>, Vec<&'static str>) {
     let greedy_sarsa_agent = OneStepAgent::new(
         Box::new(EpsilonGreedy::new(
             args.initial_epsilon,
@@ -244,7 +242,7 @@ pub fn get_agents(args: Cli) -> (Vec<Box<dyn FullDiscreteAgent>>, Vec<&'static s
         args.discount_factor,
         args.lambda_factor,
     );
-    let agents: Vec<Box<dyn FullDiscreteAgent>> = vec![
+    let agents: Vec<Box<dyn DDAgent>> = vec![
         Box::new(greedy_sarsa_agent),
         Box::new(greedy_qlearning_agent),
         Box::new(greedy_expected_sarsa_agent),

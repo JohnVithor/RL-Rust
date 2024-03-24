@@ -1,34 +1,16 @@
+use ndarray::{Array1, ArrayD};
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
 use crate::space::{SpaceInfo, SpaceTypeBounds};
-use crate::EnvError::EnvNotReady;
-use crate::{Env, EnvError};
+use crate::DiscreteActionEnv;
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct CartPoleObservation {
-    pub cart_position: f32,
-    pub cart_velocity: f32,
-    pub pole_angle: f32,
-    pub pole_angular_velocity: f32,
-}
-
-impl CartPoleObservation {
-    pub fn new(
-        cart_position: f32,
-        cart_velocity: f32,
-        pole_angle: f32,
-        pole_angular_velocity: f32,
-    ) -> Self {
-        Self {
-            cart_position,
-            cart_velocity,
-            pole_angle,
-            pole_angular_velocity,
-        }
-    }
+#[derive(Debug, Clone)]
+pub enum CartPoleError {
+    NotReady,
+    InvalidAction,
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +18,7 @@ pub struct CartPoleEnv {
     ready: bool,
     max_steps: u128,
     curr_step: u128,
-    state: CartPoleObservation,
+    state: Array1<f32>,
     dist: Uniform<f32>,
     rng: SmallRng,
 }
@@ -58,7 +40,7 @@ impl CartPoleEnv {
             ready: false,
             curr_step: 0,
             max_steps,
-            state: CartPoleObservation::default(),
+            state: Array1::<f32>::default(4),
             dist: Uniform::from(-0.05..0.05),
             rng: SmallRng::seed_from_u64(seed),
         };
@@ -66,13 +48,13 @@ impl CartPoleEnv {
         env
     }
 
-    fn initialize(&mut self) -> CartPoleObservation {
-        CartPoleObservation {
-            cart_position: self.dist.sample(&mut self.rng),
-            cart_velocity: self.dist.sample(&mut self.rng),
-            pole_angle: self.dist.sample(&mut self.rng),
-            pole_angular_velocity: self.dist.sample(&mut self.rng),
-        }
+    fn initialize(&mut self) -> Array1<f32> {
+        Array1::from_iter([
+            self.dist.sample(&mut self.rng),
+            self.dist.sample(&mut self.rng),
+            self.dist.sample(&mut self.rng),
+            self.dist.sample(&mut self.rng),
+        ])
     }
 }
 
@@ -82,21 +64,22 @@ impl Default for CartPoleEnv {
     }
 }
 
-impl Env<CartPoleObservation, usize> for CartPoleEnv {
-    fn reset(&mut self) -> CartPoleObservation {
+impl DiscreteActionEnv for CartPoleEnv {
+    type Error = CartPoleError;
+    fn reset(&mut self) -> Result<ArrayD<f32>, CartPoleError> {
         self.state = self.initialize();
         self.ready = true;
         self.curr_step = 0;
-        self.state.clone()
+        Ok(self.state.clone().into_dyn())
     }
 
-    fn step(&mut self, action: usize) -> Result<(CartPoleObservation, f32, bool), EnvError> {
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), CartPoleError> {
         if !self.ready {
-            return Err(EnvNotReady);
+            return Err(CartPoleError::NotReady);
         }
         if self.curr_step > self.max_steps {
             self.ready = false;
-            return Ok((self.state.clone(), -1.0, true));
+            return Ok((self.state.clone().into_dyn(), -1.0, true));
         }
         self.curr_step += 1;
 
@@ -105,31 +88,27 @@ impl Env<CartPoleObservation, usize> for CartPoleEnv {
         } else {
             -Self::FORCE_MAG
         };
-        let cos_theta = self.state.pole_angle.cos();
-        let sin_theta = self.state.pole_angle.sin();
+        let cos_theta = self.state[2].cos();
+        let sin_theta = self.state[2].sin();
 
-        let temp = (force
-            + Self::POLE_MASS_LENGTH
-                * self.state.pole_angular_velocity
-                * self.state.pole_angular_velocity
-                * sin_theta)
+        let temp = (force + Self::POLE_MASS_LENGTH * self.state[3] * self.state[3] * sin_theta)
             / Self::TOTAL_MASS;
         let thetaacc = (Self::GRAVITY * sin_theta - cos_theta * temp)
             / (Self::POLE_HALF_LENGTH
                 * (4.0 / 3.0 - Self::POLE_MASS * cos_theta * cos_theta / Self::TOTAL_MASS));
         let xacc = temp - Self::POLE_MASS_LENGTH * thetaacc * cos_theta / Self::TOTAL_MASS;
 
-        self.state.cart_position += Self::TAU * self.state.cart_velocity;
-        self.state.cart_velocity += Self::TAU * xacc;
-        self.state.pole_angle += Self::TAU * self.state.pole_angular_velocity;
-        self.state.pole_angular_velocity += Self::TAU * thetaacc;
+        self.state[0] += Self::TAU * self.state[1];
+        self.state[1] += Self::TAU * xacc;
+        self.state[2] += Self::TAU * self.state[3];
+        self.state[3] += Self::TAU * thetaacc;
 
-        let terminated = self.state.cart_position < -Self::X_THRESHOLD
-            || self.state.cart_position > Self::X_THRESHOLD
-            || self.state.pole_angle < -Self::THETA_THRESHOLD_RADIANS
-            || self.state.pole_angle > Self::THETA_THRESHOLD_RADIANS;
+        let terminated = self.state[0] < -Self::X_THRESHOLD
+            || self.state[0] > Self::X_THRESHOLD
+            || self.state[2] < -Self::THETA_THRESHOLD_RADIANS
+            || self.state[2] > Self::THETA_THRESHOLD_RADIANS;
         let reward = if !terminated { 1.0 } else { 0.0 };
-        Ok((self.state.clone(), reward, terminated))
+        Ok((self.state.clone().into_dyn(), reward, terminated))
     }
 
     fn render(&self) -> String {

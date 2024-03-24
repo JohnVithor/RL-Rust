@@ -15,3 +15,4 @@ tch = { version = "0.15.0", features = ["python-extension"] }
 torch-sys = { version = "0.15.0", features = ["python-extension"] }
 pyo3 = { version = "0.20.3", features = ["extension-module"] }
 numpy = "0.20"
+rand = "0.8.5"

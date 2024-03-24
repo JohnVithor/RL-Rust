@@ -1,4 +1,4 @@
-use environments::{classic_control::CartPoleEnv, Env};
+use environments::{classic_control::CartPoleEnv, DiscreteActionEnv};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::{collections::HashMap, collections::VecDeque};
 use tch::{Device, Kind, Tensor};
@@ -270,28 +270,14 @@ impl ReplayMemory {
         let mut env = CartPoleEnv::default();
         let mut state = {
             let s = env.reset();
-            Tensor::from_slice(&[
-                s.cart_position,
-                s.cart_velocity,
-                s.pole_angle,
-                s.pole_angular_velocity,
-            ])
+            Tensor::from_slice(s.unwrap().as_slice().unwrap())
         };
         let stepskip = 4;
         for s in 0..(self.minsize * stepskip) {
             let action = rng.gen_range(0..2);
             let (state_, reward, done) = {
                 let (state_, reward, done) = env.step(action).unwrap();
-                (
-                    Tensor::from_slice(&[
-                        state_.cart_position,
-                        state_.cart_velocity,
-                        state_.pole_angle,
-                        state_.pole_angular_velocity,
-                    ]),
-                    reward,
-                    done,
-                )
+                (Tensor::from_slice(state_.as_slice().unwrap()), reward, done)
             };
             if s % stepskip == 0 {
                 let t = Transition::new(&state, action as i64, reward, done, &state_);
@@ -300,12 +286,7 @@ impl ReplayMemory {
             if done {
                 state = {
                     let s = env.reset();
-                    Tensor::from_slice(&[
-                        s.cart_position,
-                        s.cart_velocity,
-                        s.pole_angle,
-                        s.pole_angular_velocity,
-                    ])
+                    Tensor::from_slice(s.unwrap().as_slice().unwrap())
                 };
             } else {
                 state = state_;
@@ -369,28 +350,14 @@ fn main() {
     let mut env = CartPoleEnv::default();
     state = {
         let s = env.reset();
-        Tensor::from_slice(&[
-            s.cart_position,
-            s.cart_velocity,
-            s.pole_angle,
-            s.pole_angular_velocity,
-        ])
+        Tensor::from_slice(s.unwrap().as_slice().unwrap())
     };
     mem_replay.init(&mut rng);
     loop {
         action = epsilon_greedy(&mem_policy, &policy_net, epsilon, &state, &mut rng);
         (state_, reward, done) = {
             let (state_, reward, done) = env.step(action as usize).unwrap();
-            (
-                Tensor::from_slice(&[
-                    state_.cart_position,
-                    state_.cart_velocity,
-                    state_.pole_angle,
-                    state_.pole_angular_velocity,
-                ]),
-                reward,
-                done,
-            )
+            (Tensor::from_slice(state_.as_slice().unwrap()), reward, done)
         };
         let t = Transition::new(&state, action, reward, done, &state_);
         mem_replay.add(t);
@@ -403,12 +370,7 @@ fn main() {
             ep_return = 0.0;
             state = {
                 let s = env.reset();
-                Tensor::from_slice(&[
-                    s.cart_position,
-                    s.cart_velocity,
-                    s.pole_angle,
-                    s.pole_angular_velocity,
-                ])
+                Tensor::from_slice(s.unwrap().as_slice().unwrap())
             };
 
             let avg = ep_returns.average(); // sum() / 50.0;

@@ -4,4 +4,4 @@ pub mod space;
 pub mod toy_text;
 pub mod utils;
 
-pub use env::{Env, EnvError};
+pub use env::{ContinuousActionEnv, DiscreteActionEnv};

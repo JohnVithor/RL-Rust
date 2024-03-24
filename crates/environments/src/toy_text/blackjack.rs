@@ -1,35 +1,17 @@
 use std::cmp::Ordering;
 
-use crate::env::Env;
+use crate::env::DiscreteActionEnv;
 use crate::space::{SpaceInfo, SpaceTypeBounds};
-use crate::EnvError;
 
+use ndarray::{Array1, ArrayD};
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
-#[derive(Debug, Copy, Clone)]
-pub enum BlackJackAction {
-    HIT,
-    STICK,
-}
-
-#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
-pub struct BlackJackObservation {
-    pub p_score: u8,
-    pub d_score: u8,
-    pub p_ace: bool,
-}
-
-impl BlackJackObservation {
-    pub fn new(p_score: u8, d_score: u8, p_ace: bool) -> Self {
-        Self {
-            p_score,
-            d_score,
-            p_ace,
-        }
-    }
+pub enum BlackJackError {
+    NotReady,
+    InvalidAction,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +83,10 @@ impl BlackJackEnv {
             score
         }
     }
+
+    fn build_obs(&self, p_score: u8, d_score: u8, has_ace: bool) -> ArrayD<f32> {
+        Array1::from_iter([p_score as f32, d_score as f32, has_ace as u8 as f32]).into_dyn()
+    }
 }
 
 impl Default for BlackJackEnv {
@@ -109,18 +95,18 @@ impl Default for BlackJackEnv {
     }
 }
 
-impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
-    fn reset(&mut self) -> BlackJackObservation {
+impl DiscreteActionEnv for BlackJackEnv {
+    type Error = BlackJackError;
+    fn reset(&mut self) -> Result<ArrayD<f32>, BlackJackError> {
         self.player = [0; 16];
         self.dealer = [0; 16];
         self.initialize_hands();
-        let obs: BlackJackObservation = BlackJackObservation::new(
+        self.ready = true;
+        Ok(self.build_obs(
             self.compute_player_score(),
             self.get_dealer_card(),
             self.player_has_ace,
-        );
-        self.ready = true;
-        obs
+        ))
     }
 
     fn observation_space(&self) -> SpaceInfo {
@@ -134,32 +120,25 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
         SpaceInfo::new(vec![SpaceTypeBounds::Discrete(2)])
     }
 
-    fn step(
-        &mut self,
-        action: BlackJackAction,
-    ) -> Result<(BlackJackObservation, f32, bool), EnvError> {
+    fn step(&mut self, action: usize) -> Result<(ArrayD<f32>, f32, bool), BlackJackError> {
         if !self.ready {
-            return Err(EnvError::EnvNotReady);
+            return Err(BlackJackError::NotReady);
         }
         match action {
-            BlackJackAction::HIT => {
+            0 => {
                 self.player[self.player_i] = self.get_new_card();
                 self.player_i += 1;
                 let p_score: u8 = self.compute_player_score();
                 if p_score > 21 {
                     self.ready = false;
-                    let obs: BlackJackObservation = BlackJackObservation::new(
-                        p_score,
-                        self.compute_dealer_score(),
-                        self.player_has_ace,
-                    );
+                    let obs =
+                        self.build_obs(p_score, self.compute_dealer_score(), self.player_has_ace);
                     return Ok((obs, -1.0, true));
                 }
-                let obs: BlackJackObservation =
-                    BlackJackObservation::new(p_score, self.get_dealer_card(), self.player_has_ace);
+                let obs = self.build_obs(p_score, self.get_dealer_card(), self.player_has_ace);
                 Ok((obs, 0.0, false))
             }
-            BlackJackAction::STICK => {
+            1 => {
                 self.ready = false;
                 let mut d_score: u8 = self.compute_dealer_score();
                 while d_score < 17 {
@@ -167,16 +146,13 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
                     self.dealer_i += 1;
                     d_score = self.compute_dealer_score();
                 }
-                let obs: BlackJackObservation = BlackJackObservation::new(
-                    self.compute_player_score(),
-                    d_score,
-                    self.player_has_ace,
-                );
+                let p_score = self.compute_player_score();
+                let obs = self.build_obs(p_score, d_score, self.player_has_ace);
                 if d_score > 21 {
                     return Ok((obs, 1.0, true));
                 }
 
-                let reward = match obs.p_score.cmp(&d_score) {
+                let reward = match p_score.cmp(&d_score) {
                     Ordering::Greater => 1.0,
                     Ordering::Less => -1.0,
                     Ordering::Equal => 0.0,
@@ -184,6 +160,7 @@ impl Env<BlackJackObservation, BlackJackAction> for BlackJackEnv {
 
                 Ok((obs, reward, true))
             }
+            _ => Err(BlackJackError::InvalidAction),
         }
     }
 
